@@ -5,6 +5,93 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function extractLevelPlayers(html: string) {
+  const players: Array<{
+    rank: number;
+    name: string;
+    gameClass: string;
+    clan: string;
+    level: number;
+    xp: string;
+  }> = [];
+
+  // Find the rankLevel panel content
+  const levelPanelMatch = html.match(/id="rankLevel"([\s\S]*?)(?:id="rankPvp"|$)/);
+  if (!levelPanelMatch) {
+    console.log("Could not find rankLevel panel");
+    // Try the whole page
+    return extractFromTable(html);
+  }
+
+  return extractFromTable(levelPanelMatch[1]);
+}
+
+function extractFromTable(html: string) {
+  const players: Array<{
+    rank: number;
+    name: string;
+    gameClass: string;
+    clan: string;
+    level: number;
+    xp: string;
+  }> = [];
+
+  // Match each table row
+  const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/g;
+  let match;
+
+  while ((match = rowRegex.exec(html)) !== null) {
+    const rowHtml = match[1];
+
+    // Skip header rows
+    if (rowHtml.includes("<th")) continue;
+
+    // Extract all td contents
+    const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/g;
+    const tds: string[] = [];
+    let tdMatch;
+    while ((tdMatch = tdRegex.exec(rowHtml)) !== null) {
+      tds.push(tdMatch[1]);
+    }
+
+    // Level table has 6 columns: #, name, class, clan, level, xp(%)
+    if (tds.length !== 6) continue;
+
+    // Check if last column has % (level table vs pvp table)
+    if (!tds[5].includes("%")) continue;
+
+    // Extract rank
+    const rankText = tds[0].replace(/<[^>]+>/g, "").trim();
+    const rank = parseInt(rankText);
+    if (isNaN(rank)) continue;
+
+    // Extract name
+    const nameMatch = tds[1].match(/text-orange-400[^>]*>([^<]+)/);
+    const name = nameMatch ? nameMatch[1].trim() : tds[1].replace(/<[^>]+>/g, "").trim();
+    if (!name) continue;
+
+    // Extract class
+    const classMatch = tds[2].match(/<span[^>]*>([^<]+)<\/span>/);
+    const gameClass = classMatch ? classMatch[1].trim() : "";
+
+    // Extract clan
+    const clanMatch = tds[3].match(/text-white\/80[^>]*>([^<]+)<\/span>/);
+    const clan = clanMatch ? clanMatch[1].trim() : "";
+
+    // Extract level
+    const levelText = tds[4].replace(/<[^>]+>/g, "").trim();
+    const level = parseInt(levelText);
+
+    // Extract XP
+    const xpMatch = tds[5].match(/([\d.,]+%)/);
+    const xp = xpMatch ? xpMatch[1] : "0%";
+
+    players.push({ rank, name, gameClass, clan, level: isNaN(level) ? 0 : level, xp });
+  }
+
+  return players;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -26,7 +113,8 @@ Deno.serve(async (req) => {
       nicknameMap.set(u.nickname.toLowerCase(), u.id);
     }
 
-    // Scrape ranking pages until we've matched all users or run out of pages
+    console.log(`Users in DB: ${nicknameMap.size}`);
+
     const allPlayers: Array<{
       rank: number;
       name: string;
@@ -36,81 +124,47 @@ Deno.serve(async (req) => {
       xp: string;
     }> = [];
 
-    const maxPages = 10; // Scrape up to 10 pages (100 players)
+    const maxPages = 10;
     for (let page = 1; page <= maxPages; page++) {
       const url = `https://arkanumpt.com.br/rankings?q=&class=0&tab=rankLevel&page_level=${page}`;
-      console.log(`Fetching page ${page}: ${url}`);
+      console.log(`Fetching page ${page}...`);
 
-      const resp = await fetch(url);
+      const resp = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Accept": "text/html,application/xhtml+xml",
+        },
+      });
+
       if (!resp.ok) {
-        console.error(`Failed to fetch page ${page}: ${resp.status}`);
+        console.error(`Page ${page} failed: ${resp.status}`);
         break;
       }
 
       const html = await resp.text();
+      console.log(`Page ${page} HTML length: ${html.length}`);
 
-      // Parse the Level ranking table (first table in rankLevel panel)
-      // Each row: <tr> with 6 <td>: #, name, class, clan, level, xp
-      const rowRegex = /<tr class="hover:bg-white\/5 transition">([\s\S]*?)<\/tr>/g;
-      let match;
-      let foundOnPage = 0;
-
-      while ((match = rowRegex.exec(html)) !== null) {
-        const rowHtml = match[1];
-
-        // Only process rows from the Level table (before the PvP section)
-        // The level table rows have 6 tds with level and xp%
-        const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/g;
-        const tds: string[] = [];
-        let tdMatch;
-        while ((tdMatch = tdRegex.exec(rowHtml)) !== null) {
-          tds.push(tdMatch[1]);
-        }
-
-        if (tds.length < 6) continue;
-
-        // Extract rank
-        const rankMatch = tds[0].match(/(\d+)/);
-        if (!rankMatch) continue;
-        const rank = parseInt(rankMatch[1]);
-
-        // Extract name (orange text)
-        const nameMatch = tds[1].match(/text-orange-400[^>]*>([^<]+)/);
-        if (!nameMatch) continue;
-        const name = nameMatch[1].trim();
-
-        // Extract class
-        const classMatch = tds[2].match(/<span[^>]*>([^<]+)<\/span>/);
-        const gameClass = classMatch ? classMatch[1].trim() : "";
-
-        // Extract clan
-        const clanMatch = tds[3].match(/<span[^>]*text-white\/80[^>]*>([^<]+)<\/span>/);
-        const clan = clanMatch ? clanMatch[1].trim() : "";
-
-        // Extract level
-        const levelMatch = tds[4].match(/(\d+)/);
-        const level = levelMatch ? parseInt(levelMatch[1]) : 0;
-
-        // Extract XP
-        const xpMatch = tds[5].match(/([\d.]+%)/);
-        const xp = xpMatch ? xpMatch[1] : "0%";
-
-        // Check if this is a level row (xp contains %) vs pvp row
-        if (!tds[5].includes("%")) continue;
-
-        allPlayers.push({ rank, name, gameClass, clan, level, xp });
-        foundOnPage++;
+      if (page === 1) {
+        // Log a snippet to debug
+        const snippet = html.substring(0, 500);
+        console.log(`HTML start: ${snippet}`);
       }
 
-      console.log(`Page ${page}: found ${foundOnPage} level players`);
+      const pagePlayers = extractLevelPlayers(html);
+      console.log(`Page ${page}: ${pagePlayers.length} players found`);
 
-      // If less than 10 results, we're on the last page
-      if (foundOnPage < 10) break;
+      if (pagePlayers.length > 0) {
+        console.log(`First player: ${JSON.stringify(pagePlayers[0])}`);
+      }
+
+      allPlayers.push(...pagePlayers);
+
+      if (pagePlayers.length < 10) break;
     }
 
-    console.log(`Total scraped: ${allPlayers.length} players`);
+    console.log(`Total scraped: ${allPlayers.length}`);
 
-    // Match with our users and upsert
+    // Match and upsert
     let matched = 0;
     for (const player of allPlayers) {
       const userId = nicknameMap.get(player.name.toLowerCase());
@@ -133,13 +187,12 @@ Deno.serve(async (req) => {
         );
 
       if (error) {
-        console.error(`Error upserting ${player.name}:`, error.message);
+        console.error(`Upsert error for ${player.name}: ${error.message}`);
       } else {
         matched++;
+        console.log(`Matched: ${player.name} -> level ${player.level}, xp ${player.xp}`);
       }
     }
-
-    console.log(`Matched and upserted: ${matched} players`);
 
     return new Response(
       JSON.stringify({ success: true, scraped: allPlayers.length, matched }),
