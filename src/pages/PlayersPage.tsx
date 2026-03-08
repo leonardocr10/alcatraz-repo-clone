@@ -2,18 +2,27 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Users, Search, Eye, Pencil, Link2, Trash2 } from "lucide-react";
+import { Users, Search, Pencil, MessageCircle, Trash2, X, Save } from "lucide-react";
+import type { Database } from "@/integrations/supabase/types";
+
+type CharacterClass = Database["public"]["Enums"]["character_class"];
+type AppRole = Database["public"]["Enums"]["app_role"];
 
 type Player = {
   id: string;
   nickname: string;
-  class: string | null;
+  class: CharacterClass | null;
   phone: string | null;
-  role: "admin" | "user";
+  role: AppRole;
   created_at: string;
 };
 
 type ClassIcon = { name: string; image_url: string | null };
+
+const ALL_CLASSES: CharacterClass[] = [
+  "Fighter", "Mechanician", "Archer", "Pikeman",
+  "Knight", "Atalanta", "Priestess", "Magician",
+];
 
 export default function PlayersPage() {
   const { isAdmin } = useAuth();
@@ -22,17 +31,26 @@ export default function PlayersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
+  // Edit modal state
+  const [editPlayer, setEditPlayer] = useState<Player | null>(null);
+  const [editNickname, setEditNickname] = useState("");
+  const [editClass, setEditClass] = useState<CharacterClass | "">("");
+  const [editRole, setEditRole] = useState<AppRole>("user");
+  const [editPhone, setEditPhone] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const fetchData = async () => {
+    setLoading(true);
+    const [playersRes, iconsRes] = await Promise.all([
+      supabase.from("users").select("id, nickname, class, phone, role, created_at").order("created_at", { ascending: false }),
+      supabase.from("character_classes").select("name, image_url"),
+    ]);
+    setPlayers((playersRes.data ?? []) as Player[]);
+    setIcons((iconsRes.data ?? []) as ClassIcon[]);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      const [playersRes, iconsRes] = await Promise.all([
-        supabase.from("users").select("id, nickname, class, phone, role, created_at").order("created_at", { ascending: false }),
-        supabase.from("character_classes").select("name, image_url"),
-      ]);
-      setPlayers((playersRes.data ?? []) as Player[]);
-      setIcons((iconsRes.data ?? []) as ClassIcon[]);
-      setLoading(false);
-    };
     fetchData();
   }, []);
 
@@ -56,6 +74,40 @@ export default function PlayersPage() {
     return phone;
   };
 
+  const openEdit = (player: Player) => {
+    setEditPlayer(player);
+    setEditNickname(player.nickname);
+    setEditClass(player.class || "");
+    setEditRole(player.role);
+    setEditPhone(player.phone || "");
+  };
+
+  const closeEdit = () => {
+    setEditPlayer(null);
+  };
+
+  const saveEdit = async () => {
+    if (!editPlayer) return;
+    setSaving(true);
+
+    const payload: Record<string, unknown> = {
+      nickname: editNickname.trim(),
+      class: editClass || null,
+      role: editRole,
+      phone: editPhone.replace(/\D/g, "") || null,
+    };
+
+    const { error } = await supabase.from("users").update(payload).eq("id", editPlayer.id);
+    if (error) {
+      toast.error("Erro ao salvar: " + (error.message || "Erro desconhecido"));
+    } else {
+      toast.success("Jogador atualizado!");
+      await fetchData();
+      closeEdit();
+    }
+    setSaving(false);
+  };
+
   const deletePlayer = async (id: string) => {
     if (!confirm("Tem certeza que deseja remover este jogador?")) return;
     const { error } = await supabase.from("users").delete().eq("id", id);
@@ -65,6 +117,17 @@ export default function PlayersPage() {
       toast.success("Jogador removido");
       setPlayers((prev) => prev.filter((p) => p.id !== id));
     }
+  };
+
+  const openWhatsApp = (player: Player) => {
+    if (!player.phone) {
+      toast.error("Jogador sem telefone cadastrado");
+      return;
+    }
+    const digits = player.phone.replace(/\D/g, "");
+    const number = digits.startsWith("55") ? digits : `55${digits}`;
+    const message = encodeURIComponent(`Olá ${player.nickname}! 🎮`);
+    window.open(`https://wa.me/${number}?text=${message}`, "_blank");
   };
 
   const getInitial = (name: string) => name.charAt(0).toUpperCase();
@@ -162,18 +225,24 @@ export default function PlayersPage() {
                       {isAdmin && (
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-1">
-                            <button className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            <button className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+                            <button
+                              onClick={() => openEdit(player)}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                              title="Editar"
+                            >
                               <Pencil className="w-4 h-4" />
                             </button>
-                            <button className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
-                              <Link2 className="w-4 h-4" />
+                            <button
+                              onClick={() => openWhatsApp(player)}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-green-400 hover:bg-green-500/10 transition-colors"
+                              title="WhatsApp"
+                            >
+                              <MessageCircle className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => deletePlayer(player.id)}
                               className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                              title="Remover"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -185,6 +254,81 @@ export default function PlayersPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editPlayer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={closeEdit}>
+          <div className="glass-card w-full max-w-md p-6 space-y-4 animate-scale-in" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-lg font-bold">Editar Jogador</h3>
+              <button onClick={closeEdit} className="p-1 rounded-lg hover:bg-secondary transition-colors">
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <label className="block space-y-1">
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Nickname</span>
+                <input
+                  value={editNickname}
+                  onChange={(e) => setEditNickname(e.target.value)}
+                  className="input-modern"
+                />
+              </label>
+
+              <label className="block space-y-1">
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Classe</span>
+                <select
+                  value={editClass}
+                  onChange={(e) => setEditClass(e.target.value as CharacterClass | "")}
+                  className="input-modern"
+                >
+                  <option value="">Sem classe</option>
+                  {ALL_CLASSES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block space-y-1">
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Role</span>
+                <select
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value as AppRole)}
+                  className="input-modern"
+                >
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </label>
+
+              <label className="block space-y-1">
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Telefone</span>
+                <input
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  className="input-modern"
+                  placeholder="34999999999"
+                />
+              </label>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button onClick={closeEdit} className="btn-secondary flex-1 text-sm py-2">
+                Cancelar
+              </button>
+              <button
+                onClick={saveEdit}
+                disabled={saving || !editNickname.trim()}
+                className="btn-primary flex-1 text-sm py-2 flex items-center justify-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                {saving ? "Salvando..." : "Salvar"}
+              </button>
+            </div>
           </div>
         </div>
       )}
