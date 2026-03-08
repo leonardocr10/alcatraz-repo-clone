@@ -34,6 +34,11 @@ export default function ConfigPage() {
   // Clear state
   const [clearing, setClearing] = useState(false);
 
+  // Rules state
+  const [rulesContent, setRulesContent] = useState("");
+  const [rulesId, setRulesId] = useState<string | null>(null);
+  const [savingRules, setSavingRules] = useState(false);
+
   const fetchConfig = useCallback(async () => {
     const { data } = await supabase.from("whatsapp_config").select("*").limit(1).maybeSingle();
     if (data) {
