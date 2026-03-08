@@ -170,9 +170,23 @@ Deno.serve(async (req) => {
 
     // Helper: send text message
     const sendText = async (phone: string, text: string) => {
+      // Escape text for safe JSON embedding: handle newlines, quotes, backslashes, tabs
+      const escapedText = text
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "\\r")
+        .replace(/\t/g, "\\t");
+      const escapedPhone = phone
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"');
+      
       let body = config.body_template;
-      body = body.replace(/\{\{number\}\}/g, phone);
-      body = body.replace(/\{\{text\}\}/g, text);
+      body = body.replace(/\{\{number\}\}/g, escapedPhone);
+      body = body.replace(/\{\{text\}\}/g, escapedText);
+      
+      console.log(`Sending to ${phone}, body length: ${body.length}`);
+      
       const resp = await fetch(config.api_url, {
         method: "POST",
         headers: apiHeaders,
