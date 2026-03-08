@@ -32,7 +32,7 @@ const HomePage = () => {
   const [sendingBoss, setSendingBoss] = useState<string | null>(null);
   const [sendingAll, setSendingAll] = useState(false);
   const bossNotify = useBossNotifications();
-  const minuteOptions = [3, 5, 10, 15];
+  
 
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(new Date()), 1000);
