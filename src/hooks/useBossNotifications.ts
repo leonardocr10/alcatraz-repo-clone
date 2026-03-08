@@ -14,6 +14,7 @@ interface BossSchedule {
   id: string;
   boss_id: string;
   spawn_time: string;
+  notify_minutes_before: number;
 }
 
 async function showNotification(title: string, options: NotificationOptions) {
