@@ -68,10 +68,6 @@ export function useBossNotifications() {
     }
   }, [enabled, permission, requestPermission]);
 
-  const updateMinutes = useCallback((mins: number) => {
-    setNotifyMinutes(mins);
-    localStorage.setItem(NOTIFY_MINUTES_KEY, String(mins));
-  }, []);
 
   const sendTestNotification = useCallback(async () => {
     if (typeof Notification === "undefined" || Notification.permission !== "granted") {
