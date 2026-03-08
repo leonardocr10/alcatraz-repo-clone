@@ -84,12 +84,25 @@ export default function PlayersPage() {
   const rankingMap = useMemo(() => new Map(rankings.map((r) => [r.user_id, r])), [rankings]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return players;
-    const q = search.toLowerCase();
-    return players.filter(
-      (p) => p.nickname.toLowerCase().includes(q) || (p.phone && p.phone.includes(q))
-    );
-  }, [players, search]);
+    let list = players;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(
+        (p) => p.nickname.toLowerCase().includes(q) || (p.phone && p.phone.includes(q))
+      );
+    }
+    // Sort by level desc, then xp desc
+    return [...list].sort((a, b) => {
+      const ra = rankingMap.get(a.id);
+      const rb = rankingMap.get(b.id);
+      const lvlA = ra?.level ?? 0;
+      const lvlB = rb?.level ?? 0;
+      if (lvlB !== lvlA) return lvlB - lvlA;
+      const xpA = parseFloat((ra?.xp ?? "0").replace(",", ".")) || 0;
+      const xpB = parseFloat((rb?.xp ?? "0").replace(",", ".")) || 0;
+      return xpB - xpA;
+    });
+  }, [players, search, rankingMap]);
 
   const formatPhone = (phone: string | null) => {
     if (!phone) return "—";
