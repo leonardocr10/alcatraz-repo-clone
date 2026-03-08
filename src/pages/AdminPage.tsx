@@ -39,8 +39,9 @@ const AdminPage = () => {
   const [newScheduleMinutes, setNewScheduleMinutes] = useState<Record<string, number>>({});
 
   // Tab
-  const [tab, setTab] = useState<"boss" | "items" | "sessions" | "winners">("boss");
+  const [tab, setTab] = useState<"boss" | "items" | "sessions" | "winners" | "approvals">("boss");
   const [showBossModal, setShowBossModal] = useState(false);
+  const [pendingUsers, setPendingUsers] = useState<any[]>([]);
 
 
   // Fetch functions
