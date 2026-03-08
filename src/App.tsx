@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { AppLayout } from "@/components/AppLayout";
 import LoginPage from "@/pages/LoginPage";
 import RouletteGamePage from "@/pages/RouletteGamePage";
 import AdminPage from "@/pages/AdminPage";
@@ -51,11 +52,11 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Navigate to="/roleta" replace />} />
             <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-            <Route path="/roleta" element={<ProtectedRoute><RouletteGamePage /></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
-            <Route path="/jogadores" element={<ProtectedRoute><AdminRoute><PlayersPage /></AdminRoute></ProtectedRoute>} />
-            <Route path="/classes" element={<ProtectedRoute><AdminRoute><ClassesPage /></AdminRoute></ProtectedRoute>} />
-            <Route path="/config" element={<ProtectedRoute><AdminRoute><ConfigPage /></AdminRoute></ProtectedRoute>} />
+            <Route path="/roleta" element={<ProtectedRoute><AppLayout><RouletteGamePage /></AppLayout></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute><AppLayout><AdminPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/jogadores" element={<ProtectedRoute><AdminRoute><AppLayout><PlayersPage /></AppLayout></AdminRoute></ProtectedRoute>} />
+            <Route path="/classes" element={<ProtectedRoute><AdminRoute><AppLayout><ClassesPage /></AppLayout></AdminRoute></ProtectedRoute>} />
+            <Route path="/config" element={<ProtectedRoute><AdminRoute><AppLayout><ConfigPage /></AppLayout></AdminRoute></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
