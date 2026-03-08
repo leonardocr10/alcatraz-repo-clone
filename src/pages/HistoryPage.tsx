@@ -33,15 +33,16 @@ interface HistoryData {
   pagesScraped: number;
 }
 
-function filterDay(day: DayData, nickFilter: string | null, mapFilter: string | null): DayData {
-  if (!nickFilter && !mapFilter) return day;
+function filterDay(day: DayData, nickFilter: string | null, mapFilter: string | null, itemFilter: string | null): DayData {
+  if (!nickFilter && !mapFilter && !itemFilter) return day;
 
   const items: ItemCount[] = [];
   let total = 0;
 
   for (const item of day.items) {
+    if (itemFilter && item.name !== itemFilter) continue;
     const filtered = item.details.filter((d) => {
-      if (nickFilter && d.nick !== nickFilter) return false;
+      if (nickFilter && !d.nick.toLowerCase().includes(nickFilter.toLowerCase())) return false;
       if (mapFilter && d.map !== mapFilter) return false;
       return true;
     });
