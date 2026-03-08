@@ -52,12 +52,13 @@ Deno.serve(async (req) => {
       }
     }
 
-    const isGroupMode = !config.body_template.includes("{{number}}");
-
+    // For individual messages, we ALWAYS send per-user with their phone number
+    // The template may have a hardcoded group number, so we need to override it
     const sendText = async (phone: string, text: string) => {
       let bodyStr: string;
       try {
-        const templateClean = config.body_template
+        // Parse the template, replace placeholders, and force the "number" field to the individual phone
+        let templateClean = config.body_template
           .replace(/\{\{text\}\}/g, "__TEXT_PLACEHOLDER__")
           .replace(/\{\{number\}\}/g, "__NUMBER_PLACEHOLDER__");
         const parsed = JSON.parse(templateClean);
@@ -77,11 +78,24 @@ Deno.serve(async (req) => {
           return obj;
         };
 
-        bodyStr = JSON.stringify(replacePlaceholders(parsed));
+        const finalObj = replacePlaceholders(parsed);
+        // Force override the "number" field to the individual phone number
+        if (typeof finalObj === "object" && finalObj !== null && "number" in finalObj) {
+          finalObj.number = phone;
+        }
+        bodyStr = JSON.stringify(finalObj);
       } catch {
         const escapedText = text.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\t/g, "\\t");
         bodyStr = config.body_template.replace(/\{\{number\}\}/g, phone).replace(/\{\{text\}\}/g, escapedText);
+        // Also try to replace hardcoded group number
+        try {
+          const parsed = JSON.parse(bodyStr);
+          if (parsed.number) { parsed.number = phone; }
+          bodyStr = JSON.stringify(parsed);
+        } catch { /* keep as is */ }
       }
+
+      console.log(`Sending to ${phone}, body: ${bodyStr.substring(0, 150)}...`);
 
       const resp = await fetch(config.api_url, {
         method: "POST",
@@ -94,34 +108,22 @@ Deno.serve(async (req) => {
     let sentCount = 0;
     const errors: string[] = [];
 
-    if (isGroupMode) {
+    // Always send individually to each selected phone
+    for (const { phone, nickname } of phones) {
+      const digits = phone.replace(/\D/g, "");
+      const number = digits.startsWith("55") ? digits : `55${digits}`;
       try {
-        const resp = await sendText("group", message);
-        if (resp.ok) sentCount++;
-        else {
+        const resp = await sendText(number, message);
+        if (resp.ok) {
+          sentCount++;
+          console.log(`✓ Sent to ${nickname} (${number})`);
+        } else {
           const errText = await resp.text();
-          errors.push(`Group send failed: ${resp.status} ${errText.substring(0, 200)}`);
+          errors.push(`Failed for ${nickname}: ${resp.status}`);
+          console.log(`✗ Failed for ${nickname}: ${resp.status} ${errText.substring(0, 100)}`);
         }
       } catch (e: any) {
-        errors.push(`Group error: ${e.message}`);
-      }
-    } else {
-      for (const { phone, nickname } of phones) {
-        const digits = phone.replace(/\D/g, "");
-        const number = digits.startsWith("55") ? digits : `55${digits}`;
-        try {
-          const resp = await sendText(number, message);
-          if (resp.ok) {
-            sentCount++;
-            console.log(`✓ Sent to ${nickname}`);
-          } else {
-            const errText = await resp.text();
-            errors.push(`Failed for ${nickname}: ${resp.status}`);
-            console.log(`✗ Failed for ${nickname}: ${resp.status} ${errText.substring(0, 100)}`);
-          }
-        } catch (e: any) {
-          errors.push(`Error for ${nickname}: ${e.message}`);
-        }
+        errors.push(`Error for ${nickname}: ${e.message}`);
       }
     }
 
