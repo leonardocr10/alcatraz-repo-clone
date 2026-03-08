@@ -10,13 +10,14 @@ function extractLevelPlayers(html: string) {
     rank: number; name: string; gameClass: string; clan: string; level: number; xp: string;
   }> = [];
 
+  // Try to find the rankLevel panel first, otherwise use the whole page
+  let searchHtml = html;
   const panelMatch = html.match(/id="rankLevel"([\s\S]*?)(?:id="rankPvp"|$)/);
-  if (!panelMatch) return players;
-  const panelHtml = panelMatch[1];
+  if (panelMatch) searchHtml = panelMatch[1];
 
   const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/g;
   let match;
-  while ((match = rowRegex.exec(panelHtml)) !== null) {
+  while ((match = rowRegex.exec(searchHtml)) !== null) {
     const rowHtml = match[1];
     if (rowHtml.includes("<th") || rowHtml.includes("Nenhum resultado")) continue;
 
@@ -53,6 +54,32 @@ function extractLevelPlayers(html: string) {
   return players;
 }
 
+async function fetchWithCookies(url: string, cookies: string) {
+  const headers: Record<string, string> = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Cache-Control": "no-cache",
+    "Referer": "https://arkanumpt.com.br/rankings",
+  };
+  if (cookies) headers["Cookie"] = cookies;
+
+  const resp = await fetch(url, { headers });
+
+  // Extract cookies from response
+  let newCookies = cookies;
+  const setCookieHeaders = resp.headers.getSetCookie?.() || [];
+  for (const sc of setCookieHeaders) {
+    const cookiePart = sc.split(";")[0];
+    if (cookiePart) {
+      if (newCookies) newCookies += "; " + cookiePart;
+      else newCookies = cookiePart;
+    }
+  }
+
+  return { resp, cookies: newCookies };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -68,7 +95,6 @@ Deno.serve(async (req) => {
       .select("id, nickname");
     if (usersErr) throw usersErr;
 
-    // Build nickname lookup (case insensitive)
     const nicknameMap = new Map<string, string>();
     for (const u of users || []) {
       nicknameMap.set(u.nickname.toLowerCase(), u.id);
@@ -76,38 +102,30 @@ Deno.serve(async (req) => {
 
     const unmatchedUsers = new Set(nicknameMap.keys());
     let matched = 0;
-    const maxPages = 65; // ~627 players / 10 per page
+    let cookies = "";
+    const maxPages = 65;
 
     for (let page = 1; page <= maxPages; page++) {
-      // Stop if all users matched
-      if (unmatchedUsers.size === 0) {
-        console.log(`All users matched at page ${page - 1}`);
-        break;
-      }
+      if (unmatchedUsers.size === 0) break;
 
       const url = `https://arkanumpt.com.br/rankings?q=&class=0&tab=rankLevel&page_level=${page}`;
-      const resp = await fetch(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
-        },
-      });
+
+      const { resp, cookies: newCookies } = await fetchWithCookies(url, cookies);
+      cookies = newCookies;
 
       if (!resp.ok) {
-        console.error(`Page ${page} failed: ${resp.status}`);
+        console.error(`Page ${page}: HTTP ${resp.status}`);
         break;
       }
 
       const html = await resp.text();
-      console.log(`Page ${page}: HTML length=${html.length}`);
       const pagePlayers = extractLevelPlayers(html);
-      console.log(`Page ${page}: ${pagePlayers.length} players found`);
 
-      if (pagePlayers.length === 0) {
-        console.log(`No more players at page ${page}`);
-        break;
+      if (page <= 3 || page % 10 === 0) {
+        console.log(`Page ${page}: ${html.length} bytes, ${pagePlayers.length} players`);
       }
+
+      if (pagePlayers.length === 0) break;
 
       for (const player of pagePlayers) {
         const key = player.name.toLowerCase();
@@ -116,19 +134,16 @@ Deno.serve(async (req) => {
 
         const { error } = await supabase
           .from("player_rankings")
-          .upsert(
-            {
-              user_id: userId,
-              nickname: player.name,
-              game_class: player.gameClass,
-              clan: player.clan,
-              level: player.level,
-              xp: player.xp,
-              rank_position: player.rank,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "user_id" }
-          );
+          .upsert({
+            user_id: userId,
+            nickname: player.name,
+            game_class: player.gameClass,
+            clan: player.clan,
+            level: player.level,
+            xp: player.xp,
+            rank_position: player.rank,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: "user_id" });
 
         if (!error) {
           matched++;
@@ -137,15 +152,15 @@ Deno.serve(async (req) => {
         }
       }
 
-      if (page % 10 === 0) console.log(`Scanned ${page} pages, ${matched} matched, ${unmatchedUsers.size} remaining`);
-
-      // Delay to avoid rate limiting
-      await new Promise(r => setTimeout(r, 300));
+      // Delay between pages
+      await new Promise(r => setTimeout(r, 500));
     }
 
     if (unmatchedUsers.size > 0) {
-      console.log(`Unmatched users: ${[...unmatchedUsers].join(", ")}`);
+      console.log(`Unmatched: ${[...unmatchedUsers].join(", ")}`);
     }
+
+    console.log(`Done: ${matched} matched out of ${users?.length || 0}`);
 
     return new Response(
       JSON.stringify({ success: true, total: users?.length || 0, matched, unmatched: unmatchedUsers.size }),
