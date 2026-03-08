@@ -40,6 +40,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Class icon
   const [classIcon, setClassIcon] = useState<string | null>(null);
+  const [playerRanking, setPlayerRanking] = useState<{ level: number | null; xp: string | null } | null>(null);
 
   useEffect(() => {
     if (profile?.class) {
@@ -53,6 +54,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         });
     }
   }, [profile?.class]);
+
+  useEffect(() => {
+    if (profile?.id) {
+      supabase
+        .from("player_rankings")
+        .select("level, xp")
+        .eq("user_id", profile.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setPlayerRanking(data);
+        });
+    }
+  }, [profile?.id]);
 
   const navItems = items.filter((item) => !item.adminOnly || isAdmin);
 
@@ -202,10 +216,27 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   {profile?.class || "Sem classe"}
                   {profile?.role === "admin" && " • 👑 Admin"}
                 </p>
+                {playerRanking && (
+                  <p className="text-xs font-display font-bold text-gold mt-0.5">
+                    Lv.{playerRanking.level} • {playerRanking.xp?.endsWith('%') ? playerRanking.xp : `${playerRanking.xp}%`}
+                  </p>
+                )}
               </div>
             </div>
 
             <div className="space-y-2">
+              {playerRanking && (
+                <>
+                  <div className="flex justify-between items-center py-2 border-b border-border/30">
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Level</span>
+                    <span className="text-sm font-display font-bold text-gold">{playerRanking.level}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-border/30">
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">XP</span>
+                    <span className="text-sm font-display font-bold text-gold">{playerRanking.xp?.endsWith('%') ? playerRanking.xp : `${playerRanking.xp}%`}</span>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between items-center py-2 border-b border-border/30">
                 <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Telefone</span>
                 <span className="text-sm font-body">{profile?.phone || "—"}</span>
