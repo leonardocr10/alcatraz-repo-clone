@@ -2,8 +2,6 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 const NOTIFY_KEY = "boss-notify-enabled";
-const NOTIFY_MINUTES_KEY = "boss-notify-minutes";
-const DEFAULT_NOTIFY_MINUTES = 5;
 
 interface Boss {
   id: string;
@@ -16,6 +14,7 @@ interface BossSchedule {
   id: string;
   boss_id: string;
   spawn_time: string;
+  notify_minutes_before: number;
 }
 
 async function showNotification(title: string, options: NotificationOptions) {
@@ -38,10 +37,6 @@ export function useBossNotifications() {
   const [permission, setPermission] = useState<NotificationPermission>(
     typeof Notification !== "undefined" ? Notification.permission : "denied"
   );
-  const [notifyMinutes, setNotifyMinutes] = useState(() => {
-    const saved = localStorage.getItem(NOTIFY_MINUTES_KEY);
-    return saved ? Number(saved) : DEFAULT_NOTIFY_MINUTES;
-  });
 
   const notifiedRef = useRef<Set<string>>(new Set());
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -73,10 +68,6 @@ export function useBossNotifications() {
     }
   }, [enabled, permission, requestPermission]);
 
-  const updateMinutes = useCallback((mins: number) => {
-    setNotifyMinutes(mins);
-    localStorage.setItem(NOTIFY_MINUTES_KEY, String(mins));
-  }, []);
 
   const sendTestNotification = useCallback(async () => {
     if (typeof Notification === "undefined" || Notification.permission !== "granted") {
@@ -101,7 +92,7 @@ export function useBossNotifications() {
     const checkBosses = async () => {
       const [bossRes, schedRes] = await Promise.all([
         supabase.from("bosses").select("id, name, map_level, image_url"),
-        supabase.from("boss_schedules").select("id, boss_id, spawn_time"),
+        supabase.from("boss_schedules").select("id, boss_id, spawn_time, notify_minutes_before"),
       ]);
 
       const bosses = (bossRes.data || []) as Boss[];
@@ -123,7 +114,7 @@ export function useBossNotifications() {
         const today = brazilTime.toISOString().split("T")[0];
         const key = `${sched.id}-${today}`;
 
-        if (diffTotal <= notifyMinutes && !notifiedRef.current.has(key)) {
+        if (diffTotal <= sched.notify_minutes_before && !notifiedRef.current.has(key)) {
           notifiedRef.current.add(key);
 
           const boss = bosses.find((b) => b.id === sched.boss_id);
@@ -159,17 +150,15 @@ export function useBossNotifications() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [enabled, permission, notifyMinutes]);
+  }, [enabled, permission]);
 
   const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
 
   return {
     enabled,
     permission,
-    notifyMinutes,
     supported: typeof Notification !== "undefined" && !isMobile,
     toggle,
-    updateMinutes,
     sendTestNotification,
   };
 }

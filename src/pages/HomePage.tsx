@@ -32,7 +32,7 @@ const HomePage = () => {
   const [sendingBoss, setSendingBoss] = useState<string | null>(null);
   const [sendingAll, setSendingAll] = useState(false);
   const bossNotify = useBossNotifications();
-  const minuteOptions = [3, 5, 10, 15];
+  
 
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -193,23 +193,9 @@ const HomePage = () => {
               <p className="text-xs font-display font-extrabold truncate">
                 {bossNotify.enabled ? "Alertas Ativos" : "Alertas Desktop"}
               </p>
-              {bossNotify.enabled && (
-                <div className="flex items-center gap-1 mt-1">
-                  {minuteOptions.map((m) => (
-                    <button
-                      key={m}
-                      onClick={() => bossNotify.updateMinutes(m)}
-                      className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold transition-colors ${
-                        bossNotify.notifyMinutes === m
-                          ? "bg-primary/20 text-primary border border-primary/30"
-                          : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
-                      }`}
-                    >
-                      {m}min
-                    </button>
-                  ))}
-                </div>
-              )}
+              <p className="text-[10px] text-muted-foreground/70">
+                {bossNotify.enabled ? "Você receberá alertas automáticos" : "Receba alertas de spawn no desktop"}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
