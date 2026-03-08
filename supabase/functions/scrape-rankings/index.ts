@@ -88,8 +88,9 @@ Deno.serve(async (req) => {
       const url = `https://arkanumpt.com.br/rankings?q=&class=0&tab=rankLevel&page_level=${page}`;
       const resp = await fetch(url, {
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          "Accept": "text/html,application/xhtml+xml",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
         },
       });
 
@@ -99,7 +100,9 @@ Deno.serve(async (req) => {
       }
 
       const html = await resp.text();
+      console.log(`Page ${page}: HTML length=${html.length}`);
       const pagePlayers = extractLevelPlayers(html);
+      console.log(`Page ${page}: ${pagePlayers.length} players found`);
 
       if (pagePlayers.length === 0) {
         console.log(`No more players at page ${page}`);
