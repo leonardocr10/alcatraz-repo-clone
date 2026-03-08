@@ -142,6 +142,24 @@ export type Database = {
         }
         Relationships: []
       }
+      clan_rules: {
+        Row: {
+          content: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       roulette_items: {
         Row: {
           created_at: string
