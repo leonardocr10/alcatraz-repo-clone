@@ -52,13 +52,30 @@ export default function PlayersPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [playersRes, iconsRes] = await Promise.all([
+    const [playersRes, iconsRes, rankingsRes] = await Promise.all([
       supabase.from("users").select("id, nickname, class, phone, role, auth_id, created_at").order("created_at", { ascending: false }),
       supabase.from("character_classes").select("name, image_url"),
+      supabase.from("player_rankings").select("user_id, level, xp, rank_position"),
     ]);
     setPlayers((playersRes.data ?? []) as Player[]);
     setIcons((iconsRes.data ?? []) as ClassIcon[]);
+    setRankings((rankingsRes.data ?? []) as Ranking[]);
     setLoading(false);
+  };
+
+  const syncRankings = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("scrape-rankings", { body: {} });
+      if (error) throw error;
+      toast.success(`Ranking atualizado! ${data.matched} jogadores sincronizados`);
+      // Refresh rankings data
+      const { data: newRankings } = await supabase.from("player_rankings").select("user_id, level, xp, rank_position");
+      setRankings((newRankings ?? []) as Ranking[]);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao sincronizar ranking");
+    }
+    setSyncing(false);
   };
 
   useEffect(() => { fetchData(); }, []);
