@@ -170,27 +170,42 @@ Deno.serve(async (req) => {
 
     // Helper: send text message
     const sendText = async (phone: string, text: string) => {
-      // Escape text for safe JSON embedding: handle newlines, quotes, backslashes, tabs
-      const escapedText = text
-        .replace(/\\/g, "\\\\")
-        .replace(/"/g, '\\"')
-        .replace(/\n/g, "\\n")
-        .replace(/\r/g, "\\r")
-        .replace(/\t/g, "\\t");
-      const escapedPhone = phone
-        .replace(/\\/g, "\\\\")
-        .replace(/"/g, '\\"');
+      // Parse the body_template as JSON, replace placeholders in values
+      let bodyStr: string;
+      try {
+        // Try to parse template as JSON and replace placeholders in string values
+        const templateClean = config.body_template.replace(/\{\{text\}\}/g, "__TEXT_PLACEHOLDER__").replace(/\{\{number\}\}/g, "__NUMBER_PLACEHOLDER__");
+        const parsed = JSON.parse(templateClean);
+        
+        const replacePlaceholders = (obj: any): any => {
+          if (typeof obj === "string") {
+            return obj.replace(/__TEXT_PLACEHOLDER__/g, text).replace(/__NUMBER_PLACEHOLDER__/g, phone);
+          }
+          if (Array.isArray(obj)) return obj.map(replacePlaceholders);
+          if (obj && typeof obj === "object") {
+            const result: any = {};
+            for (const [k, v] of Object.entries(obj)) {
+              result[k] = replacePlaceholders(v);
+            }
+            return result;
+          }
+          return obj;
+        };
+        
+        const finalObj = replacePlaceholders(parsed);
+        bodyStr = JSON.stringify(finalObj);
+      } catch {
+        // Fallback: simple string replacement with escaping
+        const escapedText = text.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\t/g, "\\t");
+        bodyStr = config.body_template.replace(/\{\{number\}\}/g, phone).replace(/\{\{text\}\}/g, escapedText);
+      }
       
-      let body = config.body_template;
-      body = body.replace(/\{\{number\}\}/g, escapedPhone);
-      body = body.replace(/\{\{text\}\}/g, escapedText);
-      
-      console.log(`Sending to ${phone}, body length: ${body.length}`);
+      console.log(`Sending to API, body: ${bodyStr.substring(0, 200)}...`);
       
       const resp = await fetch(config.api_url, {
         method: "POST",
         headers: apiHeaders,
-        body: body,
+        body: bodyStr,
       });
       return resp;
     };
