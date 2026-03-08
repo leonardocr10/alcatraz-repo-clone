@@ -19,7 +19,7 @@ export default function ConfigPage() {
   const { isAdmin } = useAuth();
   const { currentTheme, setTheme, resetTheme, presets } = useTheme();
 
-  const [tab, setTab] = useState<"whatsapp" | "theme" | "rules" | "clear">("whatsapp");
+  const [tab, setTab] = useState<"manage" | "whatsapp" | "theme" | "rules" | "clear">("manage");
 
   // WhatsApp state
   const [config, setConfig] = useState<WhatsConfig | null>(null);
