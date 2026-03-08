@@ -161,11 +161,23 @@ const HomePage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Clock + BRT */}
-      <div className="glass-card p-2.5 flex items-center justify-center gap-2">
-        <Clock className="w-4 h-4 text-primary" />
-        <span className="font-display text-lg font-extrabold tabular-nums">{getBrazilTimeStr()}</span>
-        <span className="text-[10px] text-muted-foreground font-body bg-secondary px-1.5 py-0.5 rounded-md">BRT</span>
+      {/* Clock + BRT + Refresh */}
+      <div className="glass-card p-2.5 flex items-center justify-between">
+        <div className="flex-1" />
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-primary" />
+          <span className="font-display text-lg font-extrabold tabular-nums">{getBrazilTimeStr()}</span>
+          <span className="text-[10px] text-muted-foreground font-body bg-secondary px-1.5 py-0.5 rounded-md">BRT</span>
+        </div>
+        <div className="flex-1 flex justify-end">
+          <button
+            onClick={() => { fetchBosses(); toast.success("Atualizado!"); }}
+            className="p-1.5 rounded-lg hover:bg-secondary/50 transition-colors text-muted-foreground hover:text-primary"
+            title="Atualizar"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Desktop Notifications */}
