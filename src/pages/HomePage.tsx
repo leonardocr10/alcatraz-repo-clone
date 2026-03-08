@@ -47,9 +47,24 @@ const HomePage = () => {
   const [sendingAll, setSendingAll] = useState(false);
   const [classCounts, setClassCounts] = useState<ClassCount[]>([]);
   const [classIcons, setClassIcons] = useState<ClassIcon[]>([]);
-  const [classesOpen, setClassesOpen] = useState(true);
-  const [bossesOpen, setBossesOpen] = useState(true);
+  const [classesOpen, setClassesOpen] = useState(() => {
+    const saved = localStorage.getItem("home-classes-open");
+    return saved !== null ? saved === "true" : true;
+  });
+  const [bossesOpen, setBossesOpen] = useState(() => {
+    const saved = localStorage.getItem("home-bosses-open");
+    return saved !== null ? saved === "true" : true;
+  });
   const bossNotify = useBossNotifications();
+
+  const handleClassesToggle = (open: boolean) => {
+    setClassesOpen(open);
+    localStorage.setItem("home-classes-open", String(open));
+  };
+  const handleBossesToggle = (open: boolean) => {
+    setBossesOpen(open);
+    localStorage.setItem("home-bosses-open", String(open));
+  };
 
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -267,7 +282,7 @@ const HomePage = () => {
 
       {/* Players by Class - Collapsible */}
       {classCounts.length > 0 && (
-        <Collapsible open={classesOpen} onOpenChange={setClassesOpen}>
+        <Collapsible open={classesOpen} onOpenChange={handleClassesToggle}>
           <div className="glass-card overflow-hidden">
             <CollapsibleTrigger asChild>
               <button className="w-full px-4 py-3 border-b border-border/40 flex items-center justify-between hover:bg-secondary/20 transition-colors">
@@ -316,7 +331,7 @@ const HomePage = () => {
 
       {/* Bosses - Collapsible */}
       {groupedBosses.length > 0 ? (
-        <Collapsible open={bossesOpen} onOpenChange={setBossesOpen}>
+        <Collapsible open={bossesOpen} onOpenChange={handleBossesToggle}>
           <div className="glass-card overflow-hidden">
             <CollapsibleTrigger asChild>
               <button className="w-full px-4 py-3 border-b border-border/40 flex items-center justify-between hover:bg-secondary/20 transition-colors">
