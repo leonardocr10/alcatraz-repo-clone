@@ -11,39 +11,45 @@ function extractLevelPlayer(html: string): { rank: number; name: string; gameCla
   if (!panelMatch) return null;
   const panelHtml = panelMatch[1];
 
-  // Find first data row
-  const rowMatch = panelHtml.match(/<tr[^>]*>([\s\S]*?)<\/tr>/);
-  if (!rowMatch || rowMatch[1].includes("<th")) return null;
+  // Find all rows (skip headers)
+  const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/g;
+  let rowMatch;
 
-  const rowHtml = rowMatch[1];
-  const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/g;
-  const tds: string[] = [];
-  let m;
-  while ((m = tdRegex.exec(rowHtml)) !== null) tds.push(m[1]);
+  while ((rowMatch = rowRegex.exec(panelHtml)) !== null) {
+    const rowHtml = rowMatch[1];
+    if (rowHtml.includes("<th") || rowHtml.includes("Nenhum resultado")) continue;
 
-  if (tds.length < 6 || !tds[5].includes("%")) return null;
+    const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/g;
+    const tds: string[] = [];
+    let m;
+    while ((m = tdRegex.exec(rowHtml)) !== null) tds.push(m[1]);
 
-  const rankText = tds[0].replace(/<[^>]+>/g, "").trim();
-  const rank = parseInt(rankText);
-  if (isNaN(rank)) return null;
+    if (tds.length < 6 || !tds[5].includes("%")) continue;
 
-  const nameMatch = tds[1].match(/text-orange-400[^>]*>([^<]+)/);
-  const name = nameMatch ? nameMatch[1].trim() : "";
-  if (!name) return null;
+    const rankText = tds[0].replace(/<[^>]+>/g, "").trim();
+    const rank = parseInt(rankText);
+    if (isNaN(rank)) continue;
 
-  const classMatch = tds[2].match(/<span[^>]*>([^<]+)<\/span>/);
-  const gameClass = classMatch ? classMatch[1].trim() : "";
+    const nameMatch = tds[1].match(/text-orange-400[^>]*>([^<]+)/);
+    const name = nameMatch ? nameMatch[1].trim() : "";
+    if (!name) continue;
 
-  const clanMatch = tds[3].match(/text-white\/80[^>]*>([^<]+)<\/span>/);
-  const clan = clanMatch ? clanMatch[1].trim() : "";
+    const classMatch = tds[2].match(/<span[^>]*>([^<]+)<\/span>/);
+    const gameClass = classMatch ? classMatch[1].trim() : "";
 
-  const levelText = tds[4].replace(/<[^>]+>/g, "").trim();
-  const level = parseInt(levelText);
+    const clanMatch = tds[3].match(/text-white\/80[^>]*>([^<]+)<\/span>/);
+    const clan = clanMatch ? clanMatch[1].trim() : "";
 
-  const xpMatch = tds[5].match(/([\d.,]+%)/);
-  const xp = xpMatch ? xpMatch[1] : "0%";
+    const levelText = tds[4].replace(/<[^>]+>/g, "").trim();
+    const level = parseInt(levelText);
 
-  return { rank, name, gameClass, clan, level: isNaN(level) ? 0 : level, xp };
+    const xpMatch = tds[5].match(/([\d.,]+%)/);
+    const xp = xpMatch ? xpMatch[1] : "0%";
+
+    return { rank, name, gameClass, clan, level: isNaN(level) ? 0 : level, xp };
+  }
+
+  return null;
 }
 
 Deno.serve(async (req) => {
