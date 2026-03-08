@@ -1,0 +1,1 @@
+ALTER TABLE public.users ADD COLUMN approved boolean NOT NULL DEFAULT false;

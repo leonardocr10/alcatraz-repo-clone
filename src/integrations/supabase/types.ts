@@ -488,6 +488,7 @@ export type Database = {
       }
       users: {
         Row: {
+          approved: boolean
           auth_id: string | null
           class: Database["public"]["Enums"]["character_class"] | null
           created_at: string
@@ -499,6 +500,7 @@ export type Database = {
           whatsapp_optout: boolean
         }
         Insert: {
+          approved?: boolean
           auth_id?: string | null
           class?: Database["public"]["Enums"]["character_class"] | null
           created_at?: string
@@ -510,6 +512,7 @@ export type Database = {
           whatsapp_optout?: boolean
         }
         Update: {
+          approved?: boolean
           auth_id?: string | null
           class?: Database["public"]["Enums"]["character_class"] | null
           created_at?: string
