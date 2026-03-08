@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Sword, Shield, Eye, EyeOff } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import logoAz from "@/assets/logo-az.jpeg";
 import bgBoss from "@/assets/bg-boss.jpg";
+import type { Database } from "@/integrations/supabase/types";
+
+type CharacterClass = Database["public"]["Enums"]["character_class"];
 
 const formatPhone = (value: string) => {
   const digits = value.replace(/\D/g, "").slice(0, 11);
@@ -20,8 +24,16 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectedClass, setSelectedClass] = useState<CharacterClass | "">("");
+  const [classIcons, setClassIcons] = useState<{ name: CharacterClass; image_url: string | null }[]>([]);
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    supabase.from("character_classes").select("name, image_url").then(({ data }) => {
+      if (data) setClassIcons(data as any);
+    });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,13 +45,14 @@ const LoginPage = () => {
     try {
       if (isSignUp) {
         if (!nickname.trim()) throw new Error("Informe um nickname");
-        await signUp(nickname.trim(), password, phone);
+        if (!selectedClass) throw new Error("Selecione uma classe");
+        await signUp(nickname.trim(), password, phone, selectedClass);
         toast.success("Conta criada! Bem-vindo guerreiro!");
       } else {
         await signIn(phone, password);
         toast.success("Bem-vindo de volta!");
       }
-      navigate("/roleta");
+      navigate("/inicio");
     } catch (err: any) {
       toast.error(err.message || "Erro ao autenticar");
     } finally {
@@ -81,10 +94,42 @@ const LoginPage = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
-              <div>
-                <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">Nickname</label>
-                <input type="text" value={nickname} onChange={(e) => setNickname(e.target.value)} required className="input-modern" placeholder="Seu nome de guerra" />
-              </div>
+              <>
+                <div>
+                  <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">Nickname</label>
+                  <input type="text" value={nickname} onChange={(e) => setNickname(e.target.value)} required className="input-modern" placeholder="Seu nome de guerra" />
+                </div>
+
+                {/* Class selection */}
+                <div>
+                  <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">Classe</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {classIcons.map((c) => (
+                      <button
+                        key={c.name}
+                        type="button"
+                        onClick={() => setSelectedClass(c.name)}
+                        className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
+                          selectedClass === c.name
+                            ? "border-primary bg-primary/15 shadow-[0_0_12px_hsl(var(--primary)/0.3)]"
+                            : "border-border/40 hover:border-muted-foreground/30"
+                        }`}
+                      >
+                        {c.image_url ? (
+                          <img src={c.image_url} alt={c.name} className="w-8 h-8 rounded-lg object-cover" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                            {c.name.charAt(0)}
+                          </div>
+                        )}
+                        <span className="text-[9px] font-body font-semibold uppercase tracking-wider text-muted-foreground truncate w-full text-center">
+                          {c.name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
             <div>
               <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">Telefone</label>
