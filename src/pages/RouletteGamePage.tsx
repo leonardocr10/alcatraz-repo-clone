@@ -38,6 +38,7 @@ interface Play {
 const RouletteGamePage = () => {
   const { profile, isAdmin } = useAuth();
   const [session, setSession] = useState<any>(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
   const [currentItem, setCurrentItem] = useState<SessionItem | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [totalTime, setTotalTime] = useState(0);
