@@ -161,6 +161,10 @@ Deno.serve(async (req) => {
     let sentCount = 0;
     const errors: string[] = [];
 
+    // Detect if template uses {{number}} - if not, it's a group/fixed destination (send once)
+    const isGroupMode = !config.body_template.includes("{{number}}");
+    console.log(`Group mode: ${isGroupMode} | Eligible users: ${eligibleUsers.length}`);
+
     // Build headers for WhatsApp API
     const apiHeaders: Record<string, string> = { "Content-Type": "application/json" };
     if (Array.isArray(config.headers)) {
@@ -171,10 +175,8 @@ Deno.serve(async (req) => {
 
     // Helper: send text message
     const sendText = async (phone: string, text: string) => {
-      // Parse the body_template as JSON, replace placeholders in values
       let bodyStr: string;
       try {
-        // Try to parse template as JSON and replace placeholders in string values
         const templateClean = config.body_template.replace(/\{\{text\}\}/g, "__TEXT_PLACEHOLDER__").replace(/\{\{number\}\}/g, "__NUMBER_PLACEHOLDER__");
         const parsed = JSON.parse(templateClean);
         
@@ -196,12 +198,11 @@ Deno.serve(async (req) => {
         const finalObj = replacePlaceholders(parsed);
         bodyStr = JSON.stringify(finalObj);
       } catch {
-        // Fallback: simple string replacement with escaping
         const escapedText = text.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\t/g, "\\t");
         bodyStr = config.body_template.replace(/\{\{number\}\}/g, phone).replace(/\{\{text\}\}/g, escapedText);
       }
       
-      console.log(`Sending to API, body: ${bodyStr.substring(0, 200)}...`);
+      console.log(`Sending message, body preview: ${bodyStr.substring(0, 150)}...`);
       
       const resp = await fetch(config.api_url, {
         method: "POST",
@@ -211,28 +212,37 @@ Deno.serve(async (req) => {
       return resp;
     };
 
-    // Helper: send image message (try multiple endpoints)
-    const sendImage = async (phone: string, imageUrl: string, caption: string) => {
-      // Try /sendImage endpoint
-      const baseUrl = config.api_url.replace(/\/sendText$/, "").replace(/\/send-message$/, "").replace(/\/sendMessage$/, "");
-      
-      const imageEndpoints = [
-        { url: `${baseUrl}/sendImage`, body: JSON.stringify({ number: phone, image: imageUrl, caption }) },
-        { url: `${baseUrl}/sendFile`, body: JSON.stringify({ number: phone, url: imageUrl, caption, fileName: "map.jpg" }) },
-      ];
-
-      for (const ep of imageEndpoints) {
+    // Helper: send a notification message (handles group vs per-user mode)
+    const sendNotification = async (messageText: string) => {
+      if (isGroupMode) {
+        // Group mode: send only ONE message
         try {
-          const resp = await fetch(ep.url, {
-            method: "POST",
-            headers: apiHeaders,
-            body: ep.body,
-          });
-          if (resp.ok) return resp;
-          await resp.text(); // consume body
-        } catch { /* try next */ }
+          const resp = await sendText("group", messageText);
+          if (resp.ok) {
+            sentCount++;
+          } else {
+            const errText = await resp.text();
+            errors.push(`Group send failed: ${resp.status} ${errText.substring(0, 200)}`);
+          }
+        } catch (e: any) {
+          errors.push(`Group send error: ${e.message}`);
+        }
+      } else {
+        // Per-user mode: send to each user individually
+        for (const user of eligibleUsers) {
+          try {
+            const resp = await sendText(user.phone, messageText);
+            if (resp.ok) {
+              sentCount++;
+            } else {
+              const errText = await resp.text();
+              errors.push(`Failed for ${user.nickname}: ${resp.status} ${errText.substring(0, 100)}`);
+            }
+          } catch (e: any) {
+            errors.push(`Error for ${user.nickname}: ${e.message}`);
+          }
+        }
       }
-      return null;
     };
 
     // Process PRE-SPAWN notifications
@@ -251,23 +261,7 @@ Deno.serve(async (req) => {
       if (mapImageUrl) messageText += `\n\n🗺️ Mapa: ${mapImageUrl}`;
       messageText += `\n\n⚔️ Prepare-se guerreiro!`;
 
-      for (const user of eligibleUsers) {
-        try {
-          const resp = await sendText(user.phone, messageText);
-          if (resp.ok) {
-            sentCount++;
-            // Try to send map image separately
-            if (mapImageUrl) {
-              await sendImage(user.phone, mapImageUrl, `🗺️ ${bossName} - ${mapLevel}`);
-            }
-          } else {
-            const errText = await resp.text();
-            errors.push(`Failed for ${user.nickname}: ${resp.status} ${errText}`);
-          }
-        } catch (e: any) {
-          errors.push(`Error for ${user.nickname}: ${e.message}`);
-        }
-      }
+      await sendNotification(messageText);
 
       // Log notification (skip log in force/test mode)
       if (!force) {
@@ -295,31 +289,18 @@ Deno.serve(async (req) => {
       messageText += `\n\n🔥 CORRE GUERREIRO! O boss está vivo!`;
       if (mapImageUrl) messageText += `\n\n🗺️ Mapa: ${mapImageUrl}`;
 
-      for (const user of eligibleUsers) {
-        try {
-          const resp = await sendText(user.phone, messageText);
-          if (resp.ok) {
-            sentCount++;
-            if (mapImageUrl) {
-              await sendImage(user.phone, mapImageUrl, `🔥 ${bossName} NASCEU! - ${mapLevel}`);
-            }
-          } else {
-            const errText = await resp.text();
-            errors.push(`Spawn failed for ${user.nickname}: ${resp.status} ${errText}`);
-          }
-        } catch (e: any) {
-          errors.push(`Spawn error for ${user.nickname}: ${e.message}`);
-        }
-      }
+      await sendNotification(messageText);
 
       // Log spawn notification
-      const [sH, sM] = schedule.spawn_time.split(":").map(Number);
-      const notifKey = `spawn-${schedule.id}-${today}-${sH}:${sM}`;
-      await supabase.from("boss_notification_log").insert({
-        boss_id: schedule.boss_id,
-        schedule_id: schedule.id,
-        notification_key: notifKey,
-      });
+      if (!force) {
+        const [sH, sM] = schedule.spawn_time.split(":").map(Number);
+        const notifKey = `spawn-${schedule.id}-${today}-${sH}:${sM}`;
+        await supabase.from("boss_notification_log").insert({
+          boss_id: schedule.boss_id,
+          schedule_id: schedule.id,
+          notification_key: notifKey,
+        });
+      }
     }
 
     return new Response(
