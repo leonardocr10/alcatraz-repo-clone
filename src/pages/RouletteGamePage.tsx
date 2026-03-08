@@ -73,7 +73,7 @@ const RouletteGamePage = () => {
   const [bossSchedules, setBossSchedules] = useState<BossSchedule[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [expandedBoss, setExpandedBoss] = useState<string | null>(null);
-  const [imageModal, setImageModal] = useState<{ url: string; title: string } | null>(null);
+  const [imageModal, setImageModal] = useState<{ url: string; title: string; description?: string; mapLevel?: string } | null>(null);
   const [sendingBoss, setSendingBoss] = useState<string | null>(null);
   const [sendingAll, setSendingAll] = useState(false);
 
