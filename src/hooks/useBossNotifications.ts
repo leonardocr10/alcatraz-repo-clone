@@ -18,6 +18,21 @@ interface BossSchedule {
   spawn_time: string;
 }
 
+async function showNotification(title: string, options: NotificationOptions) {
+  // Try Service Worker first (works better in installed PWAs)
+  if ("serviceWorker" in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification(title, options);
+      return;
+    } catch (e) {
+      console.log("[Notify] SW fallback to basic Notification", e);
+    }
+  }
+  // Fallback to basic Notification API
+  new Notification(title, options);
+}
+
 export function useBossNotifications() {
   const [enabled, setEnabled] = useState(() => localStorage.getItem(NOTIFY_KEY) === "true");
   const [permission, setPermission] = useState<NotificationPermission>(
@@ -63,11 +78,11 @@ export function useBossNotifications() {
     localStorage.setItem(NOTIFY_MINUTES_KEY, String(mins));
   }, []);
 
-  const sendTestNotification = useCallback(() => {
+  const sendTestNotification = useCallback(async () => {
     if (typeof Notification === "undefined" || Notification.permission !== "granted") {
       return false;
     }
-    new Notification("⚔️ Teste de Alerta - Painel AZ", {
+    await showNotification("⚔️ Teste de Alerta - Painel AZ", {
       body: "🐉 Se você viu essa notificação, os alertas estão funcionando!",
       icon: "/pwa-icon-192.png",
       badge: "/pwa-icon-192.png",
@@ -95,16 +110,13 @@ export function useBossNotifications() {
       const brazilOffset = -3 * 60;
       const brazilTime = new Date(now.getTime() + (brazilOffset + now.getTimezoneOffset()) * 60000);
       const currentMins = brazilTime.getHours() * 60 + brazilTime.getMinutes();
-      const currentSecs = brazilTime.getSeconds();
 
       for (const sched of schedules) {
         const [h, m] = sched.spawn_time.split(":").map(Number);
         const spawnMins = h * 60 + m;
-        
-        // Calculate diff in minutes, accounting for seconds
+
         let diffTotal = spawnMins - currentMins;
         if (diffTotal < 0) diffTotal += 24 * 60;
-        // If we're past the spawn time by less than 2 minutes, treat as 0
         if (diffTotal >= 24 * 60 - 2) diffTotal = 0;
 
         const today = brazilTime.toISOString().split("T")[0];
@@ -124,7 +136,7 @@ export function useBossNotifications() {
             ? `📍 ${boss.map_level} — Spawn às ${sched.spawn_time.substring(0, 5)}`
             : `⏰ Spawn às ${sched.spawn_time.substring(0, 5)}`;
 
-          new Notification(title, {
+          await showNotification(title, {
             body,
             icon: boss.image_url || "/pwa-icon-192.png",
             badge: "/pwa-icon-192.png",
@@ -133,7 +145,6 @@ export function useBossNotifications() {
         }
       }
 
-      // Clean old keys
       const today = brazilTime.toISOString().split("T")[0];
       for (const key of notifiedRef.current) {
         if (!key.includes(today)) notifiedRef.current.delete(key);
