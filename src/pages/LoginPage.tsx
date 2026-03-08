@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Sword, Shield, Eye, EyeOff } from "lucide-react";
+import { Sword, Shield, Eye, EyeOff, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import logoAz from "@/assets/logo-az.jpeg";
 import bgBoss from "@/assets/bg-boss.jpg";
