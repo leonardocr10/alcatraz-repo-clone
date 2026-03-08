@@ -81,6 +81,7 @@ export default function PlayersPage() {
   useEffect(() => { fetchData(); }, []);
 
   const iconMap = useMemo(() => new Map(icons.map((c) => [c.name, c.image_url])), [icons]);
+  const rankingMap = useMemo(() => new Map(rankings.map((r) => [r.user_id, r])), [rankings]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return players;
