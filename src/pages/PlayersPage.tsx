@@ -498,6 +498,79 @@ export default function PlayersPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Send Message Modal */}
+      <Dialog open={msgOpen} onOpenChange={setMsgOpen}>
+        <DialogContent className="max-w-sm max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <Send className="w-4 h-4 text-primary" /> Enviar Mensagem
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+            {/* Message text */}
+            <label className="block space-y-1.5">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Mensagem</span>
+              <textarea
+                value={msgText}
+                onChange={(e) => setMsgText(e.target.value)}
+                placeholder="Digite a mensagem..."
+                className="input-modern min-h-[80px] resize-none"
+                rows={3}
+              />
+            </label>
+
+            {/* Player selection */}
+            <div className="space-y-1.5 flex-1 overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">
+                  Destinatários ({msgSelected.size}/{playersWithPhone.length})
+                </span>
+                <button
+                  onClick={toggleAllMsg}
+                  className="text-[10px] font-display font-bold text-primary hover:underline"
+                >
+                  {msgSelected.size === playersWithPhone.length ? "Desmarcar todos" : "Selecionar todos"}
+                </button>
+              </div>
+              <div className="overflow-y-auto flex-1 space-y-1 max-h-[200px] pr-1">
+                {playersWithPhone.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => toggleMsgPlayer(p.id)}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-sm font-body transition-all border ${
+                      msgSelected.has(p.id)
+                        ? "border-primary bg-primary/10 text-foreground"
+                        : "border-border/40 text-muted-foreground hover:border-muted-foreground/30"
+                    }`}
+                  >
+                    {msgSelected.has(p.id) ? (
+                      <CheckSquare className="w-4 h-4 text-primary shrink-0" />
+                    ) : (
+                      <Square className="w-4 h-4 shrink-0" />
+                    )}
+                    <span className="truncate font-semibold">{p.nickname}</span>
+                    <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{formatPhone(p.phone)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Send button */}
+            <div className="flex gap-2 pt-2">
+              <button onClick={() => setMsgOpen(false)} className="btn-secondary flex-1 text-sm py-2.5">Cancelar</button>
+              <button
+                onClick={sendMessage}
+                disabled={msgSending || !msgText.trim() || msgSelected.size === 0}
+                className="btn-primary flex-1 text-sm py-2.5 flex items-center justify-center gap-2"
+              >
+                <Send className="w-4 h-4" />
+                {msgSending ? "Enviando..." : `Enviar (${msgSelected.size})`}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
