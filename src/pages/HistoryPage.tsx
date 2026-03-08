@@ -33,15 +33,16 @@ interface HistoryData {
   pagesScraped: number;
 }
 
-function filterDay(day: DayData, nickFilter: string | null, mapFilter: string | null): DayData {
-  if (!nickFilter && !mapFilter) return day;
+function filterDay(day: DayData, nickFilter: string | null, mapFilter: string | null, itemFilter: string | null): DayData {
+  if (!nickFilter && !mapFilter && !itemFilter) return day;
 
   const items: ItemCount[] = [];
   let total = 0;
 
   for (const item of day.items) {
+    if (itemFilter && item.name !== itemFilter) continue;
     const filtered = item.details.filter((d) => {
-      if (nickFilter && d.nick !== nickFilter) return false;
+      if (nickFilter && !d.nick.toLowerCase().includes(nickFilter.toLowerCase())) return false;
       if (mapFilter && d.map !== mapFilter) return false;
       return true;
     });
@@ -62,7 +63,9 @@ export default function HistoryPage() {
   const [yesterdayOpen, setYesterdayOpen] = useState(true);
   const [selectedItem, setSelectedItem] = useState<ItemCount | null>(null);
   const [nickFilter, setNickFilter] = useState<string | null>(null);
+  const [nickInput, setNickInput] = useState("");
   const [mapFilter, setMapFilter] = useState<string | null>(null);
+  const [itemFilter, setItemFilter] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
   const fetchHistory = useCallback(async (showToast = false) => {
@@ -98,13 +101,15 @@ export default function HistoryPage() {
     return () => clearInterval(interval);
   }, [fetchHistory]);
 
-  // Extract unique nicks and maps from all data
-  const { allNicks, allMaps } = useMemo(() => {
-    if (!data) return { allNicks: [] as string[], allMaps: [] as string[] };
+  // Extract unique nicks, maps, items from all data
+  const { allNicks, allMaps, allItems } = useMemo(() => {
+    if (!data) return { allNicks: [] as string[], allMaps: [] as string[], allItems: [] as string[] };
     const nicks = new Set<string>();
     const maps = new Set<string>();
+    const items = new Set<string>();
     const collectFromDay = (day: DayData) => {
       for (const item of day.items) {
+        items.add(item.name);
         for (const d of item.details) {
           nicks.add(d.nick);
           maps.add(d.map);
@@ -116,13 +121,20 @@ export default function HistoryPage() {
     return {
       allNicks: [...nicks].sort((a, b) => a.localeCompare(b)),
       allMaps: [...maps].sort((a, b) => a.localeCompare(b)),
+      allItems: [...items].sort((a, b) => a.localeCompare(b)),
     };
   }, [data]);
 
-  const filteredToday = useMemo(() => data ? filterDay(data.today, nickFilter, mapFilter) : null, [data, nickFilter, mapFilter]);
-  const filteredYesterday = useMemo(() => data ? filterDay(data.yesterday, nickFilter, mapFilter) : null, [data, nickFilter, mapFilter]);
+  const nickSuggestions = useMemo(() => {
+    if (!nickInput.trim()) return [];
+    const q = nickInput.toLowerCase();
+    return allNicks.filter((n) => n.toLowerCase().includes(q)).slice(0, 8);
+  }, [nickInput, allNicks]);
 
-  const hasActiveFilter = !!nickFilter || !!mapFilter;
+  const filteredToday = useMemo(() => data ? filterDay(data.today, nickFilter, mapFilter, itemFilter) : null, [data, nickFilter, mapFilter, itemFilter]);
+  const filteredYesterday = useMemo(() => data ? filterDay(data.yesterday, nickFilter, mapFilter, itemFilter) : null, [data, nickFilter, mapFilter, itemFilter]);
+
+  const hasActiveFilter = !!nickFilter || !!mapFilter || !!itemFilter;
 
   const formatScrapedAt = (iso: string) => {
     const d = new Date(iso);
@@ -221,7 +233,7 @@ export default function HistoryPage() {
             Filtros
             {hasActiveFilter && (
               <span className="w-4 h-4 rounded-full bg-primary text-primary-foreground text-[9px] flex items-center justify-center font-bold">
-                {(nickFilter ? 1 : 0) + (mapFilter ? 1 : 0)}
+                {(nickFilter ? 1 : 0) + (mapFilter ? 1 : 0) + (itemFilter ? 1 : 0)}
               </span>
             )}
           </button>
@@ -241,30 +253,76 @@ export default function HistoryPage() {
         <div className="glass-card p-3 space-y-3">
           {hasActiveFilter && (
             <button
-              onClick={() => { setNickFilter(null); setMapFilter(null); }}
+              onClick={() => { setNickFilter(null); setNickInput(""); setMapFilter(null); setItemFilter(null); }}
               className="text-[10px] font-display font-bold text-destructive flex items-center gap-1 hover:underline"
             >
               <X className="w-3 h-3" /> Limpar filtros
             </button>
           )}
 
-          {/* Nick filter */}
+          {/* Nick filter - text input with autocomplete */}
           <div>
             <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
               <User className="w-3 h-3" /> Jogador
             </p>
+            <div className="relative">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={nickInput}
+                    onChange={(e) => {
+                      setNickInput(e.target.value);
+                      if (!e.target.value.trim()) setNickFilter(null);
+                    }}
+                    placeholder="Buscar jogador..."
+                    className="w-full pl-7 pr-8 py-1.5 rounded-lg bg-secondary/50 border border-border/20 text-xs font-body text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
+                  />
+                  {nickInput && (
+                    <button
+                      onClick={() => { setNickInput(""); setNickFilter(null); }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2"
+                    >
+                      <X className="w-3 h-3 text-muted-foreground hover:text-foreground" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              {nickSuggestions.length > 0 && !nickFilter && (
+                <div className="absolute z-10 mt-1 w-full rounded-lg bg-background border border-border/40 shadow-lg overflow-hidden">
+                  {nickSuggestions.map((nick) => (
+                    <button
+                      key={nick}
+                      onClick={() => { setNickFilter(nick); setNickInput(nick); }}
+                      className="w-full px-3 py-2 text-left text-xs font-body hover:bg-secondary/50 transition-colors flex items-center gap-2"
+                    >
+                      <User className="w-3 h-3 text-muted-foreground" />
+                      {nick}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Item filter */}
+          <div>
+            <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
+              <Package className="w-3 h-3" /> Item
+            </p>
             <div className="flex flex-wrap gap-1">
-              {allNicks.map((nick) => (
+              {allItems.map((item) => (
                 <button
-                  key={nick}
-                  onClick={() => setNickFilter(nickFilter === nick ? null : nick)}
-                  className={`px-2 py-1 rounded-lg text-[10px] font-display font-bold transition-colors ${
-                    nickFilter === nick
+                  key={item}
+                  onClick={() => setItemFilter(itemFilter === item ? null : item)}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-display font-bold transition-colors ${
+                    itemFilter === item
                       ? "bg-primary/20 text-primary border border-primary/30"
                       : "bg-secondary/50 text-muted-foreground border border-border/20 hover:bg-secondary/80"
                   }`}
                 >
-                  {nick}
+                  {item}
                 </button>
               ))}
             </div>
@@ -280,7 +338,7 @@ export default function HistoryPage() {
                 <button
                   key={map}
                   onClick={() => setMapFilter(mapFilter === map ? null : map)}
-                  className={`px-2 py-1 rounded-lg text-[10px] font-display font-bold transition-colors ${
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-display font-bold transition-colors ${
                     mapFilter === map
                       ? "bg-primary/20 text-primary border border-primary/30"
                       : "bg-secondary/50 text-muted-foreground border border-border/20 hover:bg-secondary/80"
@@ -298,8 +356,13 @@ export default function HistoryPage() {
       {hasActiveFilter && !showFilters && (
         <div className="flex flex-wrap gap-1.5">
           {nickFilter && (
-            <button onClick={() => setNickFilter(null)} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-primary/15 text-primary text-[10px] font-display font-bold border border-primary/20">
+            <button onClick={() => { setNickFilter(null); setNickInput(""); }} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-primary/15 text-primary text-[10px] font-display font-bold border border-primary/20">
               <User className="w-3 h-3" /> {nickFilter} <X className="w-3 h-3" />
+            </button>
+          )}
+          {itemFilter && (
+            <button onClick={() => setItemFilter(null)} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-primary/15 text-primary text-[10px] font-display font-bold border border-primary/20">
+              <Package className="w-3 h-3" /> {itemFilter} <X className="w-3 h-3" />
             </button>
           )}
           {mapFilter && (
