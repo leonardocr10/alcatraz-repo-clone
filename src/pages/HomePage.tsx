@@ -1,9 +1,11 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Swords, Clock, MapPin, ChevronDown, Send, MessageCircle, BellOff, BellRing, RefreshCw, Users, Shield } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useBossNotifications } from "@/hooks/useBossNotifications";
 
 interface Boss {
@@ -28,8 +30,14 @@ interface ClassCount {
   count: number;
 }
 
+interface ClassIcon {
+  name: string;
+  image_url: string | null;
+}
+
 const HomePage = () => {
   const { isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [bosses, setBosses] = useState<Boss[]>([]);
   const [bossSchedules, setBossSchedules] = useState<BossSchedule[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -38,6 +46,9 @@ const HomePage = () => {
   const [sendingBoss, setSendingBoss] = useState<string | null>(null);
   const [sendingAll, setSendingAll] = useState(false);
   const [classCounts, setClassCounts] = useState<ClassCount[]>([]);
+  const [classIcons, setClassIcons] = useState<ClassIcon[]>([]);
+  const [classesOpen, setClassesOpen] = useState(true);
+  const [bossesOpen, setBossesOpen] = useState(true);
   const bossNotify = useBossNotifications();
 
   useEffect(() => {
@@ -55,24 +66,23 @@ const HomePage = () => {
   }, []);
 
   const fetchClassCounts = useCallback(async () => {
-    const { data } = await supabase
-      .from("users")
-      .select("class")
-      .eq("approved", true)
-      .not("class", "is", null);
-    
-    if (data) {
+    const [usersRes, iconsRes] = await Promise.all([
+      supabase.from("users").select("class").eq("approved", true).not("class", "is", null),
+      supabase.from("character_classes").select("name, image_url"),
+    ]);
+
+    if (usersRes.data) {
       const counts: Record<string, number> = {};
-      data.forEach((u: any) => {
-        if (u.class) {
-          counts[u.class] = (counts[u.class] || 0) + 1;
-        }
+      usersRes.data.forEach((u: any) => {
+        if (u.class) counts[u.class] = (counts[u.class] || 0) + 1;
       });
-      const sorted = Object.entries(counts)
-        .map(([cls, count]) => ({ class: cls, count }))
-        .sort((a, b) => b.count - a.count);
-      setClassCounts(sorted);
+      setClassCounts(
+        Object.entries(counts)
+          .map(([cls, count]) => ({ class: cls, count }))
+          .sort((a, b) => b.count - a.count)
+      );
     }
+    setClassIcons((iconsRes.data || []) as ClassIcon[]);
   }, []);
 
   useEffect(() => {
@@ -88,6 +98,8 @@ const HomePage = () => {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [fetchBosses]);
+
+  const iconMap = useMemo(() => new Map(classIcons.map(c => [c.name, c.image_url])), [classIcons]);
 
   const getBrazilTime = useCallback(() => {
     const now = currentTime;
@@ -253,176 +265,199 @@ const HomePage = () => {
         </div>
       )}
 
-      {/* Players by Class */}
+      {/* Players by Class - Collapsible */}
       {classCounts.length > 0 && (
-        <div className="glass-card overflow-hidden">
-          <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-primary" />
-              <span className="font-display text-sm font-extrabold uppercase tracking-wider">Classes do Clã</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-xs font-display font-bold text-muted-foreground">{totalPlayers} jogadores</span>
-            </div>
-          </div>
-          <div className="p-3 grid grid-cols-2 gap-2">
-            {classCounts.map(({ class: cls, count }) => (
-              <div
-                key={cls}
-                className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-secondary/40 border border-border/20"
-              >
-                <span className="text-xs font-display font-bold text-foreground truncate">{cls}</span>
-                <span className="text-sm font-display font-extrabold text-primary tabular-nums ml-2">{count}</span>
+        <Collapsible open={classesOpen} onOpenChange={setClassesOpen}>
+          <div className="glass-card overflow-hidden">
+            <CollapsibleTrigger asChild>
+              <button className="w-full px-4 py-3 border-b border-border/40 flex items-center justify-between hover:bg-secondary/20 transition-colors">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-primary" />
+                  <span className="font-display text-sm font-extrabold uppercase tracking-wider">Classes do Clã</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-xs font-display font-bold text-muted-foreground">{totalPlayers}</span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${classesOpen ? "rotate-180" : ""}`} />
+                </div>
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="p-3 grid grid-cols-2 gap-2">
+                {classCounts.map(({ class: cls, count }) => {
+                  const icon = iconMap.get(cls);
+                  return (
+                    <button
+                      key={cls}
+                      onClick={() => navigate(`/jogadores?class=${encodeURIComponent(cls)}`)}
+                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-secondary/40 border border-border/20 hover:bg-secondary/60 hover:border-primary/30 transition-all active:scale-[0.97] text-left"
+                    >
+                      {icon ? (
+                        <img src={icon} alt={cls} className="w-7 h-7 rounded-lg object-cover border border-border/30 shrink-0" />
+                      ) : (
+                        <div className="w-7 h-7 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+                          <Shield className="w-3.5 h-3.5 text-primary" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-xs font-display font-bold text-foreground truncate block">{cls}</span>
+                      </div>
+                      <span className="text-sm font-display font-extrabold text-primary tabular-nums">{count}</span>
+                    </button>
+                  );
+                })}
               </div>
-            ))}
+            </CollapsibleContent>
           </div>
-        </div>
+        </Collapsible>
       )}
 
-      {/* Bosses */}
+      {/* Bosses - Collapsible */}
       {groupedBosses.length > 0 ? (
-        <div className="glass-card overflow-hidden">
-          <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Swords className="w-4 h-4 text-primary" />
-              <span className="font-display text-sm font-extrabold uppercase tracking-wider">Próximos Boss</span>
-            </div>
-            {isAdmin && (
-              <button
-                onClick={sendAllBossNotify}
-                disabled={sendingAll}
-                className="text-xs font-display font-bold text-primary flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50"
-              >
-                <MessageCircle className="w-3.5 h-3.5" />
-                {sendingAll ? "..." : "Enviar Todos"}
+        <Collapsible open={bossesOpen} onOpenChange={setBossesOpen}>
+          <div className="glass-card overflow-hidden">
+            <CollapsibleTrigger asChild>
+              <button className="w-full px-4 py-3 border-b border-border/40 flex items-center justify-between hover:bg-secondary/20 transition-colors">
+                <div className="flex items-center gap-2">
+                  <Swords className="w-4 h-4 text-primary" />
+                  <span className="font-display text-sm font-extrabold uppercase tracking-wider">Próximos Boss</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isAdmin && (
+                    <span
+                      onClick={(e) => { e.stopPropagation(); sendAllBossNotify(); }}
+                      className="text-xs font-display font-bold text-primary flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      {sendingAll ? "..." : "Enviar Todos"}
+                    </span>
+                  )}
+                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${bossesOpen ? "rotate-180" : ""}`} />
+                </div>
               </button>
-            )}
-          </div>
-          <div className="divide-y divide-border/20">
-            {groupedBosses.map(({ boss, schedules, nextSchedule }) => (
-              <div key={boss.id}>
-                <button
-                  onClick={() => setExpandedBoss(expandedBoss === boss.id ? null : boss.id)}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors text-left"
-                >
-                  <div className="shrink-0" onClick={(e) => {
-                    e.stopPropagation();
-                    if (boss.image_url) setImageModal({
-                      url: boss.image_url,
-                      title: boss.name,
-                      description: boss.description || undefined,
-                      mapLevel: boss.map_level || undefined,
-                    });
-                  }}>
-                    {boss.image_url ? (
-                      <img src={boss.image_url} alt={boss.name} className="w-12 h-12 rounded-full object-cover border-2 border-border/40" />
-                    ) : (
-                      <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center">
-                        <Swords className="w-5 h-5 text-muted-foreground" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="divide-y divide-border/20">
+                {groupedBosses.map(({ boss, schedules, nextSchedule }) => (
+                  <div key={boss.id}>
+                    <button
+                      onClick={() => setExpandedBoss(expandedBoss === boss.id ? null : boss.id)}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors text-left"
+                    >
+                      <div className="shrink-0" onClick={(e) => {
+                        e.stopPropagation();
+                        if (boss.image_url) setImageModal({
+                          url: boss.image_url,
+                          title: boss.name,
+                          description: boss.description || undefined,
+                          mapLevel: boss.map_level || undefined,
+                        });
+                      }}>
+                        {boss.image_url ? (
+                          <img src={boss.image_url} alt={boss.name} className="w-12 h-12 rounded-full object-cover border-2 border-border/40" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center">
+                            <Swords className="w-5 h-5 text-muted-foreground" />
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-display font-extrabold text-gold truncate">{boss.name}</span>
-                      {boss.map_level && (
-                        <span className="text-xs text-muted-foreground font-body truncate">({boss.map_level})</span>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground font-body mt-0.5">
-                      Spawn às {nextSchedule?.spawn_time.substring(0, 5)}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    {nextSchedule && (
-                      <span className={`flex items-center gap-1.5 text-sm font-bold font-display tabular-nums ${getTimeColor(nextSchedule.minutesUntil)}`}>
-                        <Clock className="w-3.5 h-3.5" />
-                        {formatMinutesUntil(nextSchedule.minutesUntil)}
-                      </span>
-                    )}
-                    <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${expandedBoss === boss.id ? "rotate-180" : ""}`} />
-                  </div>
-                </button>
-
-                {expandedBoss === boss.id && (
-                  <div className="px-4 pb-4 space-y-3 border-t border-border/10 pt-3 bg-secondary/10">
-                    {/* Description */}
-                    {boss.description && (
-                      <p className="text-xs text-muted-foreground font-body leading-relaxed">{boss.description}</p>
-                    )}
-
-                    {/* Drops */}
-                    {boss.drops && (
-                      <div>
-                        <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-wider mb-1">Drops</p>
-                        <p className="text-xs text-foreground/80 font-body">{boss.drops}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-display font-extrabold text-gold truncate">{boss.name}</span>
+                          {boss.map_level && (
+                            <span className="text-xs text-muted-foreground font-body truncate">({boss.map_level})</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground font-body mt-0.5">
+                          Spawn às {nextSchedule?.spawn_time.substring(0, 5)}
+                        </p>
                       </div>
-                    )}
 
-                    {/* All spawn times */}
-                    <div>
-                      <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Horários de Spawn</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {schedules.map((sched) => {
-                          const isNext = sched.id === nextSchedule?.id;
-                          return (
-                            <span
-                              key={sched.id}
-                              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-display font-bold ${
-                                isNext ? "bg-primary/20 text-primary border border-primary/30" : "bg-secondary/60 text-muted-foreground"
-                              }`}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {nextSchedule && (
+                          <span className={`flex items-center gap-1.5 text-sm font-bold font-display tabular-nums ${getTimeColor(nextSchedule.minutesUntil)}`}>
+                            <Clock className="w-3.5 h-3.5" />
+                            {formatMinutesUntil(nextSchedule.minutesUntil)}
+                          </span>
+                        )}
+                        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${expandedBoss === boss.id ? "rotate-180" : ""}`} />
+                      </div>
+                    </button>
+
+                    {expandedBoss === boss.id && (
+                      <div className="px-4 pb-4 space-y-3 border-t border-border/10 pt-3 bg-secondary/10">
+                        {boss.description && (
+                          <p className="text-xs text-muted-foreground font-body leading-relaxed">{boss.description}</p>
+                        )}
+                        {boss.drops && (
+                          <div>
+                            <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-wider mb-1">Drops</p>
+                            <p className="text-xs text-foreground/80 font-body">{boss.drops}</p>
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-wider mb-1.5">Horários de Spawn</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {schedules.map((sched) => {
+                              const isNext = sched.id === nextSchedule?.id;
+                              return (
+                                <span
+                                  key={sched.id}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-display font-bold ${
+                                    isNext ? "bg-primary/20 text-primary border border-primary/30" : "bg-secondary/60 text-muted-foreground"
+                                  }`}
+                                >
+                                  <Clock className="w-3 h-3" />
+                                  {sched.spawn_time.substring(0, 5)}
+                                  {isNext && <span className="text-[9px] opacity-70">← próximo</span>}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 pt-1">
+                          {boss.image_url && (
+                            <button
+                              onClick={() => setImageModal({
+                                url: boss.image_url!,
+                                title: boss.name,
+                                description: boss.description || undefined,
+                                mapLevel: boss.map_level || undefined,
+                              })}
+                              className="text-xs font-body text-muted-foreground flex items-center gap-1 px-3 py-2 rounded-xl hover:bg-secondary transition-colors border border-border/20"
                             >
-                              <Clock className="w-3 h-3" />
-                              {sched.spawn_time.substring(0, 5)}
-                              {isNext && <span className="text-[9px] opacity-70">← próximo</span>}
-                            </span>
-                          );
-                        })}
+                              <Swords className="w-3.5 h-3.5" /> Ver Boss
+                            </button>
+                          )}
+                          {boss.map_image_url && (
+                            <button
+                              onClick={() => setImageModal({ url: boss.map_image_url!, title: `Mapa - ${boss.name}` })}
+                              className="text-xs font-body text-muted-foreground flex items-center gap-1 px-3 py-2 rounded-xl hover:bg-secondary transition-colors border border-border/20"
+                            >
+                              <MapPin className="w-3.5 h-3.5" /> Ver Mapa
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button
+                              onClick={() => sendBossNotify(boss.id)}
+                              disabled={sendingBoss === boss.id}
+                              className="text-xs font-body text-primary flex items-center gap-1 px-3 py-2 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50 border border-primary/20"
+                            >
+                              <Send className={`w-3.5 h-3.5 ${sendingBoss === boss.id ? "animate-pulse" : ""}`} /> Notificar
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 pt-1">
-                      {boss.image_url && (
-                        <button
-                          onClick={() => setImageModal({
-                            url: boss.image_url!,
-                            title: boss.name,
-                            description: boss.description || undefined,
-                            mapLevel: boss.map_level || undefined,
-                          })}
-                          className="text-xs font-body text-muted-foreground flex items-center gap-1 px-3 py-2 rounded-xl hover:bg-secondary transition-colors border border-border/20"
-                        >
-                          <Swords className="w-3.5 h-3.5" /> Ver Boss
-                        </button>
-                      )}
-                      {boss.map_image_url && (
-                        <button
-                          onClick={() => setImageModal({ url: boss.map_image_url!, title: `Mapa - ${boss.name}` })}
-                          className="text-xs font-body text-muted-foreground flex items-center gap-1 px-3 py-2 rounded-xl hover:bg-secondary transition-colors border border-border/20"
-                        >
-                          <MapPin className="w-3.5 h-3.5" /> Ver Mapa
-                        </button>
-                      )}
-                      {isAdmin && (
-                        <button
-                          onClick={() => sendBossNotify(boss.id)}
-                          disabled={sendingBoss === boss.id}
-                          className="text-xs font-body text-primary flex items-center gap-1 px-3 py-2 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50 border border-primary/20"
-                        >
-                          <Send className={`w-3.5 h-3.5 ${sendingBoss === boss.id ? "animate-pulse" : ""}`} /> Notificar
-                        </button>
-                      )}
-                    </div>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
-            ))}
+            </CollapsibleContent>
           </div>
-        </div>
+        </Collapsible>
       ) : (
         <div className="glass-card p-10 text-center animate-fade-in">
           <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-4">
