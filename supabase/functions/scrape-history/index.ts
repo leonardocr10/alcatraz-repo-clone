@@ -12,6 +12,10 @@ interface HistoryEntry {
   source: string;
 }
 
+function stripHtml(str: string): string {
+  return str.replace(/<[^>]*>/g, '').trim();
+}
+
 async function scrapePage(page: number): Promise<{ entries: HistoryEntry[]; totalPages: number }> {
   const url = `https://arkanumpt.com.br/historico?type=all&page=${page}`;
   const res = await fetch(url);
@@ -24,8 +28,8 @@ async function scrapePage(page: number): Promise<{ entries: HistoryEntry[]; tota
   const totalMatch = html.match(/Página\s+\d+\s*\/\s*(\d+)/);
   if (totalMatch) totalPages = parseInt(totalMatch[1]);
 
-  // Parse table rows
-  const rowRegex = /<tr[^>]*class="hover:bg-white\/5[^"]*"[^>]*>([\s\S]*?)<\/tr>/g;
+  // Parse table rows - match any tr with hover:bg-white/5
+  const rowRegex = /<tr\s+class="hover:bg-white\/5[^"]*"[^>]*>([\s\S]*?)<\/tr>/g;
   let match;
 
   while ((match = rowRegex.exec(html)) !== null) {
@@ -33,19 +37,28 @@ async function scrapePage(page: number): Promise<{ entries: HistoryEntry[]; tota
     const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map(m => m[1]);
 
     if (cells.length >= 5) {
-      const dateStr = cells[0].replace(/<[^>]*>/g, '').trim();
-      const nick = cells[1].replace(/<[^>]*>/g, '').trim();
-      const map = cells[2].replace(/<[^>]*>/g, '').trim();
+      const dateStr = stripHtml(cells[0]);
+      const nick = stripHtml(cells[1]);
+      const map = stripHtml(cells[2]);
 
-      // Item cell may have boss info
+      // Item cell - get item name from the font-semibold div
       const itemCell = cells[3];
-      const itemName = itemCell.match(/<div[^>]*class="text-white\/85[^"]*"[^>]*>([\s\S]*?)<\/div>/)?.[1]?.replace(/<[^>]*>/g, '').trim() || '';
-      const bossName = itemCell.match(/Boss:\s*<span[^>]*>([\s\S]*?)<\/span>/)?.[1]?.trim() || null;
+      const itemName = stripHtml(
+        itemCell.match(/<div[^>]*class="[^"]*text-white\/85[^"]*"[^>]*>([\s\S]*?)<\/div>/)?.[1] || ''
+      );
+      
+      // Boss name
+      const bossName = stripHtml(
+        itemCell.match(/Boss:\s*<span[^>]*>([\s\S]*?)<\/span>/)?.[1] || ''
+      ) || null;
 
+      // Source
       const sourceCell = cells[4];
       const source = sourceCell.includes('Boss') ? 'Boss' : 'Normal';
 
-      entries.push({ date: dateStr, nick, map, item: itemName, boss: bossName, source });
+      if (itemName) {
+        entries.push({ date: dateStr, nick, map, item: itemName, boss: bossName, source });
+      }
     }
   }
 
@@ -58,7 +71,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Get today and yesterday in BRT (UTC-3)
     const now = new Date();
     const brt = new Date(now.getTime() - 3 * 60 * 60 * 1000);
     const todayStr = `${String(brt.getDate()).padStart(2, '0')}/${String(brt.getMonth() + 1).padStart(2, '0')}/${brt.getFullYear()}`;
@@ -73,17 +85,15 @@ Deno.serve(async (req) => {
     let maxPages = 1;
     let reachedOlder = false;
 
-    // Scrape pages until we find records older than yesterday
     while (page <= maxPages && !reachedOlder && page <= 50) {
       const { entries, totalPages } = await scrapePage(page);
       maxPages = totalPages;
 
       for (const entry of entries) {
-        const entryDate = entry.date.split(' ')[0]; // "DD/MM/YYYY"
+        const entryDate = entry.date.split(' ')[0];
         if (entryDate === todayStr || entryDate === yesterdayStr) {
           allEntries.push(entry);
-        } else if (entryDate !== todayStr && entryDate !== yesterdayStr) {
-          // Check if it's older (not today or yesterday)
+        } else {
           reachedOlder = true;
         }
       }
@@ -91,42 +101,52 @@ Deno.serve(async (req) => {
       page++;
     }
 
-    // Group by date and item
-    const todayItems: Record<string, number> = {};
-    const yesterdayItems: Record<string, number> = {};
+    // Group by date and item, keeping details
+    interface ItemDetail {
+      nick: string;
+      map: string;
+      boss: string | null;
+      source: string;
+      time: string;
+    }
+    
+    interface ItemGroup {
+      count: number;
+      details: ItemDetail[];
+    }
+
+    const todayItems: Record<string, ItemGroup> = {};
+    const yesterdayItems: Record<string, ItemGroup> = {};
     let todayTotal = 0;
     let yesterdayTotal = 0;
 
     for (const entry of allEntries) {
       const entryDate = entry.date.split(' ')[0];
       const itemKey = entry.item || 'Desconhecido';
+      const time = entry.date.split(' ')[1] || '';
+      const detail: ItemDetail = { nick: entry.nick, map: entry.map, boss: entry.boss, source: entry.source, time };
 
       if (entryDate === todayStr) {
-        todayItems[itemKey] = (todayItems[itemKey] || 0) + 1;
+        if (!todayItems[itemKey]) todayItems[itemKey] = { count: 0, details: [] };
+        todayItems[itemKey].count++;
+        todayItems[itemKey].details.push(detail);
         todayTotal++;
       } else {
-        yesterdayItems[itemKey] = (yesterdayItems[itemKey] || 0) + 1;
+        if (!yesterdayItems[itemKey]) yesterdayItems[itemKey] = { count: 0, details: [] };
+        yesterdayItems[itemKey].count++;
+        yesterdayItems[itemKey].details.push(detail);
         yesterdayTotal++;
       }
     }
 
-    // Sort by count
-    const sortItems = (items: Record<string, number>) =>
+    const sortItems = (items: Record<string, ItemGroup>) =>
       Object.entries(items)
-        .map(([name, count]) => ({ name, count }))
+        .map(([name, group]) => ({ name, count: group.count, details: group.details }))
         .sort((a, b) => b.count - a.count);
 
     const result = {
-      today: {
-        date: todayStr,
-        total: todayTotal,
-        items: sortItems(todayItems),
-      },
-      yesterday: {
-        date: yesterdayStr,
-        total: yesterdayTotal,
-        items: sortItems(yesterdayItems),
-      },
+      today: { date: todayStr, total: todayTotal, items: sortItems(todayItems) },
+      yesterday: { date: yesterdayStr, total: yesterdayTotal, items: sortItems(yesterdayItems) },
       scrapedAt: new Date().toISOString(),
       pagesScraped: page - 1,
     };
