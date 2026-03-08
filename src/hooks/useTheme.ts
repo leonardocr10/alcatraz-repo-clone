@@ -18,7 +18,7 @@ const PRESET_THEMES: { name: string; colors: ThemeColors }[] = [
     colors: { primary: "200 70% 50%", gold: "40 85% 58%", border: "210 14% 20%" },
   },
   {
-    name: "Ciano",
+    name: "Ciano (Padrão)",
     colors: { primary: "190 85% 48%", gold: "40 85% 58%", border: "210 14% 20%" },
   },
   {
