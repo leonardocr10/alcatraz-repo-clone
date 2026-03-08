@@ -2,8 +2,6 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 const NOTIFY_KEY = "boss-notify-enabled";
-const NOTIFY_MINUTES_KEY = "boss-notify-minutes";
-const DEFAULT_NOTIFY_MINUTES = 5;
 
 interface Boss {
   id: string;
