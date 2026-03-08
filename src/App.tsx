@@ -71,6 +71,7 @@ const App = () => {
             <Route path="*" element={<NotFound />} />
           </Routes>
           <PWAInstallBanner />
+          <PWAUpdateBanner />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
