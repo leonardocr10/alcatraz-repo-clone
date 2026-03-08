@@ -5,18 +5,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-function extractLevelPlayer(html: string): { rank: number; name: string; gameClass: string; clan: string; level: number; xp: string } | null {
-  // Find the rankLevel panel
+function extractLevelPlayers(html: string) {
+  const players: Array<{
+    rank: number; name: string; gameClass: string; clan: string; level: number; xp: string;
+  }> = [];
+
   const panelMatch = html.match(/id="rankLevel"([\s\S]*?)(?:id="rankPvp"|$)/);
-  if (!panelMatch) return null;
+  if (!panelMatch) return players;
   const panelHtml = panelMatch[1];
 
-  // Find all rows (skip headers)
   const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/g;
-  let rowMatch;
-
-  while ((rowMatch = rowRegex.exec(panelHtml)) !== null) {
-    const rowHtml = rowMatch[1];
+  let match;
+  while ((match = rowRegex.exec(panelHtml)) !== null) {
+    const rowHtml = match[1];
     if (rowHtml.includes("<th") || rowHtml.includes("Nenhum resultado")) continue;
 
     const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/g;
@@ -46,10 +47,10 @@ function extractLevelPlayer(html: string): { rank: number; name: string; gameCla
     const xpMatch = tds[5].match(/([\d.,]+%)/);
     const xp = xpMatch ? xpMatch[1] : "0%";
 
-    return { rank, name, gameClass, clan, level: isNaN(level) ? 0 : level, xp };
+    players.push({ rank, name, gameClass, clan, level: isNaN(level) ? 0 : level, xp });
   }
 
-  return null;
+  return players;
 }
 
 Deno.serve(async (req) => {
@@ -62,67 +63,59 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Fetch all users
     const { data: users, error: usersErr } = await supabase
       .from("users")
       .select("id, nickname");
     if (usersErr) throw usersErr;
 
-    console.log(`Searching rankings for ${users?.length || 0} users...`);
+    // Build nickname lookup (case insensitive)
+    const nicknameMap = new Map<string, string>();
+    for (const u of users || []) {
+      nicknameMap.set(u.nickname.toLowerCase(), u.id);
+    }
 
+    const unmatchedUsers = new Set(nicknameMap.keys());
     let matched = 0;
-    let errors = 0;
+    const maxPages = 65; // ~627 players / 10 per page
 
-    for (const user of users || []) {
-      try {
-        const url = `https://arkanumpt.com.br/rankings?q=${encodeURIComponent(user.nickname)}&class=0&tab=rankLevel`;
-        const resp = await fetch(url, {
-          headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Accept": "text/html,application/xhtml+xml",
-          },
-        });
+    for (let page = 1; page <= maxPages; page++) {
+      // Stop if all users matched
+      if (unmatchedUsers.size === 0) {
+        console.log(`All users matched at page ${page - 1}`);
+        break;
+      }
 
-        if (!resp.ok) {
-          console.error(`Failed for ${user.nickname}: ${resp.status}`);
-          errors++;
-          continue;
-        }
+      const url = `https://arkanumpt.com.br/rankings?q=&class=0&tab=rankLevel&page_level=${page}`;
+      const resp = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Accept": "text/html,application/xhtml+xml",
+        },
+      });
 
-        const html = await resp.text();
-        console.log(`${user.nickname}: HTML length=${html.length}`);
-        
-        // Debug: check if rankLevel panel exists
-        const hasPanel = html.includes('id="rankLevel"');
-        const hasPvp = html.includes('id="rankPvp"');
-        console.log(`${user.nickname}: hasPanel=${hasPanel}, hasPvp=${hasPvp}`);
-        
-        if (hasPanel) {
-          const panelMatch = html.match(/id="rankLevel"([\s\S]*?)(?:id="rankPvp"|$)/);
-          if (panelMatch) {
-            const snippet = panelMatch[1].substring(0, 500);
-            console.log(`${user.nickname}: panel snippet: ${snippet}`);
-          }
-        }
+      if (!resp.ok) {
+        console.error(`Page ${page} failed: ${resp.status}`);
+        break;
+      }
 
-        const player = extractLevelPlayer(html);
+      const html = await resp.text();
+      const pagePlayers = extractLevelPlayers(html);
 
-        if (!player) {
-          console.log(`No ranking found for ${user.nickname}`);
-          continue;
-        }
+      if (pagePlayers.length === 0) {
+        console.log(`No more players at page ${page}`);
+        break;
+      }
 
-        // Verify the name matches (search might return partial matches)
-        if (player.name.toLowerCase() !== user.nickname.toLowerCase()) {
-          console.log(`Name mismatch: searched ${user.nickname}, got ${player.name}`);
-          continue;
-        }
+      for (const player of pagePlayers) {
+        const key = player.name.toLowerCase();
+        const userId = nicknameMap.get(key);
+        if (!userId) continue;
 
         const { error } = await supabase
           .from("player_rankings")
           .upsert(
             {
-              user_id: user.id,
+              user_id: userId,
               nickname: player.name,
               game_class: player.gameClass,
               clan: player.clan,
@@ -134,26 +127,22 @@ Deno.serve(async (req) => {
             { onConflict: "user_id" }
           );
 
-        if (error) {
-          console.error(`Upsert error for ${user.nickname}: ${error.message}`);
-          errors++;
-        } else {
+        if (!error) {
           matched++;
-          console.log(`✓ ${user.nickname}: Lv.${player.level} ${player.xp} (#${player.rank})`);
+          unmatchedUsers.delete(key);
+          console.log(`✓ ${player.name}: Lv.${player.level} ${player.xp} (#${player.rank})`);
         }
-
-        // Small delay to avoid rate limiting
-        await new Promise(r => setTimeout(r, 200));
-      } catch (e) {
-        console.error(`Error for ${user.nickname}:`, e);
-        errors++;
       }
+
+      if (page % 10 === 0) console.log(`Scanned ${page} pages, ${matched} matched, ${unmatchedUsers.size} remaining`);
     }
 
-    console.log(`Done: ${matched} matched, ${errors} errors`);
+    if (unmatchedUsers.size > 0) {
+      console.log(`Unmatched users: ${[...unmatchedUsers].join(", ")}`);
+    }
 
     return new Response(
-      JSON.stringify({ success: true, total: users?.length || 0, matched, errors }),
+      JSON.stringify({ success: true, total: users?.length || 0, matched, unmatched: unmatchedUsers.size }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
