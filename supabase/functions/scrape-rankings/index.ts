@@ -15,7 +15,8 @@ function extractLevelPlayers(html: string) {
   const panelMatch = html.match(/id="rankLevel"([\s\S]*?)(?:id="rankPvp"|$)/);
   if (panelMatch) searchHtml = panelMatch[1];
 
-  const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/g;
+  // Use the specific class from the site's table rows
+  const rowRegex = /<tr class="hover:bg-white\/5 transition">([\s\S]*?)<\/tr>/g;
   let match;
   while ((match = rowRegex.exec(searchHtml)) !== null) {
     const rowHtml = match[1];
