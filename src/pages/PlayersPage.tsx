@@ -19,7 +19,7 @@ type Player = {
   created_at: string;
 };
 
-type ClassIcon = { name: string; image_url: string | null };
+type ClassIcon = { name: string; image_url: string | null; description: string | null };
 type Ranking = { user_id: string; level: number | null; xp: string | null; rank_position: number | null };
 
 const ALL_CLASSES: CharacterClass[] = [
@@ -56,11 +56,14 @@ export default function PlayersPage() {
   const [msgSelected, setMsgSelected] = useState<Set<string>>(new Set());
   const [msgSending, setMsgSending] = useState(false);
 
+  // Class detail modal
+  const [viewClass, setViewClass] = useState<ClassIcon | null>(null);
+
   const fetchData = async () => {
     setLoading(true);
     const [playersRes, iconsRes, rankingsRes] = await Promise.all([
       supabase.from("users").select("id, nickname, class, phone, role, auth_id, created_at").order("created_at", { ascending: false }),
-      supabase.from("character_classes").select("name, image_url"),
+      supabase.from("character_classes").select("name, image_url, description"),
       supabase.from("player_rankings").select("user_id, level, xp, rank_position"),
     ]);
     setPlayers((playersRes.data ?? []) as Player[]);
@@ -87,6 +90,7 @@ export default function PlayersPage() {
   useEffect(() => { fetchData(); }, []);
 
   const iconMap = useMemo(() => new Map(icons.map((c) => [c.name, c.image_url])), [icons]);
+  const classDetailMap = useMemo(() => new Map(icons.map((c) => [c.name, c])), [icons]);
   const rankingMap = useMemo(() => new Map(rankings.map((r) => [r.user_id, r])), [rankings]);
 
   const filtered = useMemo(() => {
@@ -305,9 +309,14 @@ export default function PlayersPage() {
                 <span className="font-display font-extrabold text-xs text-muted-foreground w-5 text-center shrink-0">
                   {index + 1}
                 </span>
-                {/* Avatar */}
+                {/* Avatar - clickable to view class */}
                 {iconUrl ? (
-                  <img src={iconUrl} alt="" className="w-10 h-10 rounded-xl object-cover border border-border/40 shrink-0" />
+                  <img
+                    src={iconUrl}
+                    alt=""
+                    className="w-10 h-10 rounded-xl object-cover border border-border/40 shrink-0 cursor-pointer active:scale-95 transition-transform"
+                    onClick={() => player.class && setViewClass(classDetailMap.get(player.class) || null)}
+                  />
                 ) : (
                   <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-sm font-bold text-primary shrink-0">
                     {getInitial(player.nickname)}
@@ -568,6 +577,33 @@ export default function PlayersPage() {
                 {msgSending ? "Enviando..." : `Enviar (${msgSelected.size})`}
               </button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Class Detail Modal */}
+      <Dialog open={!!viewClass} onOpenChange={() => setViewClass(null)}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="font-display text-center">{viewClass?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4">
+            {viewClass?.image_url && (
+              <img
+                src={viewClass.image_url}
+                alt={viewClass.name}
+                className="w-32 h-32 rounded-2xl object-cover border-2 border-border/40"
+              />
+            )}
+            {viewClass?.description ? (
+              <p className="text-sm text-muted-foreground font-body text-center leading-relaxed">
+                {viewClass.description}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground font-body text-center italic">
+                Sem descrição disponível.
+              </p>
+            )}
           </div>
         </DialogContent>
       </Dialog>
