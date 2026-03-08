@@ -62,6 +62,7 @@ const App = () => {
             <Route path="/inicio" element={<ProtectedRoute><AppLayout><HomePage /></AppLayout></ProtectedRoute>} />
             <Route path="/roleta" element={<ProtectedRoute><AppLayout><RouletteGamePage /></AppLayout></ProtectedRoute>} />
             <Route path="/regras" element={<ProtectedRoute><AppLayout><RulesPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/historico" element={<ProtectedRoute><AppLayout><HistoryPage /></AppLayout></ProtectedRoute>} />
             
             <Route path="/jogadores" element={<ProtectedRoute><AppLayout><PlayersPage /></AppLayout></ProtectedRoute>} />
             <Route path="/classes" element={<ProtectedRoute><AppLayout><ClassesPage /></AppLayout></ProtectedRoute>} />
