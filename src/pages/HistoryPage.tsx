@@ -101,13 +101,15 @@ export default function HistoryPage() {
     return () => clearInterval(interval);
   }, [fetchHistory]);
 
-  // Extract unique nicks and maps from all data
-  const { allNicks, allMaps } = useMemo(() => {
-    if (!data) return { allNicks: [] as string[], allMaps: [] as string[] };
+  // Extract unique nicks, maps, items from all data
+  const { allNicks, allMaps, allItems } = useMemo(() => {
+    if (!data) return { allNicks: [] as string[], allMaps: [] as string[], allItems: [] as string[] };
     const nicks = new Set<string>();
     const maps = new Set<string>();
+    const items = new Set<string>();
     const collectFromDay = (day: DayData) => {
       for (const item of day.items) {
+        items.add(item.name);
         for (const d of item.details) {
           nicks.add(d.nick);
           maps.add(d.map);
@@ -119,13 +121,20 @@ export default function HistoryPage() {
     return {
       allNicks: [...nicks].sort((a, b) => a.localeCompare(b)),
       allMaps: [...maps].sort((a, b) => a.localeCompare(b)),
+      allItems: [...items].sort((a, b) => a.localeCompare(b)),
     };
   }, [data]);
 
-  const filteredToday = useMemo(() => data ? filterDay(data.today, nickFilter, mapFilter) : null, [data, nickFilter, mapFilter]);
-  const filteredYesterday = useMemo(() => data ? filterDay(data.yesterday, nickFilter, mapFilter) : null, [data, nickFilter, mapFilter]);
+  const nickSuggestions = useMemo(() => {
+    if (!nickInput.trim()) return [];
+    const q = nickInput.toLowerCase();
+    return allNicks.filter((n) => n.toLowerCase().includes(q)).slice(0, 8);
+  }, [nickInput, allNicks]);
 
-  const hasActiveFilter = !!nickFilter || !!mapFilter;
+  const filteredToday = useMemo(() => data ? filterDay(data.today, nickFilter, mapFilter, itemFilter) : null, [data, nickFilter, mapFilter, itemFilter]);
+  const filteredYesterday = useMemo(() => data ? filterDay(data.yesterday, nickFilter, mapFilter, itemFilter) : null, [data, nickFilter, mapFilter, itemFilter]);
+
+  const hasActiveFilter = !!nickFilter || !!mapFilter || !!itemFilter;
 
   const formatScrapedAt = (iso: string) => {
     const d = new Date(iso);
