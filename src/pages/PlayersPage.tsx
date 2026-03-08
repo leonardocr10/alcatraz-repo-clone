@@ -82,6 +82,7 @@ export default function PlayersPage() {
       const { data, error } = await supabase.functions.invoke("scrape-rankings", { body: {} });
       if (error) throw error;
       toast.success(`Ranking atualizado! ${data.matched} jogadores sincronizados`);
+      setLastSync(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
       // Refresh rankings data
       const { data: newRankings } = await supabase.from("player_rankings").select("user_id, level, xp, rank_position");
       setRankings((newRankings ?? []) as Ranking[]);
