@@ -167,6 +167,25 @@ export default function HistoryPage() {
 
   const hasActiveFilter = !!nickFilter || !!mapFilter || !!itemFilter;
 
+  // Top 5 players by total drops (today + yesterday)
+  const top5Players = useMemo(() => {
+    if (!data) return [];
+    const counts: Record<string, number> = {};
+    const collectFromDay = (day: DayData) => {
+      for (const item of day.items) {
+        for (const d of item.details) {
+          counts[d.nick] = (counts[d.nick] || 0) + 1;
+        }
+      }
+    };
+    collectFromDay(data.today);
+    collectFromDay(data.yesterday);
+    return Object.entries(counts)
+      .map(([nick, count]) => ({ nick, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [data]);
+
   const formatScrapedAt = (iso: string) => {
     const d = new Date(iso);
     return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
