@@ -155,6 +155,7 @@ export default function ConfigPage() {
   };
 
   const tabs = [
+    { key: "manage" as const, label: "Gerenciar", icon: Crown },
     { key: "whatsapp" as const, label: "WhatsApp", icon: MessageCircle },
     { key: "theme" as const, label: "Tema", icon: Palette },
     { key: "rules" as const, label: "Regras", icon: ScrollText },
