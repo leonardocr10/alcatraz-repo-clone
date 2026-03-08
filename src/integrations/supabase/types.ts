@@ -160,6 +160,50 @@ export type Database = {
         }
         Relationships: []
       }
+      player_rankings: {
+        Row: {
+          clan: string | null
+          game_class: string | null
+          id: string
+          level: number | null
+          nickname: string
+          rank_position: number | null
+          updated_at: string
+          user_id: string
+          xp: string | null
+        }
+        Insert: {
+          clan?: string | null
+          game_class?: string | null
+          id?: string
+          level?: number | null
+          nickname: string
+          rank_position?: number | null
+          updated_at?: string
+          user_id: string
+          xp?: string | null
+        }
+        Update: {
+          clan?: string | null
+          game_class?: string | null
+          id?: string
+          level?: number | null
+          nickname?: string
+          rank_position?: number | null
+          updated_at?: string
+          user_id?: string
+          xp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_rankings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       roulette_items: {
         Row: {
           created_at: string

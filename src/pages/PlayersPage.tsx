@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Users, Search, Pencil, MessageCircle, Trash2, X, Save, KeyRound, MoreVertical } from "lucide-react";
+import { Users, Search, Pencil, MessageCircle, Trash2, X, Save, KeyRound, MoreVertical, RefreshCw, Trophy } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -20,6 +20,7 @@ type Player = {
 };
 
 type ClassIcon = { name: string; image_url: string | null };
+type Ranking = { user_id: string; level: number | null; xp: string | null; rank_position: number | null };
 
 const ALL_CLASSES: CharacterClass[] = [
   "Fighter", "Mechanician", "Archer", "Pikeman",
@@ -30,7 +31,9 @@ export default function PlayersPage() {
   const { isAdmin } = useAuth();
   const [players, setPlayers] = useState<Player[]>([]);
   const [icons, setIcons] = useState<ClassIcon[]>([]);
+  const [rankings, setRankings] = useState<Ranking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState("");
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
@@ -49,18 +52,36 @@ export default function PlayersPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [playersRes, iconsRes] = await Promise.all([
+    const [playersRes, iconsRes, rankingsRes] = await Promise.all([
       supabase.from("users").select("id, nickname, class, phone, role, auth_id, created_at").order("created_at", { ascending: false }),
       supabase.from("character_classes").select("name, image_url"),
+      supabase.from("player_rankings").select("user_id, level, xp, rank_position"),
     ]);
     setPlayers((playersRes.data ?? []) as Player[]);
     setIcons((iconsRes.data ?? []) as ClassIcon[]);
+    setRankings((rankingsRes.data ?? []) as Ranking[]);
     setLoading(false);
+  };
+
+  const syncRankings = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("scrape-rankings", { body: {} });
+      if (error) throw error;
+      toast.success(`Ranking atualizado! ${data.matched} jogadores sincronizados`);
+      // Refresh rankings data
+      const { data: newRankings } = await supabase.from("player_rankings").select("user_id, level, xp, rank_position");
+      setRankings((newRankings ?? []) as Ranking[]);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao sincronizar ranking");
+    }
+    setSyncing(false);
   };
 
   useEffect(() => { fetchData(); }, []);
 
   const iconMap = useMemo(() => new Map(icons.map((c) => [c.name, c.image_url])), [icons]);
+  const rankingMap = useMemo(() => new Map(rankings.map((r) => [r.user_id, r])), [rankings]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return players;
@@ -162,14 +183,26 @@ export default function PlayersPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Users className="w-5 h-5 text-primary" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Users className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="font-display text-xl font-bold uppercase tracking-wider">Jogadores</h2>
+            <p className="text-xs text-muted-foreground font-body">{players.length} registrados</p>
+          </div>
         </div>
-        <div>
-          <h2 className="font-display text-xl font-bold uppercase tracking-wider">Jogadores</h2>
-          <p className="text-xs text-muted-foreground font-body">{players.length} registrados</p>
-        </div>
+        {isAdmin && (
+          <button
+            onClick={syncRankings}
+            disabled={syncing}
+            className="flex items-center gap-1.5 text-xs font-display font-bold text-primary px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
+            {syncing ? "Sync..." : "Sync Ranking"}
+          </button>
+        )}
       </div>
 
       {/* Search */}
@@ -189,6 +222,7 @@ export default function PlayersPage() {
           {filtered.map((player) => {
             const iconUrl = player.class ? iconMap.get(player.class) : null;
             const colorClass = player.class ? classColors[player.class] || "bg-secondary text-muted-foreground" : "";
+            const ranking = rankingMap.get(player.id);
 
             return (
               <div key={player.id} className="glass-card p-3 flex items-center gap-3">
@@ -221,6 +255,14 @@ export default function PlayersPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Level/XP */}
+                {ranking && (
+                  <div className="text-right shrink-0">
+                    <p className="font-display text-sm font-extrabold text-gold">Lv.{ranking.level}</p>
+                    <p className="text-[10px] text-muted-foreground font-body">{ranking.xp}</p>
+                  </div>
+                )}
 
                 {/* Actions */}
                 {isAdmin && (
