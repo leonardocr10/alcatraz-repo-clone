@@ -63,6 +63,19 @@ export function useBossNotifications() {
     localStorage.setItem(NOTIFY_MINUTES_KEY, String(mins));
   }, []);
 
+  const sendTestNotification = useCallback(() => {
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") {
+      return false;
+    }
+    new Notification("⚔️ Teste de Alerta - Painel AZ", {
+      body: "🐉 Se você viu essa notificação, os alertas estão funcionando!",
+      icon: "/pwa-icon-192.png",
+      badge: "/pwa-icon-192.png",
+      tag: "test-" + Date.now(),
+    });
+    return true;
+  }, []);
+
   useEffect(() => {
     if (!enabled || permission !== "granted") {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -82,26 +95,30 @@ export function useBossNotifications() {
       const brazilOffset = -3 * 60;
       const brazilTime = new Date(now.getTime() + (brazilOffset + now.getTimezoneOffset()) * 60000);
       const currentMins = brazilTime.getHours() * 60 + brazilTime.getMinutes();
+      const currentSecs = brazilTime.getSeconds();
 
       for (const sched of schedules) {
         const [h, m] = sched.spawn_time.split(":").map(Number);
         const spawnMins = h * 60 + m;
-        let diff = spawnMins - currentMins;
-        if (diff < 0) diff += 24 * 60;
+        
+        // Calculate diff in minutes, accounting for seconds
+        let diffTotal = spawnMins - currentMins;
+        if (diffTotal < 0) diffTotal += 24 * 60;
+        // If we're past the spawn time by less than 2 minutes, treat as 0
+        if (diffTotal >= 24 * 60 - 2) diffTotal = 0;
 
-        // Create a unique key per schedule per day
         const today = brazilTime.toISOString().split("T")[0];
         const key = `${sched.id}-${today}`;
 
-        if (diff <= notifyMinutes && diff >= 0 && !notifiedRef.current.has(key)) {
+        if (diffTotal <= notifyMinutes && !notifiedRef.current.has(key)) {
           notifiedRef.current.add(key);
 
           const boss = bosses.find((b) => b.id === sched.boss_id);
           if (!boss) continue;
 
-          const title = diff === 0
+          const title = diffTotal === 0
             ? `🔥 ${boss.name} NASCEU!`
-            : `⚔️ ${boss.name} em ${diff}min!`;
+            : `⚔️ ${boss.name} em ${diffTotal}min!`;
 
           const body = boss.map_level
             ? `📍 ${boss.map_level} — Spawn às ${sched.spawn_time.substring(0, 5)}`
@@ -116,7 +133,7 @@ export function useBossNotifications() {
         }
       }
 
-      // Clean old keys (keep only today's)
+      // Clean old keys
       const today = brazilTime.toISOString().split("T")[0];
       for (const key of notifiedRef.current) {
         if (!key.includes(today)) notifiedRef.current.delete(key);
@@ -124,7 +141,7 @@ export function useBossNotifications() {
     };
 
     checkBosses();
-    intervalRef.current = setInterval(checkBosses, 30_000); // check every 30s
+    intervalRef.current = setInterval(checkBosses, 30_000);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -140,5 +157,6 @@ export function useBossNotifications() {
     supported: typeof Notification !== "undefined" && !isMobile,
     toggle,
     updateMinutes,
+    sendTestNotification,
   };
 }

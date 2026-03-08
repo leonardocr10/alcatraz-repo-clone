@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import type { Tables } from "@/integrations/supabase/types";
@@ -22,21 +22,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
+  const fetchProfile = useCallback(async (userId: string) => {
+    console.log("[Auth] Fetching profile for:", userId);
+    const { data, error } = await supabase
       .from("users")
       .select("*")
       .eq("auth_id", userId)
-      .single();
+      .maybeSingle();
+    if (error) {
+      console.error("[Auth] Profile fetch error:", error);
+      return;
+    }
+    console.log("[Auth] Profile loaded:", data?.nickname, data?.class);
     setProfile(data);
-  };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
+    let sessionRestored = false;
 
     // First, restore session from storage
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!mounted) return;
+      sessionRestored = true;
+      console.log("[Auth] Session restored:", !!session?.user);
       setAuthUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
@@ -44,16 +53,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    // Then listen for subsequent auth changes (sign in/out, token refresh)
+    // Then listen for subsequent auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (!mounted) return;
+        console.log("[Auth] Event:", event, "User:", !!session?.user);
+
+        // Skip INITIAL_SESSION if getSession already handled it
+        if (event === "INITIAL_SESSION" && sessionRestored) return;
+
         setAuthUser(session?.user ?? null);
         if (session?.user) {
-          // Use setTimeout to avoid blocking the auth state change callback
           setTimeout(() => {
             if (mounted) fetchProfile(session.user.id);
-          }, 0);
+          }, 100);
         } else {
           setProfile(null);
         }
@@ -67,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [fetchProfile]);
 
   const makeEmail = (phone: string) => {
     const digits = phone.replace(/\D/g, '');
