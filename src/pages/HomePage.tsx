@@ -282,7 +282,7 @@ const HomePage = () => {
 
       {/* Players by Class - Collapsible */}
       {classCounts.length > 0 && (
-        <Collapsible open={classesOpen} onOpenChange={setClassesOpen}>
+        <Collapsible open={classesOpen} onOpenChange={handleClassesToggle}>
           <div className="glass-card overflow-hidden">
             <CollapsibleTrigger asChild>
               <button className="w-full px-4 py-3 border-b border-border/40 flex items-center justify-between hover:bg-secondary/20 transition-colors">
