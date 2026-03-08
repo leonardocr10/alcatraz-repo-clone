@@ -64,6 +64,8 @@ const App = () => {
             <Route path="/config" element={<ProtectedRoute><AdminRoute><AppLayout><ConfigPage /></AppLayout></AdminRoute></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <PWAInstallBanner />
+          </Routes>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
