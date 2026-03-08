@@ -188,6 +188,9 @@ export default function ConfigPage() {
         ))}
       </div>
 
+      {/* Manage Tab */}
+      {tab === "manage" && <AdminPage />}
+
       {/* WhatsApp Tab */}
       {tab === "whatsapp" && (
         <div className="space-y-3">
