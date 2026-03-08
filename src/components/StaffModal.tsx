@@ -40,7 +40,9 @@ export function StaffModal({ open, onOpenChange }: { open: boolean; onOpenChange
           ? await supabase.from("character_classes").select("name, image_url").in("name", classes as any)
           : { data: [] };
 
-        const classMap = new Map(classData?.map(c => [c.name, c.image_url]) ?? []);
+        const classMap = new Map<string, string | null>(
+          (classData ?? []).map(c => [c.name, c.image_url] as [string, string | null])
+        );
 
         const map: Record<string, StaffMember> = {};
         users.forEach(u => {
