@@ -230,13 +230,17 @@ export default function PlayersPage() {
         <p className="text-center text-muted-foreground text-sm py-12 font-body">Nenhum jogador encontrado.</p>
       ) : (
         <div className="space-y-2">
-          {filtered.map((player) => {
+          {filtered.map((player, index) => {
             const iconUrl = player.class ? iconMap.get(player.class) : null;
             const colorClass = player.class ? classColors[player.class] || "bg-secondary text-muted-foreground" : "";
             const ranking = rankingMap.get(player.id);
 
             return (
               <div key={player.id} className="glass-card p-3 flex items-center gap-3">
+                {/* Position */}
+                <span className="font-display font-extrabold text-xs text-muted-foreground w-5 text-center shrink-0">
+                  {index + 1}
+                </span>
                 {/* Avatar */}
                 {iconUrl ? (
                   <img src={iconUrl} alt="" className="w-10 h-10 rounded-xl object-cover border border-border/40 shrink-0" />
