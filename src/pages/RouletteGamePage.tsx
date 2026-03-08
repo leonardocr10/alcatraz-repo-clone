@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Swords, SkipForward, Trophy, Clock, Crown, Users, Zap, MapPin, ChevronDown } from "lucide-react";
+import { Swords, SkipForward, Trophy, Clock, Crown, Users, Zap, MapPin, ChevronDown, Send, X, MessageCircle } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface SessionItem {
   id: string;
@@ -52,7 +53,7 @@ interface BossSchedule {
 }
 
 const RouletteGamePage = () => {
-  const { profile } = useAuth();
+  const { profile, isAdmin } = useAuth();
   const [session, setSession] = useState<any>(null);
   const [currentItem, setCurrentItem] = useState<SessionItem | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -72,6 +73,9 @@ const RouletteGamePage = () => {
   const [bossSchedules, setBossSchedules] = useState<BossSchedule[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [expandedBoss, setExpandedBoss] = useState<string | null>(null);
+  const [imageModal, setImageModal] = useState<{ url: string; title: string } | null>(null);
+  const [sendingBoss, setSendingBoss] = useState<string | null>(null);
+  const [sendingAll, setSendingAll] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -90,26 +94,38 @@ const RouletteGamePage = () => {
     fetchBosses();
   }, []);
 
-  const getUpcomingBosses = useCallback(() => {
+  const getBrazilTime = useCallback(() => {
     const now = currentTime;
     const brazilOffset = -3 * 60;
-    const brazilTime = new Date(now.getTime() + (brazilOffset + now.getTimezoneOffset()) * 60000);
+    return new Date(now.getTime() + (brazilOffset + now.getTimezoneOffset()) * 60000);
+  }, [currentTime]);
+
+  const getBrazilTimeStr = () => {
+    return getBrazilTime().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  };
+
+  // Group bosses with their schedules and find next spawn
+  const getGroupedBosses = useCallback(() => {
+    const brazilTime = getBrazilTime();
     const currentMins = brazilTime.getHours() * 60 + brazilTime.getMinutes();
 
-    const upcoming: { boss: Boss; schedule: BossSchedule; minutesUntil: number }[] = [];
+    return bosses.map((boss) => {
+      const scheds = bossSchedules
+        .filter((s) => s.boss_id === boss.id)
+        .map((s) => {
+          const [h, m] = s.spawn_time.split(":").map(Number);
+          const spawnMins = h * 60 + m;
+          let diff = spawnMins - currentMins;
+          if (diff < 0) diff += 24 * 60;
+          return { ...s, minutesUntil: diff };
+        })
+        .sort((a, b) => a.minutesUntil - b.minutesUntil);
 
-    for (const sched of bossSchedules) {
-      const boss = bosses.find((b) => b.id === sched.boss_id);
-      if (!boss) continue;
-      const [h, m] = sched.spawn_time.split(":").map(Number);
-      const spawnMins = h * 60 + m;
-      let diff = spawnMins - currentMins;
-      if (diff < 0) diff += 24 * 60;
-      upcoming.push({ boss, schedule: sched, minutesUntil: diff });
-    }
-
-    return upcoming.sort((a, b) => a.minutesUntil - b.minutesUntil);
-  }, [bosses, bossSchedules, currentTime]);
+      const nextSchedule = scheds[0] || null;
+      return { boss, schedules: scheds, nextSchedule };
+    }).filter((g) => g.schedules.length > 0)
+      .sort((a, b) => (a.nextSchedule?.minutesUntil || 9999) - (b.nextSchedule?.minutesUntil || 9999));
+  }, [bosses, bossSchedules, getBrazilTime]);
 
   const formatMinutesUntil = (mins: number) => {
     const h = Math.floor(mins / 60);
@@ -118,11 +134,34 @@ const RouletteGamePage = () => {
     return `${m}min`;
   };
 
-  const getBrazilTimeStr = () => {
-    const now = currentTime;
-    const brazilOffset = -3 * 60;
-    const brazilTime = new Date(now.getTime() + (brazilOffset + now.getTimezoneOffset()) * 60000);
-    return brazilTime.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  // Send WhatsApp for specific boss
+  const sendBossNotify = async (bossId: string) => {
+    setSendingBoss(bossId);
+    try {
+      const { data, error } = await supabase.functions.invoke("boss-notify", {
+        body: { force: true, boss_id: bossId },
+      });
+      if (error) throw error;
+      toast.success(data?.message || "Notificação enviada!");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao enviar");
+    }
+    setSendingBoss(null);
+  };
+
+  // Send WhatsApp for all bosses
+  const sendAllBossNotify = async () => {
+    setSendingAll(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("boss-notify", {
+        body: { force: true, all: true },
+      });
+      if (error) throw error;
+      toast.success(data?.message || "Notificações enviadas!");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao enviar");
+    }
+    setSendingAll(false);
   };
 
   // === ROULETTE LOGIC ===
@@ -279,10 +318,22 @@ const RouletteGamePage = () => {
 
   const progressPercent = totalTime > 0 ? (timeLeft / totalTime) * 100 : 0;
   const isUrgent = timeLeft <= 5 && timeLeft > 0;
-  const upcomingBosses = getUpcomingBosses().slice(0, 3);
+  const groupedBosses = getGroupedBosses().slice(0, 3);
 
   return (
     <div className="space-y-4">
+      {/* Image Modal */}
+      <Dialog open={!!imageModal} onOpenChange={() => setImageModal(null)}>
+        <DialogContent className="max-w-[95vw] max-h-[90vh] p-2 bg-background/95">
+          {imageModal && (
+            <div className="text-center">
+              <p className="font-display text-sm font-extrabold mb-2">{imageModal.title}</p>
+              <img src={imageModal.url} alt={imageModal.title} className="max-w-full max-h-[75vh] object-contain rounded-xl mx-auto" />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Winner Announcement Overlay */}
       {winnerAnnouncement && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-md animate-fade-in">
@@ -308,51 +359,115 @@ const RouletteGamePage = () => {
         <span className="text-[10px] text-muted-foreground font-body bg-secondary px-1.5 py-0.5 rounded-md">BRT</span>
       </div>
 
-      {/* Next 3 Bosses */}
-      {upcomingBosses.length > 0 && (
+      {/* Bosses - Grouped */}
+      {groupedBosses.length > 0 && (
         <div className="glass-card overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-border/40 flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-primary" />
-            <span className="font-display text-xs font-extrabold uppercase tracking-wider">Próximos Boss</span>
+          <div className="px-4 py-2.5 border-b border-border/40 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Swords className="w-4 h-4 text-primary" />
+              <span className="font-display text-xs font-extrabold uppercase tracking-wider">Próximos Boss</span>
+            </div>
+            {isAdmin && (
+              <button
+                onClick={sendAllBossNotify}
+                disabled={sendingAll}
+                className="text-[10px] font-display font-bold text-primary flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-primary/10 transition-colors disabled:opacity-50"
+              >
+                <MessageCircle className="w-3 h-3" />
+                {sendingAll ? "..." : "Todos"}
+              </button>
+            )}
           </div>
           <div className="divide-y divide-border/20">
-            {upcomingBosses.map(({ boss, schedule, minutesUntil }) => (
-              <div key={schedule.id}>
-                <button
-                  onClick={() => setExpandedBoss(expandedBoss === schedule.id ? null : schedule.id)}
-                  className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-secondary/30 transition-colors"
-                >
-                  {boss.image_url ? (
-                    <img src={boss.image_url} alt={boss.name} className="w-9 h-9 rounded-xl object-cover border border-border/40" />
-                  ) : (
-                    <div className="w-9 h-9 rounded-xl bg-secondary flex items-center justify-center">
-                      <Swords className="w-4 h-4 text-muted-foreground" />
+            {groupedBosses.map(({ boss, schedules, nextSchedule }) => (
+              <div key={boss.id}>
+                <div className="flex items-center">
+                  {/* Boss image - clickable */}
+                  <button
+                    onClick={() => boss.image_url && setImageModal({ url: boss.image_url, title: boss.name })}
+                    className="shrink-0 p-2.5 pl-4"
+                  >
+                    {boss.image_url ? (
+                      <img src={boss.image_url} alt={boss.name} className="w-11 h-11 rounded-xl object-cover border border-border/40 hover:border-primary/50 transition-colors" />
+                    ) : (
+                      <div className="w-11 h-11 rounded-xl bg-secondary flex items-center justify-center">
+                        <Swords className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Boss info - clickable to expand */}
+                  <button
+                    onClick={() => setExpandedBoss(expandedBoss === boss.id ? null : boss.id)}
+                    className="flex-1 py-2.5 pr-2 flex items-center gap-2 min-w-0"
+                  >
+                    <div className="flex-1 text-left min-w-0">
+                      <span className="text-sm font-display font-extrabold text-gold block leading-tight truncate">{boss.name}</span>
+                      <span className="text-[11px] text-muted-foreground font-body">
+                        {nextSchedule && nextSchedule.spawn_time.substring(0, 5)} {boss.map_level && `· ${boss.map_level}`}
+                      </span>
                     </div>
+                    {nextSchedule && (
+                      <span className={`text-xs font-display font-extrabold px-2 py-0.5 rounded-full shrink-0 ${
+                        nextSchedule.minutesUntil <= 10 ? "bg-destructive/20 text-destructive" :
+                        nextSchedule.minutesUntil <= 30 ? "bg-gold/20 text-gold" :
+                        "bg-secondary text-muted-foreground"
+                      }`}>
+                        {formatMinutesUntil(nextSchedule.minutesUntil)}
+                      </span>
+                    )}
+                    <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform shrink-0 ${expandedBoss === boss.id ? "rotate-180" : ""}`} />
+                  </button>
+
+                  {/* Map icon */}
+                  {boss.map_image_url && (
+                    <button
+                      onClick={() => setImageModal({ url: boss.map_image_url!, title: `Mapa - ${boss.name}` })}
+                      className="shrink-0 p-2 text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <MapPin className="w-4 h-4" />
+                    </button>
                   )}
-                  <div className="flex-1 text-left min-w-0">
-                    <span className="text-sm font-display font-extrabold text-gold block leading-tight">{boss.name}</span>
-                    <span className="text-[11px] text-muted-foreground font-body">
-                      {schedule.spawn_time.substring(0, 5)} {boss.map_level && `· ${boss.map_level}`}
-                    </span>
-                  </div>
-                  <span className={`text-xs font-display font-extrabold px-2.5 py-1 rounded-full ${
-                    minutesUntil <= 10 ? "bg-destructive/20 text-destructive" :
-                    minutesUntil <= 30 ? "bg-gold/20 text-gold" :
-                    "bg-secondary text-muted-foreground"
-                  }`}>
-                    {formatMinutesUntil(minutesUntil)}
-                  </span>
-                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${expandedBoss === schedule.id ? "rotate-180" : ""}`} />
-                </button>
-                {expandedBoss === schedule.id && (
-                  <div className="px-4 py-3 bg-secondary/20 border-t border-border/20 space-y-2">
-                    {boss.description && <p className="text-xs text-muted-foreground font-body">{boss.description}</p>}
-                    {boss.map_image_url && (
-                      <img src={boss.map_image_url} alt={`Mapa ${boss.name}`} className="w-full rounded-xl border border-border/40 max-h-40 object-contain" />
+
+                  {/* Admin send button per boss */}
+                  {isAdmin && (
+                    <button
+                      onClick={() => sendBossNotify(boss.id)}
+                      disabled={sendingBoss === boss.id}
+                      className="shrink-0 p-2 pr-3 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+                    >
+                      <Send className={`w-3.5 h-3.5 ${sendingBoss === boss.id ? "animate-pulse" : ""}`} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Expanded: All schedules */}
+                {expandedBoss === boss.id && (
+                  <div className="px-4 pb-3 space-y-1.5">
+                    {boss.description && (
+                      <p className="text-xs text-muted-foreground font-body mb-2">{boss.description}</p>
                     )}
-                    {!boss.description && !boss.map_image_url && (
-                      <p className="text-xs text-muted-foreground/50 font-body italic">Sem detalhes disponíveis</p>
-                    )}
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Horários</p>
+                    {schedules.map((sched) => {
+                      const isNext = sched.id === nextSchedule?.id;
+                      return (
+                        <div
+                          key={sched.id}
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs ${
+                            isNext ? "bg-primary/15 border border-primary/30" : "bg-secondary/30"
+                          }`}
+                        >
+                          <Clock className={`w-3 h-3 shrink-0 ${isNext ? "text-primary" : "text-muted-foreground"}`} />
+                          <span className={`font-display font-extrabold ${isNext ? "text-primary" : "text-foreground"}`}>
+                            {sched.spawn_time.substring(0, 5)}
+                          </span>
+                          <span className="text-muted-foreground font-body">
+                            em {formatMinutesUntil(sched.minutesUntil)}
+                          </span>
+                          {isNext && <span className="text-[9px] text-primary font-bold ml-auto">PRÓXIMO</span>}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
