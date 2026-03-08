@@ -16,41 +16,42 @@ import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { authUser, loading } = useAuth();
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+const App = () => {
+  function ProtectedRoute({ children }: { children: React.ReactNode }) {
+    const { authUser, loading } = useAuth();
+    if (loading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      );
+    }
+    if (!authUser) return <Navigate to="/login" replace />;
+    return <>{children}</>;
   }
-  if (!authUser) return <Navigate to="/login" replace />;
-  return <>{children}</>;
-}
 
-function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { isAdmin, loading } = useAuth();
-  if (loading) return null;
-  if (!isAdmin) return <Navigate to="/roleta" replace />;
-  return <>{children}</>;
-}
+  function AdminRoute({ children }: { children: React.ReactNode }) {
+    const { isAdmin, loading } = useAuth();
+    if (loading) return null;
+    if (!isAdmin) return <Navigate to="/roleta" replace />;
+    return <>{children}</>;
+  }
 
-function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { authUser, loading } = useAuth();
-  if (loading) return null;
-  if (authUser) return <Navigate to="/roleta" replace />;
-  return <>{children}</>;
-}
+  function PublicRoute({ children }: { children: React.ReactNode }) {
+    const { authUser, loading } = useAuth();
+    if (loading) return null;
+    if (authUser) return <Navigate to="/roleta" replace />;
+    return <>{children}</>;
+  }
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
             <Route path="/" element={<Navigate to="/roleta" replace />} />
             <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
             <Route path="/roleta" element={<ProtectedRoute><AppLayout><RouletteGamePage /></AppLayout></ProtectedRoute>} />
