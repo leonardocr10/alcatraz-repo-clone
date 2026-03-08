@@ -165,6 +165,7 @@ const LoginPage = () => {
             <button type="button" onClick={() => setIsSignUp(!isSignUp)} className="w-full text-center text-sm text-muted-foreground hover:text-primary transition-colors font-body">
               {isSignUp ? "Já tenho conta → Entrar" : "Não tenho conta → Criar"}
             </button>
+          </div>
         </div>
         )}
       </div>
