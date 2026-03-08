@@ -138,6 +138,9 @@ Deno.serve(async (req) => {
       }
 
       if (page % 10 === 0) console.log(`Scanned ${page} pages, ${matched} matched, ${unmatchedUsers.size} remaining`);
+
+      // Delay to avoid rate limiting
+      await new Promise(r => setTimeout(r, 300));
     }
 
     if (unmatchedUsers.size > 0) {
