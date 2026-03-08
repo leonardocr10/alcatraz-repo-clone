@@ -216,9 +216,10 @@ Deno.serve(async (req) => {
 
       let messageText = `⚔️ *Boss Alert - Painel AZ!*\n\n🐉 Boss: *${bossName}*`;
       if (mapLevel) messageText += `\n📍 Local: *${mapLevel}*`;
-      messageText += `\n⏰ Spawna em *${minutesBefore} minutos* (${spawnTime})`;
-      messageText += `\n\n⚔️ Prepare-se guerreiro!`;
+      messageText += `\n⏰ Spawn às *${spawnTime}*`;
+      messageText += `\n⏳ Faltam: *${minutesBefore}min*`;
       if (mapImageUrl) messageText += `\n\n🗺️ Mapa: ${mapImageUrl}`;
+      messageText += `\n\n⚔️ Prepare-se guerreiro!`;
 
       for (const user of eligibleUsers) {
         try {

@@ -62,7 +62,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* Main content */}
-      <main className="mx-auto w-full max-w-lg px-4 py-4 pb-24">{children}</main>
+      <main className="mx-auto w-full max-w-lg px-4 py-5 pb-28">{children}</main>
 
       {/* Bottom navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur-xl safe-area-bottom">
