@@ -20,6 +20,7 @@ type Player = {
 };
 
 type ClassIcon = { name: string; image_url: string | null };
+type Ranking = { user_id: string; level: number | null; xp: string | null; rank_position: number | null };
 
 const ALL_CLASSES: CharacterClass[] = [
   "Fighter", "Mechanician", "Archer", "Pikeman",
