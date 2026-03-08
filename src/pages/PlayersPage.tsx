@@ -299,7 +299,9 @@ export default function PlayersPage() {
           </div>
           <div>
             <h2 className="font-display text-xl font-bold uppercase tracking-wider">Jogadores</h2>
-            <p className="text-xs text-muted-foreground font-body">{players.length} registrados</p>
+            <p className="text-xs text-muted-foreground font-body">
+              {players.length} registrados{lastSync ? ` • última sync ${lastSync}` : ""}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -314,7 +316,7 @@ export default function PlayersPage() {
           )}
           <div className="flex flex-col items-end">
             <button
-              onClick={syncRankings}
+              onClick={() => syncRankings(true)}
               disabled={syncing}
               className="flex items-center gap-1.5 text-xs font-display font-bold text-primary px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50"
             >
@@ -322,7 +324,7 @@ export default function PlayersPage() {
               {syncing ? "..." : "Sincronizar"}
             </button>
             {lastSync && (
-              <span className="text-[10px] text-muted-foreground font-body pr-1">{lastSync}</span>
+              <span className="text-[10px] text-muted-foreground font-body pr-1">Última sync: {lastSync}</span>
             )}
           </div>
         </div>

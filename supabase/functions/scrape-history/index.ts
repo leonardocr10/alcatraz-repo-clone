@@ -12,61 +12,70 @@ interface HistoryEntry {
   source: string;
 }
 
-// Only track these items
-const TRACKED_ITEMS = ['Celesto', 'Inferna', 'Mirage', 'Enigma'];
-
-function isTrackedItem(itemName: string): boolean {
-  const lower = itemName.toLowerCase();
-  // Check exact matches
-  for (const t of TRACKED_ITEMS) {
-    if (lower === t.toLowerCase()) return true;
-  }
-  // Check if contains "inferno"
-  if (lower.includes('inferno')) return true;
-  return false;
-}
+const TRACKED_EXACT = new Set(['celesto', 'inferna', 'mirage', 'enigma']);
+const TRACKED_PARTIAL = ['inferno'];
 
 function stripHtml(str: string): string {
   return str.replace(/<[^>]*>/g, '').trim();
 }
 
+function isTrackedItem(itemName: string): boolean {
+  const normalized = itemName.toLowerCase().trim();
+  if (TRACKED_EXACT.has(normalized)) return true;
+  return TRACKED_PARTIAL.some((term) => normalized.includes(term));
+}
+
+function parseBrDate(dateText: string): Date | null {
+  const [day, month, year] = dateText.split('/').map(Number);
+  if (!day || !month || !year) return null;
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
 async function scrapePage(page: number): Promise<{ entries: HistoryEntry[]; totalPages: number }> {
   const url = `https://arkanumpt.com.br/historico?type=all&page=${page}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { headers: { 'Cache-Control': 'no-cache' } });
   const html = await res.text();
 
   const entries: HistoryEntry[] = [];
 
   let totalPages = 1;
-  const totalMatch = html.match(/Página\s+\d+\s*\/\s*(\d+)/);
-  if (totalMatch) totalPages = parseInt(totalMatch[1]);
+  const totalMatch = html.match(/Página[\s\S]*?\/\s*(\d+)\s*</i);
+  if (totalMatch) {
+    totalPages = parseInt(totalMatch[1], 10);
+  }
+
+  // Fallback: parse max page number from links
+  if (!totalMatch) {
+    const pageMatches = [...html.matchAll(/[?&]page=(\d+)/g)].map((m) => parseInt(m[1], 10));
+    if (pageMatches.length > 0) {
+      totalPages = Math.max(...pageMatches);
+    }
+  }
 
   const rowRegex = /<tr\s+class="hover:bg-white\/5[^"]*"[^>]*>([\s\S]*?)<\/tr>/g;
   let match;
 
   while ((match = rowRegex.exec(html)) !== null) {
     const row = match[1];
-    const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map(m => m[1]);
+    const cells = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]);
 
     if (cells.length >= 5) {
-      const dateStr = stripHtml(cells[0]);
+      const date = stripHtml(cells[0]);
       const nick = stripHtml(cells[1]);
       const map = stripHtml(cells[2]);
 
       const itemCell = cells[3];
-      const itemName = stripHtml(
+      const item = stripHtml(
         itemCell.match(/<div[^>]*class="[^"]*text-white\/85[^"]*"[^>]*>([\s\S]*?)<\/div>/)?.[1] || ''
       );
-      
-      const bossName = stripHtml(
-        itemCell.match(/Boss:\s*<span[^>]*>([\s\S]*?)<\/span>/)?.[1] || ''
-      ) || null;
+      const boss =
+        stripHtml(itemCell.match(/Boss:\s*<span[^>]*>([\s\S]*?)<\/span>/)?.[1] || '') || null;
 
       const sourceCell = cells[4];
       const source = sourceCell.includes('Boss') ? 'Boss' : 'Normal';
 
-      if (itemName) {
-        entries.push({ date: dateStr, nick, map, item: itemName, boss: bossName, source });
+      if (item) {
+        entries.push({ date, nick, map, item, boss, source });
       }
     }
   }
@@ -83,57 +92,65 @@ Deno.serve(async (req) => {
     const now = new Date();
     const brt = new Date(now.getTime() - 3 * 60 * 60 * 1000);
     const todayStr = `${String(brt.getDate()).padStart(2, '0')}/${String(brt.getMonth() + 1).padStart(2, '0')}/${brt.getFullYear()}`;
-    const yesterday = new Date(brt);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = `${String(yesterday.getDate()).padStart(2, '0')}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${yesterday.getFullYear()}`;
+
+    const yesterdayDate = new Date(brt);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = `${String(yesterdayDate.getDate()).padStart(2, '0')}/${String(yesterdayDate.getMonth() + 1).padStart(2, '0')}/${yesterdayDate.getFullYear()}`;
+
+    const yesterdayDateOnly = parseBrDate(yesterdayStr);
 
     console.log(`Scraping history for today=${todayStr} and yesterday=${yesterdayStr}`);
 
     const allEntries: HistoryEntry[] = [];
     let page = 1;
     let maxPages = 1;
-    let consecutiveOlderPages = 0;
 
-    // Scrape all pages that contain today/yesterday data
-    while (page <= maxPages && page <= 100) {
+    while (page <= maxPages && page <= 500) {
       const { entries, totalPages } = await scrapePage(page);
-      maxPages = totalPages;
+      maxPages = Math.max(maxPages, totalPages);
 
-      let foundRelevant = false;
+      let hasTodayOrYesterdayOnPage = false;
+      let hasOlderThanYesterdayOnPage = false;
+
       for (const entry of entries) {
-        const entryDate = entry.date.split(' ')[0];
-        if (entryDate === todayStr || entryDate === yesterdayStr) {
-          // Only keep tracked items
+        const entryDateStr = entry.date.split(' ')[0];
+
+        if (entryDateStr === todayStr || entryDateStr === yesterdayStr) {
+          hasTodayOrYesterdayOnPage = true;
           if (isTrackedItem(entry.item)) {
             allEntries.push(entry);
           }
-          foundRelevant = true;
+          continue;
+        }
+
+        if (yesterdayDateOnly) {
+          const entryDate = parseBrDate(entryDateStr);
+          if (entryDate && entryDate.getTime() < yesterdayDateOnly.getTime()) {
+            hasOlderThanYesterdayOnPage = true;
+          }
         }
       }
 
-      // Stop after 2 consecutive pages with no today/yesterday entries
-      if (!foundRelevant) {
-        consecutiveOlderPages++;
-        if (consecutiveOlderPages >= 2) break;
-      } else {
-        consecutiveOlderPages = 0;
+      // As rows are ordered by newest first, once a page has only older dates we can stop.
+      if (!hasTodayOrYesterdayOnPage && hasOlderThanYesterdayOnPage) {
+        break;
       }
 
       page++;
     }
 
-    interface ItemDetail {
+    type ItemDetail = {
       nick: string;
       map: string;
       boss: string | null;
       source: string;
       time: string;
-    }
-    
-    interface ItemGroup {
+    };
+
+    type ItemGroup = {
       count: number;
       details: ItemDetail[];
-    }
+    };
 
     const todayItems: Record<string, ItemGroup> = {};
     const yesterdayItems: Record<string, ItemGroup> = {};
@@ -144,18 +161,24 @@ Deno.serve(async (req) => {
       const entryDate = entry.date.split(' ')[0];
       const itemKey = entry.item;
       const time = entry.date.split(' ')[1] || '';
-      const detail: ItemDetail = { nick: entry.nick, map: entry.map, boss: entry.boss, source: entry.source, time };
+      const detail: ItemDetail = {
+        nick: entry.nick,
+        map: entry.map,
+        boss: entry.boss,
+        source: entry.source,
+        time,
+      };
 
       if (entryDate === todayStr) {
         if (!todayItems[itemKey]) todayItems[itemKey] = { count: 0, details: [] };
-        todayItems[itemKey].count++;
+        todayItems[itemKey].count += 1;
         todayItems[itemKey].details.push(detail);
-        todayTotal++;
+        todayTotal += 1;
       } else {
         if (!yesterdayItems[itemKey]) yesterdayItems[itemKey] = { count: 0, details: [] };
-        yesterdayItems[itemKey].count++;
+        yesterdayItems[itemKey].count += 1;
         yesterdayItems[itemKey].details.push(detail);
-        yesterdayTotal++;
+        yesterdayTotal += 1;
       }
     }
 
@@ -165,14 +188,22 @@ Deno.serve(async (req) => {
         .sort((a, b) => b.count - a.count);
 
     const result = {
-      today: { date: todayStr, total: todayTotal, items: sortItems(todayItems) },
-      yesterday: { date: yesterdayStr, total: yesterdayTotal, items: sortItems(yesterdayItems) },
+      today: {
+        date: todayStr,
+        total: todayTotal,
+        items: sortItems(todayItems),
+      },
+      yesterday: {
+        date: yesterdayStr,
+        total: yesterdayTotal,
+        items: sortItems(yesterdayItems),
+      },
+      trackedItems: ['Celesto', 'Inferna', 'Mirage', 'Enigma', '*inferno*'],
       scrapedAt: new Date().toISOString(),
       pagesScraped: page - 1,
-      trackedItems: [...TRACKED_ITEMS, '*inferno*'],
     };
 
-    console.log(`Scraped ${page - 1} pages. Today: ${todayTotal}, Yesterday: ${yesterdayTotal}`);
+    console.log(`Scraped ${page - 1} pages (max detected: ${maxPages}). Today: ${todayTotal}, Yesterday: ${yesterdayTotal}`);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
