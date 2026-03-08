@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Dices, Shield, Users, Swords, Settings, LogOut, Crown } from "lucide-react";
+import { Dices, Shield, Users, Swords, Settings, LogOut, Crown, Home } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import logoAz from "@/assets/logo-az.jpeg";
@@ -13,6 +13,7 @@ interface NavItem {
 }
 
 const items: NavItem[] = [
+  { label: "Início", path: "/inicio", icon: Home },
   { label: "Roleta", path: "/roleta", icon: Dices },
   { label: "Gerenciar", path: "/admin", icon: Crown, adminOnly: true },
   { label: "Jogadores", path: "/jogadores", icon: Users, adminOnly: true },
