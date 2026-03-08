@@ -92,7 +92,7 @@ export function useBossNotifications() {
     const checkBosses = async () => {
       const [bossRes, schedRes] = await Promise.all([
         supabase.from("bosses").select("id, name, map_level, image_url"),
-        supabase.from("boss_schedules").select("id, boss_id, spawn_time"),
+        supabase.from("boss_schedules").select("id, boss_id, spawn_time, notify_minutes_before"),
       ]);
 
       const bosses = (bossRes.data || []) as Boss[];
