@@ -18,7 +18,6 @@ const items: NavItem[] = [
   { label: "Regras", path: "/regras", icon: ScrollText },
   { label: "Classes", path: "/classes", icon: Swords },
   { label: "Jogadores", path: "/jogadores", icon: Users },
-  { label: "Gerenciar", path: "/admin", icon: Crown, adminOnly: true },
   { label: "Config", path: "/config", icon: Settings, adminOnly: true },
 ];
 

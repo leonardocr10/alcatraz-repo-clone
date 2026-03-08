@@ -2,8 +2,9 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Settings, MessageCircle, Palette, Trash2, Plus, X, Save, RotateCcw, Send, CheckCircle, AlertCircle, Zap, ScrollText } from "lucide-react";
+import { Settings, MessageCircle, Palette, Trash2, Plus, X, Save, RotateCcw, Send, CheckCircle, AlertCircle, Zap, ScrollText, Crown } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
+import AdminPage from "@/pages/AdminPage";
 
 type WhatsConfig = {
   id: string;
@@ -18,7 +19,7 @@ export default function ConfigPage() {
   const { isAdmin } = useAuth();
   const { currentTheme, setTheme, resetTheme, presets } = useTheme();
 
-  const [tab, setTab] = useState<"whatsapp" | "theme" | "rules" | "clear">("whatsapp");
+  const [tab, setTab] = useState<"manage" | "whatsapp" | "theme" | "rules" | "clear">("manage");
 
   // WhatsApp state
   const [config, setConfig] = useState<WhatsConfig | null>(null);
@@ -154,6 +155,7 @@ export default function ConfigPage() {
   };
 
   const tabs = [
+    { key: "manage" as const, label: "Gerenciar", icon: Crown },
     { key: "whatsapp" as const, label: "WhatsApp", icon: MessageCircle },
     { key: "theme" as const, label: "Tema", icon: Palette },
     { key: "rules" as const, label: "Regras", icon: ScrollText },
@@ -185,6 +187,9 @@ export default function ConfigPage() {
           </button>
         ))}
       </div>
+
+      {/* Manage Tab */}
+      {tab === "manage" && <AdminPage />}
 
       {/* WhatsApp Tab */}
       {tab === "whatsapp" && (
