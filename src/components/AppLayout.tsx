@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Dices, Shield, Users, Swords, Settings, LogOut, Home, ScrollText, KeyRound, User, X, Save, Eye, EyeOff, History } from "lucide-react";
+import { Dices, Shield, Users, Swords, Settings, LogOut, Home, ScrollText, KeyRound, User, X, Save, Eye, EyeOff, History, UsersRound } from "lucide-react";
+import { StaffModal } from "@/components/StaffModal";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showStaffModal, setShowStaffModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -123,6 +125,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               )}
             >
               <ScrollText className="h-4 w-4" />
+            </button>
+            {/* Staff button */}
+            <button
+              onClick={() => setShowStaffModal(true)}
+              className="rounded-xl bg-background/60 backdrop-blur-md p-2 transition-colors border border-border/30 text-muted-foreground hover:text-foreground hover:bg-background/80"
+            >
+              <UsersRound className="h-4 w-4" />
             </button>
             {/* Player name with dropdown */}
             <div className="relative">
@@ -303,6 +312,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Staff Modal */}
+      <StaffModal open={showStaffModal} onOpenChange={setShowStaffModal} />
     </div>
   );
 }
