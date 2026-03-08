@@ -139,6 +139,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </>
               )}
             </div>
+            <button
+              onClick={onLogout}
+              className="rounded-xl bg-background/60 backdrop-blur-md p-2 text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors border border-border/30"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </header>
