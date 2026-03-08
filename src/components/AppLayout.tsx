@@ -126,6 +126,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             >
               <ScrollText className="h-4 w-4" />
             </button>
+            {/* Staff button */}
+            <button
+              onClick={() => setShowStaffModal(true)}
+              className="rounded-xl bg-background/60 backdrop-blur-md p-2 transition-colors border border-border/30 text-muted-foreground hover:text-foreground hover:bg-background/80"
+            >
+              <UsersRound className="h-4 w-4" />
+            </button>
             {/* Player name with dropdown */}
             <div className="relative">
               <button

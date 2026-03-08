@@ -38,11 +38,11 @@ export function StaffModal({ open, onOpenChange }: { open: boolean; onOpenChange
         if (!users) return;
 
         // Get unique classes
-        const classes = [...new Set(users.map(u => u.class).filter(Boolean))];
+        const classes = [...new Set(users.map(u => u.class).filter(Boolean))] as string[];
         const { data: classData } = await supabase
           .from("character_classes")
           .select("name, image_url")
-          .in("name", classes as string[]);
+          .in("name", classes as any);
 
         const classMap = new Map(classData?.map(c => [c.name, c.image_url]) ?? []);
 
