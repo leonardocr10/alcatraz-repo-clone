@@ -143,27 +143,52 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get users with phone numbers who haven't opted out
-    const { data: users } = await supabase
-      .from("users")
-      .select("id, nickname, phone, whatsapp_optout")
-      .not("phone", "is", null)
-      .neq("phone", "");
+    // Detect destination mode from template
+    let configuredDestination: string | null = null;
+    let templateHasNumberPlaceholder = config.body_template.includes("{{number}}");
+    try {
+      const parsedTemplate = JSON.parse(config.body_template);
+      if (
+        parsedTemplate &&
+        typeof parsedTemplate === "object" &&
+        typeof parsedTemplate.number === "string"
+      ) {
+        const rawNumber = parsedTemplate.number.trim();
+        if (rawNumber && rawNumber !== "{{number}}") {
+          configuredDestination = rawNumber;
+          templateHasNumberPlaceholder = false;
+        }
+      }
+    } catch {
+      // keep fallback detection based on template string
+    }
 
-    const eligibleUsers = (users || []).filter((u: any) => !u.whatsapp_optout && u.phone);
+    const isGroupMode = !!configuredDestination || !templateHasNumberPlaceholder;
 
-    if (eligibleUsers.length === 0) {
-      return new Response(JSON.stringify({ message: "No eligible users" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Get users only when sending per-user
+    let eligibleUsers: any[] = [];
+    if (!isGroupMode) {
+      const { data: users } = await supabase
+        .from("users")
+        .select("id, nickname, phone, whatsapp_optout")
+        .not("phone", "is", null)
+        .neq("phone", "");
+
+      eligibleUsers = (users || []).filter((u: any) => !u.whatsapp_optout && u.phone);
+
+      if (eligibleUsers.length === 0) {
+        return new Response(JSON.stringify({ message: "No eligible users" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     let sentCount = 0;
     const errors: string[] = [];
 
-    // Detect if template uses {{number}} - if not, it's a group/fixed destination (send once)
-    const isGroupMode = !config.body_template.includes("{{number}}");
-    console.log(`Group mode: ${isGroupMode} | Eligible users: ${eligibleUsers.length}`);
+    console.log(
+      `Group mode: ${isGroupMode} | destination=${configuredDestination || "template/default"} | Eligible users: ${eligibleUsers.length}`
+    );
 
     // Build headers for WhatsApp API
     const apiHeaders: Record<string, string> = { "Content-Type": "application/json" };
@@ -174,15 +199,19 @@ Deno.serve(async (req) => {
     }
 
     // Helper: send text message
-    const sendText = async (phone: string, text: string) => {
+    const sendText = async (phone: string, text: string, forcedNumber?: string | null) => {
       let bodyStr: string;
       try {
-        const templateClean = config.body_template.replace(/\{\{text\}\}/g, "__TEXT_PLACEHOLDER__").replace(/\{\{number\}\}/g, "__NUMBER_PLACEHOLDER__");
+        const templateClean = config.body_template
+          .replace(/\{\{text\}\}/g, "__TEXT_PLACEHOLDER__")
+          .replace(/\{\{number\}\}/g, "__NUMBER_PLACEHOLDER__");
         const parsed = JSON.parse(templateClean);
-        
+
         const replacePlaceholders = (obj: any): any => {
           if (typeof obj === "string") {
-            return obj.replace(/__TEXT_PLACEHOLDER__/g, text).replace(/__NUMBER_PLACEHOLDER__/g, phone);
+            return obj
+              .replace(/__TEXT_PLACEHOLDER__/g, text)
+              .replace(/__NUMBER_PLACEHOLDER__/g, phone);
           }
           if (Array.isArray(obj)) return obj.map(replacePlaceholders);
           if (obj && typeof obj === "object") {
@@ -194,16 +223,38 @@ Deno.serve(async (req) => {
           }
           return obj;
         };
-        
+
         const finalObj = replacePlaceholders(parsed);
+        if (forcedNumber && typeof finalObj === "object" && finalObj !== null) {
+          finalObj.number = forcedNumber;
+        }
         bodyStr = JSON.stringify(finalObj);
       } catch {
-        const escapedText = text.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\t/g, "\\t");
-        bodyStr = config.body_template.replace(/\{\{number\}\}/g, phone).replace(/\{\{text\}\}/g, escapedText);
+        const escapedText = text
+          .replace(/\\/g, "\\\\")
+          .replace(/"/g, '\\"')
+          .replace(/\n/g, "\\n")
+          .replace(/\r/g, "\\r")
+          .replace(/\t/g, "\\t");
+        bodyStr = config.body_template
+          .replace(/\{\{number\}\}/g, forcedNumber || phone)
+          .replace(/\{\{text\}\}/g, escapedText);
+
+        if (forcedNumber) {
+          try {
+            const parsedFallback = JSON.parse(bodyStr);
+            if (parsedFallback && typeof parsedFallback === "object") {
+              parsedFallback.number = forcedNumber;
+              bodyStr = JSON.stringify(parsedFallback);
+            }
+          } catch {
+            // keep fallback body as-is
+          }
+        }
       }
-      
+
       console.log(`Sending message, body preview: ${bodyStr.substring(0, 150)}...`);
-      
+
       const resp = await fetch(config.api_url, {
         method: "POST",
         headers: apiHeaders,
@@ -217,7 +268,8 @@ Deno.serve(async (req) => {
       if (isGroupMode) {
         // Group mode: send only ONE message
         try {
-          const resp = await sendText("group", messageText);
+          const target = configuredDestination || "group";
+          const resp = await sendText(target, messageText, configuredDestination || undefined);
           if (resp.ok) {
             sentCount++;
           } else {
@@ -231,7 +283,7 @@ Deno.serve(async (req) => {
         // Per-user mode: send to each user individually
         for (const user of eligibleUsers) {
           try {
-            const resp = await sendText(user.phone, messageText);
+            const resp = await sendText(user.phone, messageText, user.phone);
             if (resp.ok) {
               sentCount++;
             } else {
