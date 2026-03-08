@@ -240,7 +240,7 @@ export default function PlayersPage() {
                   <div className="flex items-center gap-1.5">
                     <span className="font-display font-bold text-sm truncate">{player.nickname}</span>
                     {ranking && (
-                      <span className="text-[10px] font-display font-bold text-gold">Lv.{ranking.level}</span>
+                      <span className="text-[10px] font-display font-bold text-muted-foreground">Lv.{ranking.level}</span>
                     )}
                     {player.role === "admin" && <span className="text-gold text-[10px]">👑</span>}
                   </div>
@@ -259,9 +259,10 @@ export default function PlayersPage() {
                   </div>
                 </div>
 
-                {/* XP */}
+                {/* Level/XP */}
                 {ranking && (
                   <div className="text-right shrink-0">
+                    <p className="font-display text-sm font-extrabold text-gold">Lv.{ranking.level}</p>
                     <p className="text-[10px] text-muted-foreground font-body">{ranking.xp?.endsWith('%') ? ranking.xp : `${ranking.xp}%`}</p>
                   </div>
                 )}
