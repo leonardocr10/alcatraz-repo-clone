@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Swords, Clock, MapPin, ChevronDown, Send, MessageCircle, Bell, BellOff, BellRing } from "lucide-react";
+import { Swords, Clock, MapPin, ChevronDown, Send, MessageCircle, Bell, BellOff, BellRing, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useBossNotifications } from "@/hooks/useBossNotifications";
 
@@ -39,17 +39,28 @@ const HomePage = () => {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    const fetchBosses = async () => {
-      const [bossRes, schedRes] = await Promise.all([
-        supabase.from("bosses").select("*").order("name"),
-        supabase.from("boss_schedules").select("*").order("spawn_time"),
-      ]);
-      setBosses((bossRes.data || []) as Boss[]);
-      setBossSchedules((schedRes.data || []) as BossSchedule[]);
-    };
-    fetchBosses();
+  const fetchBosses = useCallback(async () => {
+    const [bossRes, schedRes] = await Promise.all([
+      supabase.from("bosses").select("*").order("name"),
+      supabase.from("boss_schedules").select("*").order("spawn_time"),
+    ]);
+    setBosses((bossRes.data || []) as Boss[]);
+    setBossSchedules((schedRes.data || []) as BossSchedule[]);
   }, []);
+
+  useEffect(() => {
+    fetchBosses();
+  }, [fetchBosses]);
+
+  // Real-time subscription for bosses and schedules
+  useEffect(() => {
+    const ch = supabase
+      .channel("bosses-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "bosses" }, () => fetchBosses())
+      .on("postgres_changes", { event: "*", schema: "public", table: "boss_schedules" }, () => fetchBosses())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [fetchBosses]);
 
   const getBrazilTime = useCallback(() => {
     const now = currentTime;
@@ -150,11 +161,23 @@ const HomePage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Clock + BRT */}
-      <div className="glass-card p-2.5 flex items-center justify-center gap-2">
-        <Clock className="w-4 h-4 text-primary" />
-        <span className="font-display text-lg font-extrabold tabular-nums">{getBrazilTimeStr()}</span>
-        <span className="text-[10px] text-muted-foreground font-body bg-secondary px-1.5 py-0.5 rounded-md">BRT</span>
+      {/* Clock + BRT + Refresh */}
+      <div className="glass-card p-2.5 flex items-center justify-between">
+        <div className="flex-1" />
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-primary" />
+          <span className="font-display text-lg font-extrabold tabular-nums">{getBrazilTimeStr()}</span>
+          <span className="text-[10px] text-muted-foreground font-body bg-secondary px-1.5 py-0.5 rounded-md">BRT</span>
+        </div>
+        <div className="flex-1 flex justify-end">
+          <button
+            onClick={() => { fetchBosses(); toast.success("Atualizado!"); }}
+            className="p-1.5 rounded-lg hover:bg-secondary/50 transition-colors text-muted-foreground hover:text-primary"
+            title="Atualizar"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Desktop Notifications */}
