@@ -44,7 +44,21 @@ export default function HistoryPage() {
     try {
       const { data: result, error } = await supabase.functions.invoke("scrape-history");
       if (error) throw error;
-      setData(result as HistoryData);
+      const r = result as any;
+      // Normalize items to always have details array
+      const normalize = (day: any) => ({
+        ...day,
+        items: (day?.items || []).map((item: any) => ({
+          ...item,
+          details: item.details || [],
+        })),
+      });
+      setData({
+        today: normalize(r?.today),
+        yesterday: normalize(r?.yesterday),
+        scrapedAt: r?.scrapedAt || new Date().toISOString(),
+        pagesScraped: r?.pagesScraped || 0,
+      });
       if (showToast) toast.success("Histórico atualizado!");
     } catch (err: any) {
       console.error("Error fetching history:", err);
