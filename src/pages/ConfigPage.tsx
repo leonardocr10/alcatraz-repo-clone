@@ -139,9 +139,24 @@ export default function ConfigPage() {
     return <p className="glass-card p-4 text-sm text-muted-foreground">Acesso restrito ao admin.</p>;
   }
 
+  const saveRules = async () => {
+    setSavingRules(true);
+    if (rulesId) {
+      const { error } = await supabase.from("clan_rules").update({ content: rulesContent, updated_at: new Date().toISOString() }).eq("id", rulesId);
+      if (error) toast.error("Erro ao salvar regras");
+      else toast.success("Regras atualizadas!");
+    } else {
+      const { data, error } = await supabase.from("clan_rules").insert({ content: rulesContent }).select("id").single();
+      if (error) toast.error("Erro ao salvar regras");
+      else { toast.success("Regras salvas!"); if (data) setRulesId(data.id); }
+    }
+    setSavingRules(false);
+  };
+
   const tabs = [
     { key: "whatsapp" as const, label: "WhatsApp", icon: MessageCircle },
     { key: "theme" as const, label: "Tema", icon: Palette },
+    { key: "rules" as const, label: "Regras", icon: ScrollText },
     { key: "clear" as const, label: "Limpar", icon: Trash2 },
   ];
 
