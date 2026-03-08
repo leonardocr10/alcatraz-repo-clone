@@ -31,7 +31,9 @@ export default function PlayersPage() {
   const { isAdmin } = useAuth();
   const [players, setPlayers] = useState<Player[]>([]);
   const [icons, setIcons] = useState<ClassIcon[]>([]);
+  const [rankings, setRankings] = useState<Ranking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState("");
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
