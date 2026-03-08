@@ -259,11 +259,10 @@ export default function PlayersPage() {
                   </div>
                 </div>
 
-                {/* Level/XP */}
+                {/* XP */}
                 {ranking && (
                   <div className="text-right shrink-0">
-                    <p className="font-display text-sm font-extrabold text-gold">Lv.{ranking.level}</p>
-                    <p className="text-[10px] text-muted-foreground font-body">{ranking.xp}</p>
+                    <p className="text-[10px] text-muted-foreground font-body">{ranking.xp?.endsWith('%') ? ranking.xp : `${ranking.xp}%`}</p>
                   </div>
                 )}
 
