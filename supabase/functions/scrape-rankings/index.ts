@@ -5,86 +5,47 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-function extractLevelPlayers(html: string) {
-  const players: Array<{
-    rank: number; name: string; gameClass: string; clan: string; level: number; xp: string;
-  }> = [];
-
+function extractLevelPlayer(html: string, targetName: string) {
   // Isolate the rankLevel panel
   let searchHtml = html;
   const panelMatch = html.match(/id="rankLevel"([\s\S]*?)(?:id="rankPvp"|id="rankBellatra"|$)/);
   if (panelMatch) searchHtml = panelMatch[1];
 
-  // Match table rows
   const rowRegex = /<tr class="hover:bg-white\/5 transition">([\s\S]*?)<\/tr>/g;
   let match;
   while ((match = rowRegex.exec(searchHtml)) !== null) {
     const rowHtml = match[1];
-    if (rowHtml.includes("<th") || rowHtml.includes("Nenhum resultado")) continue;
-
     const tdRegex = /<td[^>]*>([\s\S]*?)<\/td>/g;
     const tds: string[] = [];
     let m;
     while ((m = tdRegex.exec(rowHtml)) !== null) tds.push(m[1]);
 
-    // Level table has 6 columns: #, Name, Class, Clan, Level, XP
     if (tds.length < 6) continue;
 
-    // Check if XP column has % (to distinguish from other tables like PvP)
     const xpRaw = tds[5].replace(/<[^>]+>/g, "").trim();
     if (!xpRaw.includes("%")) continue;
 
-    const rankText = tds[0].replace(/<[^>]+>/g, "").trim();
-    const rank = parseInt(rankText);
+    const rank = parseInt(tds[0].replace(/<[^>]+>/g, "").trim());
     if (isNaN(rank)) continue;
 
-    // Name is directly in the td (text-orange-400 is on the td tag itself)
     const name = tds[1].replace(/<[^>]+>/g, "").trim();
-    if (!name) continue;
+    if (!name || name.toLowerCase() !== targetName.toLowerCase()) continue;
 
-    // Class - extract from span inside
     const classMatch = tds[2].match(/<span[^>]*>([^<]+)<\/span>/);
     const gameClass = classMatch ? classMatch[1].trim() : "";
 
-    // Clan - extract from span with text-white/80
     const clanMatch = tds[3].match(/text-white\/80[^>]*>([^<]+)<\/span>/);
     const clan = clanMatch ? clanMatch[1].trim() : "";
 
-    const levelText = tds[4].replace(/<[^>]+>/g, "").trim();
-    const level = parseInt(levelText);
+    const level = parseInt(tds[4].replace(/<[^>]+>/g, "").trim());
 
     const xpMatch = xpRaw.match(/([\d.,]+%)/);
     const xp = xpMatch ? xpMatch[1] : "0%";
 
-    players.push({ rank, name, gameClass, clan, level: isNaN(level) ? 0 : level, xp });
+    return { rank, name, gameClass, clan, level: isNaN(level) ? 0 : level, xp };
   }
 
-  return players;
-}
-
-async function fetchWithCookies(url: string, cookies: string) {
-  const headers: Record<string, string> = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-    "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Cache-Control": "no-cache",
-    "Referer": "https://arkanumpt.com.br/rankings",
-  };
-  if (cookies) headers["Cookie"] = cookies;
-
-  const resp = await fetch(url, { headers });
-
-  let newCookies = cookies;
-  const setCookieHeaders = resp.headers.getSetCookie?.() || [];
-  for (const sc of setCookieHeaders) {
-    const cookiePart = sc.split(";")[0];
-    if (cookiePart) {
-      if (newCookies) newCookies += "; " + cookiePart;
-      else newCookies = cookiePart;
-    }
-  }
-
-  return { resp, cookies: newCookies };
+  return null;
 }
 
 Deno.serve(async (req) => {
@@ -102,45 +63,33 @@ Deno.serve(async (req) => {
       .select("id, nickname");
     if (usersErr) throw usersErr;
 
-    const nicknameMap = new Map<string, string>();
-    for (const u of users || []) {
-      nicknameMap.set(u.nickname.toLowerCase(), u.id);
-    }
-
-    const unmatchedUsers = new Set(nicknameMap.keys());
     let matched = 0;
-    let cookies = "";
-    const maxPages = 65;
+    const unmatched: string[] = [];
 
-    for (let page = 1; page <= maxPages; page++) {
-      if (unmatchedUsers.size === 0) break;
+    for (const user of users || []) {
+      const url = `https://arkanumpt.com.br/rankings?q=${encodeURIComponent(user.nickname)}&class=0&tab=rankLevel`;
 
-      const url = `https://arkanumpt.com.br/rankings?q=&class=0&tab=rankLevel&page_level=${page}`;
-
-      const { resp, cookies: newCookies } = await fetchWithCookies(url, cookies);
-      cookies = newCookies;
+      const resp = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Accept": "text/html",
+        },
+      });
 
       if (!resp.ok) {
-        console.error(`Page ${page}: HTTP ${resp.status}`);
-        break;
+        console.error(`${user.nickname}: HTTP ${resp.status}`);
+        unmatched.push(user.nickname);
+        continue;
       }
 
       const html = await resp.text();
-      const pagePlayers = extractLevelPlayers(html);
+      const player = extractLevelPlayer(html, user.nickname);
 
-      console.log(`Page ${page}: ${html.length} bytes, ${pagePlayers.length} players`);
-
-      if (pagePlayers.length === 0 && page > 1) break;
-
-      for (const player of pagePlayers) {
-        const key = player.name.toLowerCase();
-        const userId = nicknameMap.get(key);
-        if (!userId) continue;
-
+      if (player) {
         const { error } = await supabase
           .from("player_rankings")
           .upsert({
-            user_id: userId,
+            user_id: user.id,
             nickname: player.name,
             game_class: player.gameClass,
             clan: player.clan,
@@ -152,23 +101,21 @@ Deno.serve(async (req) => {
 
         if (!error) {
           matched++;
-          unmatchedUsers.delete(key);
           console.log(`✓ ${player.name}: Lv.${player.level} ${player.xp} (#${player.rank})`);
         }
+      } else {
+        unmatched.push(user.nickname);
+        console.log(`✗ ${user.nickname}: não encontrado no ranking`);
       }
 
-      // Delay between pages
-      await new Promise(r => setTimeout(r, 500));
-    }
-
-    if (unmatchedUsers.size > 0) {
-      console.log(`Unmatched: ${[...unmatchedUsers].join(", ")}`);
+      // Small delay between requests
+      await new Promise(r => setTimeout(r, 300));
     }
 
     console.log(`Done: ${matched} matched out of ${users?.length || 0}`);
 
     return new Response(
-      JSON.stringify({ success: true, total: users?.length || 0, matched, unmatched: unmatchedUsers.size }),
+      JSON.stringify({ success: true, total: users?.length || 0, matched, unmatched: unmatched.length }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
