@@ -256,6 +256,14 @@ export default function PlayersPage() {
                   </div>
                 </div>
 
+                {/* Level/XP */}
+                {ranking && (
+                  <div className="text-right shrink-0">
+                    <p className="font-display text-sm font-extrabold text-gold">Lv.{ranking.level}</p>
+                    <p className="text-[10px] text-muted-foreground font-body">{ranking.xp}</p>
+                  </div>
+                )}
+
                 {/* Actions */}
                 {isAdmin && (
                   <div className="relative shrink-0">
