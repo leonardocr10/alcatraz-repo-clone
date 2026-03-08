@@ -13,6 +13,7 @@ import ClassesPage from "@/pages/ClassesPage";
 import ConfigPage from "@/pages/ConfigPage";
 import NotFound from "@/pages/NotFound";
 
+
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
