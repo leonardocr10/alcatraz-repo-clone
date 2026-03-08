@@ -532,25 +532,45 @@ export default function HistoryPage() {
       </Dialog>
 
       {/* Top 5 Dialog */}
-      <Dialog open={showTop5} onOpenChange={setShowTop5}>
+      <Dialog open={showTop5} onOpenChange={(open) => { setShowTop5(open); if (!open) setSelectedPlayer(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="font-display text-base font-extrabold uppercase tracking-wider flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-primary" />
-              Top 5 Droppers
+              {selectedPlayer ? (
+                <button onClick={() => setSelectedPlayer(null)} className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                  <ChevronDown className="w-3.5 h-3.5 rotate-90" />
+                  {selectedPlayer}
+                </button>
+              ) : "Top 5 Droppers"}
             </DialogTitle>
             <DialogDescription className="text-xs">
-              Jogadores com mais drops (hoje + ontem)
+              {selectedPlayer ? `Detalhes dos drops de ${selectedPlayer}` : "Jogadores com mais drops (hoje + ontem) — toque no nome para detalhes"}
             </DialogDescription>
           </DialogHeader>
-          {top5Players.length > 0 ? (
+          {selectedPlayer ? (
+            <div className="space-y-2">
+              {selectedPlayerItems.map((item) => (
+                <div key={item.name} className="flex items-center justify-between px-2 py-2 rounded-lg bg-secondary/20">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-xs font-display font-bold text-foreground">{item.name}</span>
+                  </div>
+                  <span className="text-sm font-display font-extrabold text-primary tabular-nums">{item.count}</span>
+                </div>
+              ))}
+              {selectedPlayerItems.length === 0 && (
+                <p className="text-xs text-muted-foreground font-body text-center py-4">Sem dados</p>
+              )}
+            </div>
+          ) : top5Players.length > 0 ? (
             <div className="space-y-2.5">
               {top5Players.map((player, i) => {
                 const maxCount = top5Players[0]?.count || 1;
                 const pct = (player.count / maxCount) * 100;
                 const medals = ["🥇", "🥈", "🥉"];
                 return (
-                  <div key={player.nick} className="space-y-1">
+                  <button key={player.nick} onClick={() => setSelectedPlayer(player.nick)} className="w-full text-left space-y-1 hover:bg-secondary/20 rounded-lg px-1 py-0.5 transition-colors">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-sm w-6 text-center">
@@ -558,7 +578,10 @@ export default function HistoryPage() {
                         </span>
                         <span className="text-xs font-display font-bold text-foreground">{player.nick}</span>
                       </div>
-                      <span className="text-sm font-display font-extrabold text-primary tabular-nums">{player.count}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-display font-extrabold text-primary tabular-nums">{player.count}</span>
+                        <ChevronDown className="w-3 h-3 text-muted-foreground -rotate-90" />
+                      </div>
                     </div>
                     <div className="ml-8 h-2 rounded-full bg-secondary/50 overflow-hidden">
                       <div
@@ -566,7 +589,7 @@ export default function HistoryPage() {
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
