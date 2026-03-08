@@ -1,0 +1,1 @@
+ALTER TABLE public.users ADD COLUMN clan_role text DEFAULT 'membro';

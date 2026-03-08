@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Users, Search, Pencil, MessageCircle, Trash2, X, Save, KeyRound, MoreVertical, RefreshCw, Trophy, Send, CheckSquare, Square } from "lucide-react";
-import { getStaffEmoji } from "@/data/staffMembers";
+import { getClanRoleEmoji, CLAN_ROLES } from "@/data/staffMembers";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -19,6 +19,7 @@ type Player = {
   role: AppRole;
   auth_id: string | null;
   created_at: string;
+  clan_role: string | null;
 };
 
 type ClassIcon = { name: string; image_url: string | null; description: string | null };
@@ -51,6 +52,7 @@ export default function PlayersPage() {
   const [editClass, setEditClass] = useState<CharacterClass | "">("");
   const [editRole, setEditRole] = useState<AppRole>("user");
   const [editPhone, setEditPhone] = useState("");
+  const [editClanRole, setEditClanRole] = useState("membro");
   const [saving, setSaving] = useState(false);
 
   // Reset password modal
@@ -70,7 +72,7 @@ export default function PlayersPage() {
   const fetchData = async () => {
     setLoading(true);
     const [playersRes, iconsRes, rankingsRes] = await Promise.all([
-      supabase.from("users").select("id, nickname, class, phone, role, auth_id, created_at").order("created_at", { ascending: false }),
+      supabase.from("users").select("id, nickname, class, phone, role, auth_id, created_at, clan_role").order("created_at", { ascending: false }),
       supabase.from("character_classes").select("name, image_url, description"),
       supabase.from("player_rankings").select("user_id, level, xp, rank_position"),
     ]);
@@ -168,6 +170,7 @@ export default function PlayersPage() {
     setEditClass(player.class || "");
     setEditRole(player.role);
     setEditPhone(player.phone || "");
+    setEditClanRole(player.clan_role || "membro");
     setMenuOpen(null);
   };
 
@@ -179,6 +182,7 @@ export default function PlayersPage() {
       class: editClass || null,
       role: editRole,
       phone: editPhone.replace(/\D/g, "") || null,
+      clan_role: editClanRole,
     };
     const { error } = await supabase.from("users").update(payload).eq("id", editPlayer.id);
     if (error) {
@@ -305,31 +309,29 @@ export default function PlayersPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-3">
           {isAdmin && (
             <button
               onClick={openMsgModal}
-              className="flex items-center gap-1.5 text-xs font-display font-bold text-primary px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors"
+              className="flex flex-col items-center text-xs font-display font-bold text-primary px-3 py-1 rounded-xl hover:bg-primary/10 transition-colors"
             >
               <Send className="w-3.5 h-3.5" />
-              Mensagem
+              <span>Mensagem</span>
             </button>
           )}
-          <div className="flex flex-col items-end">
-            <button
-              onClick={() => syncRankings(true)}
-              disabled={syncing}
-              className="flex items-center gap-1.5 text-xs font-display font-bold text-primary px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
-              {syncing ? "..." : "Sincronizar"}
-            </button>
-            {lastSync && (
-              <span className="text-[10px] text-muted-foreground font-body pr-1">Última sync: {lastSync}</span>
-            )}
-          </div>
+          <button
+            onClick={() => syncRankings(true)}
+            disabled={syncing}
+            className="flex flex-col items-center text-xs font-display font-bold text-primary px-3 py-1 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
+            <span>{syncing ? "..." : "Sincronizar"}</span>
+          </button>
         </div>
       </div>
+      {lastSync && (
+        <p className="text-[10px] text-muted-foreground font-body text-right -mt-2">Última sync: {lastSync}</p>
+      )}
 
       {/* Class Filter Chips */}
       <div className="flex flex-wrap gap-1.5">
@@ -417,8 +419,8 @@ export default function PlayersPage() {
                       <span className="text-[10px] font-display font-bold text-muted-foreground">Lv.{ranking.level}</span>
                     )}
                     {(() => {
-                      const staffEmoji = getStaffEmoji(player.nickname);
-                      return staffEmoji ? <span className="text-[10px]" title="Staff">{staffEmoji}</span> : null;
+                      const emoji = getClanRoleEmoji(player.clan_role);
+                      return emoji ? <span className="text-[10px]" title="Staff">{emoji}</span> : null;
                     })()}
                     {player.role === "admin" && <span className="text-gold text-[10px]">👑</span>}
                   </div>
@@ -549,6 +551,25 @@ export default function PlayersPage() {
                     }`}
                   >
                     {r === "admin" ? "👑 Admin" : "🎮 User"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Cargo no Clã</span>
+              <div className="flex flex-wrap gap-1.5">
+                {CLAN_ROLES.map((r) => (
+                  <button
+                    key={r.value}
+                    onClick={() => setEditClanRole(r.value)}
+                    className={`px-3 py-2 rounded-xl text-xs font-display font-bold transition-all border ${
+                      editClanRole === r.value
+                        ? "border-primary bg-primary/15 text-primary"
+                        : "border-border/40 text-muted-foreground hover:border-muted-foreground/30"
+                    }`}
+                  >
+                    {r.emoji ? `${r.emoji} ` : ""}{r.label}
                   </button>
                 ))}
               </div>
