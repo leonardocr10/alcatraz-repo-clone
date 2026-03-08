@@ -2,3 +2,6 @@ project_id = "pmofvoekrrskgurydtnp"
 
 [functions.boss-notify]
 verify_jwt = false
+
+[functions.send-message]
+verify_jwt = false

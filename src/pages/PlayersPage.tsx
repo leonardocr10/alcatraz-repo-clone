@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Users, Search, Pencil, MessageCircle, Trash2, X, Save, KeyRound, MoreVertical, RefreshCw, Trophy } from "lucide-react";
+import { Users, Search, Pencil, MessageCircle, Trash2, X, Save, KeyRound, MoreVertical, RefreshCw, Trophy, Send, CheckSquare, Square } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -49,6 +49,12 @@ export default function PlayersPage() {
   const [resetPlayer, setResetPlayer] = useState<Player | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [resetting, setResetting] = useState(false);
+
+  // Message modal state
+  const [msgOpen, setMsgOpen] = useState(false);
+  const [msgText, setMsgText] = useState("");
+  const [msgSelected, setMsgSelected] = useState<Set<string>>(new Set());
+  const [msgSending, setMsgSending] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -193,6 +199,53 @@ export default function PlayersPage() {
     Magician: "bg-cyan-500/20 text-cyan-400",
   };
 
+  const playersWithPhone = useMemo(() => players.filter(p => p.phone && p.phone.replace(/\D/g, "").length >= 10), [players]);
+
+  const openMsgModal = () => {
+    setMsgOpen(true);
+    setMsgText("");
+    setMsgSelected(new Set(playersWithPhone.map(p => p.id)));
+  };
+
+  const toggleMsgPlayer = (id: string) => {
+    setMsgSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllMsg = () => {
+    if (msgSelected.size === playersWithPhone.length) {
+      setMsgSelected(new Set());
+    } else {
+      setMsgSelected(new Set(playersWithPhone.map(p => p.id)));
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!msgText.trim() || msgSelected.size === 0) return;
+    setMsgSending(true);
+    try {
+      const phones = playersWithPhone
+        .filter(p => msgSelected.has(p.id))
+        .map(p => ({ phone: p.phone!, nickname: p.nickname }));
+      const { data, error } = await supabase.functions.invoke("send-message", {
+        body: { phones, message: msgText.trim() },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Mensagem enviada para ${data.sent}/${data.total} jogadores!`);
+      if (data?.errors?.length) {
+        console.warn("Send errors:", data.errors);
+      }
+      setMsgOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao enviar mensagem");
+    }
+    setMsgSending(false);
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -206,14 +259,25 @@ export default function PlayersPage() {
             <p className="text-xs text-muted-foreground font-body">{players.length} registrados</p>
           </div>
         </div>
-        <button
-          onClick={syncRankings}
-          disabled={syncing}
-          className="flex items-center gap-1.5 text-xs font-display font-bold text-primary px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
-          {syncing ? "..." : "Sincronizar"}
-        </button>
+        <div className="flex items-center gap-1">
+          {isAdmin && (
+            <button
+              onClick={openMsgModal}
+              className="flex items-center gap-1.5 text-xs font-display font-bold text-primary px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors"
+            >
+              <Send className="w-3.5 h-3.5" />
+              Mensagem
+            </button>
+          )}
+          <button
+            onClick={syncRankings}
+            disabled={syncing}
+            className="flex items-center gap-1.5 text-xs font-display font-bold text-primary px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
+            {syncing ? "..." : "Sincronizar"}
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -429,6 +493,79 @@ export default function PlayersPage() {
               <button onClick={resetPassword} disabled={resetting || newPassword.length < 6} className="btn-primary flex-1 text-sm py-2.5 flex items-center justify-center gap-2">
                 <KeyRound className="w-4 h-4" />
                 {resetting ? "Resetando..." : "Resetar"}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send Message Modal */}
+      <Dialog open={msgOpen} onOpenChange={setMsgOpen}>
+        <DialogContent className="max-w-sm max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <Send className="w-4 h-4 text-primary" /> Enviar Mensagem
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+            {/* Message text */}
+            <label className="block space-y-1.5">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Mensagem</span>
+              <textarea
+                value={msgText}
+                onChange={(e) => setMsgText(e.target.value)}
+                placeholder="Digite a mensagem..."
+                className="input-modern min-h-[80px] resize-none"
+                rows={3}
+              />
+            </label>
+
+            {/* Player selection */}
+            <div className="space-y-1.5 flex-1 overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">
+                  Destinatários ({msgSelected.size}/{playersWithPhone.length})
+                </span>
+                <button
+                  onClick={toggleAllMsg}
+                  className="text-[10px] font-display font-bold text-primary hover:underline"
+                >
+                  {msgSelected.size === playersWithPhone.length ? "Desmarcar todos" : "Selecionar todos"}
+                </button>
+              </div>
+              <div className="overflow-y-auto flex-1 space-y-1 max-h-[200px] pr-1">
+                {playersWithPhone.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => toggleMsgPlayer(p.id)}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-sm font-body transition-all border ${
+                      msgSelected.has(p.id)
+                        ? "border-primary bg-primary/10 text-foreground"
+                        : "border-border/40 text-muted-foreground hover:border-muted-foreground/30"
+                    }`}
+                  >
+                    {msgSelected.has(p.id) ? (
+                      <CheckSquare className="w-4 h-4 text-primary shrink-0" />
+                    ) : (
+                      <Square className="w-4 h-4 shrink-0" />
+                    )}
+                    <span className="truncate font-semibold">{p.nickname}</span>
+                    <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{formatPhone(p.phone)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Send button */}
+            <div className="flex gap-2 pt-2">
+              <button onClick={() => setMsgOpen(false)} className="btn-secondary flex-1 text-sm py-2.5">Cancelar</button>
+              <button
+                onClick={sendMessage}
+                disabled={msgSending || !msgText.trim() || msgSelected.size === 0}
+                className="btn-primary flex-1 text-sm py-2.5 flex items-center justify-center gap-2"
+              >
+                <Send className="w-4 h-4" />
+                {msgSending ? "Enviando..." : `Enviar (${msgSelected.size})`}
               </button>
             </div>
           </div>
