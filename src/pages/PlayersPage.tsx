@@ -309,9 +309,14 @@ export default function PlayersPage() {
                 <span className="font-display font-extrabold text-xs text-muted-foreground w-5 text-center shrink-0">
                   {index + 1}
                 </span>
-                {/* Avatar */}
+                {/* Avatar - clickable to view class */}
                 {iconUrl ? (
-                  <img src={iconUrl} alt="" className="w-10 h-10 rounded-xl object-cover border border-border/40 shrink-0" />
+                  <img
+                    src={iconUrl}
+                    alt=""
+                    className="w-10 h-10 rounded-xl object-cover border border-border/40 shrink-0 cursor-pointer active:scale-95 transition-transform"
+                    onClick={() => player.class && setViewClass(classDetailMap.get(player.class) || null)}
+                  />
                 ) : (
                   <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-sm font-bold text-primary shrink-0">
                     {getInitial(player.nickname)}
