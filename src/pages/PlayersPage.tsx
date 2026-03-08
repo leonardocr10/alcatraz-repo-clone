@@ -90,6 +90,7 @@ export default function PlayersPage() {
   useEffect(() => { fetchData(); }, []);
 
   const iconMap = useMemo(() => new Map(icons.map((c) => [c.name, c.image_url])), [icons]);
+  const classDetailMap = useMemo(() => new Map(icons.map((c) => [c.name, c])), [icons]);
   const rankingMap = useMemo(() => new Map(rankings.map((r) => [r.user_id, r])), [rankings]);
 
   const filtered = useMemo(() => {
