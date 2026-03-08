@@ -157,6 +157,51 @@ const HomePage = () => {
         <span className="text-[10px] text-muted-foreground font-body bg-secondary px-1.5 py-0.5 rounded-md">BRT</span>
       </div>
 
+      {/* Desktop Notifications */}
+      {bossNotify.supported && (
+        <div className="glass-card p-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {bossNotify.enabled ? (
+              <BellRing className="w-4 h-4 text-primary shrink-0" />
+            ) : (
+              <BellOff className="w-4 h-4 text-muted-foreground shrink-0" />
+            )}
+            <div className="min-w-0">
+              <p className="text-xs font-display font-extrabold truncate">
+                {bossNotify.enabled ? "Alertas Ativos" : "Alertas Desktop"}
+              </p>
+              {bossNotify.enabled && (
+                <div className="flex items-center gap-1 mt-1">
+                  {minuteOptions.map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => bossNotify.updateMinutes(m)}
+                      className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold transition-colors ${
+                        bossNotify.notifyMinutes === m
+                          ? "bg-primary/20 text-primary border border-primary/30"
+                          : "bg-secondary/50 text-muted-foreground hover:bg-secondary"
+                      }`}
+                    >
+                      {m}min
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={bossNotify.toggle}
+            className={`shrink-0 text-xs font-display font-bold px-3 py-1.5 rounded-xl transition-colors ${
+              bossNotify.enabled
+                ? "bg-primary/15 text-primary hover:bg-primary/25"
+                : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+            }`}
+          >
+            {bossNotify.enabled ? "Desativar" : "Ativar"}
+          </button>
+        </div>
+      )}
+
       {/* Bosses */}
       {groupedBosses.length > 0 ? (
         <div className="glass-card overflow-hidden">
