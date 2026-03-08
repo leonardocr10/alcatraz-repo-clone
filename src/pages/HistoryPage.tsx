@@ -68,6 +68,7 @@ export default function HistoryPage() {
   const [itemFilter, setItemFilter] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [showTop5, setShowTop5] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
 
   const normalize = useCallback((day: any) => ({
     ...day,
