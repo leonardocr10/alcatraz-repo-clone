@@ -68,38 +68,68 @@ export default function HistoryPage() {
   const [itemFilter, setItemFilter] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
-  const fetchHistory = useCallback(async (showToast = false) => {
+  const normalize = useCallback((day: any) => ({
+    ...day,
+    items: (day?.items || []).map((item: any) => ({
+      ...item,
+      details: item.details || [],
+    })),
+  }), []);
+
+  const parseResult = useCallback((r: any) => {
+    if (!r?.today) return null;
+    return {
+      today: normalize(r.today),
+      yesterday: normalize(r.yesterday),
+      scrapedAt: r.scrapedAt || new Date().toISOString(),
+      pagesScraped: r.pagesScraped || 0,
+    } as HistoryData;
+  }, [normalize]);
+
+  // Read cached data from DB
+  const fetchFromCache = useCallback(async () => {
     try {
-      const { data: result, error } = await supabase.functions.invoke("scrape-history");
+      const { data: rows, error } = await supabase
+        .from("history_cache" as any)
+        .select("data, updated_at")
+        .limit(1)
+        .single();
       if (error) throw error;
-      const r = result as any;
-      const normalize = (day: any) => ({
-        ...day,
-        items: (day?.items || []).map((item: any) => ({
-          ...item,
-          details: item.details || [],
-        })),
-      });
-      setData({
-        today: normalize(r?.today),
-        yesterday: normalize(r?.yesterday),
-        scrapedAt: r?.scrapedAt || new Date().toISOString(),
-        pagesScraped: r?.pagesScraped || 0,
-      });
-      if (showToast) toast.success("Histórico atualizado!");
-    } catch (err: any) {
-      console.error("Error fetching history:", err);
-      if (showToast) toast.error(err.message || "Erro ao buscar histórico");
+      const row = rows as any;
+      if (row?.data?.today) {
+        const parsed = parseResult(row.data);
+        if (parsed) setData(parsed);
+      }
+    } catch (err) {
+      console.error("Error reading history cache:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [parseResult]);
+
+  // Trigger scrape (manual refresh)
+  const triggerScrape = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke("scrape-history");
+      if (error) throw error;
+      const parsed = parseResult(result);
+      if (parsed) setData(parsed);
+      toast.success("Histórico atualizado!");
+    } catch (err: any) {
+      console.error("Error fetching history:", err);
+      toast.error(err.message || "Erro ao buscar histórico");
+    } finally {
+      setLoading(false);
+    }
+  }, [parseResult]);
 
   useEffect(() => {
-    fetchHistory();
-    const interval = setInterval(() => fetchHistory(), 5 * 60 * 1000);
+    fetchFromCache();
+    // Refresh from cache every 5 minutes (cron updates the cache)
+    const interval = setInterval(() => fetchFromCache(), 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [fetchHistory]);
+  }, [fetchFromCache]);
 
   // Extract unique nicks, maps, items from all data
   const { allNicks, allMaps, allItems } = useMemo(() => {
