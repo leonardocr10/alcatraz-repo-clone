@@ -233,7 +233,7 @@ export default function HistoryPage() {
             Filtros
             {hasActiveFilter && (
               <span className="w-4 h-4 rounded-full bg-primary text-primary-foreground text-[9px] flex items-center justify-center font-bold">
-                {(nickFilter ? 1 : 0) + (mapFilter ? 1 : 0)}
+                {(nickFilter ? 1 : 0) + (mapFilter ? 1 : 0) + (itemFilter ? 1 : 0)}
               </span>
             )}
           </button>
