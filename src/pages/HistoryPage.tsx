@@ -268,7 +268,7 @@ export default function HistoryPage() {
             )}
           </button>
           <button
-            onClick={() => { setLoading(true); fetchHistory(true); }}
+            onClick={() => triggerScrape()}
             disabled={loading}
             className="flex items-center gap-1.5 text-xs font-display font-bold text-primary px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50"
           >
