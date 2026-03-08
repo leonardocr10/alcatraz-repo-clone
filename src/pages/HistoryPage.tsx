@@ -509,6 +509,51 @@ export default function HistoryPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Top 5 Dialog */}
+      <Dialog open={showTop5} onOpenChange={setShowTop5}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display text-base font-extrabold uppercase tracking-wider flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-primary" />
+              Top 5 Droppers
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Jogadores com mais drops (hoje + ontem)
+            </DialogDescription>
+          </DialogHeader>
+          {top5Players.length > 0 ? (
+            <div className="space-y-2.5">
+              {top5Players.map((player, i) => {
+                const maxCount = top5Players[0]?.count || 1;
+                const pct = (player.count / maxCount) * 100;
+                const medals = ["🥇", "🥈", "🥉"];
+                return (
+                  <div key={player.nick} className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm w-6 text-center">
+                          {i < 3 ? medals[i] : <span className="text-[10px] font-display font-bold text-muted-foreground">{i + 1}º</span>}
+                        </span>
+                        <span className="text-xs font-display font-bold text-foreground">{player.nick}</span>
+                      </div>
+                      <span className="text-sm font-display font-extrabold text-primary tabular-nums">{player.count}</span>
+                    </div>
+                    <div className="ml-8 h-2 rounded-full bg-secondary/50 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-primary to-primary/60 transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground font-body text-center py-4">Sem dados disponíveis</p>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
