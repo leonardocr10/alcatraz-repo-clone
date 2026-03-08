@@ -87,6 +87,7 @@ export function useBossNotifications() {
       icon: "/pwa-icon-192.png",
       badge: "/pwa-icon-192.png",
       tag: "test-" + Date.now(),
+      requireInteraction: true,
     });
     return true;
   }, []);
