@@ -12,6 +12,20 @@ interface HistoryEntry {
   source: string;
 }
 
+// Only track these items
+const TRACKED_ITEMS = ['Celesto', 'Inferna', 'Mirage', 'Enigma'];
+
+function isTrackedItem(itemName: string): boolean {
+  const lower = itemName.toLowerCase();
+  // Check exact matches
+  for (const t of TRACKED_ITEMS) {
+    if (lower === t.toLowerCase()) return true;
+  }
+  // Check if contains "inferno"
+  if (lower.includes('inferno')) return true;
+  return false;
+}
+
 function stripHtml(str: string): string {
   return str.replace(/<[^>]*>/g, '').trim();
 }
@@ -23,12 +37,10 @@ async function scrapePage(page: number): Promise<{ entries: HistoryEntry[]; tota
 
   const entries: HistoryEntry[] = [];
 
-  // Extract total pages
   let totalPages = 1;
   const totalMatch = html.match(/Página\s+\d+\s*\/\s*(\d+)/);
   if (totalMatch) totalPages = parseInt(totalMatch[1]);
 
-  // Parse table rows - match any tr with hover:bg-white/5
   const rowRegex = /<tr\s+class="hover:bg-white\/5[^"]*"[^>]*>([\s\S]*?)<\/tr>/g;
   let match;
 
@@ -41,18 +53,15 @@ async function scrapePage(page: number): Promise<{ entries: HistoryEntry[]; tota
       const nick = stripHtml(cells[1]);
       const map = stripHtml(cells[2]);
 
-      // Item cell - get item name from the font-semibold div
       const itemCell = cells[3];
       const itemName = stripHtml(
         itemCell.match(/<div[^>]*class="[^"]*text-white\/85[^"]*"[^>]*>([\s\S]*?)<\/div>/)?.[1] || ''
       );
       
-      // Boss name
       const bossName = stripHtml(
         itemCell.match(/Boss:\s*<span[^>]*>([\s\S]*?)<\/span>/)?.[1] || ''
       ) || null;
 
-      // Source
       const sourceCell = cells[4];
       const source = sourceCell.includes('Boss') ? 'Boss' : 'Normal';
 
@@ -83,25 +92,36 @@ Deno.serve(async (req) => {
     const allEntries: HistoryEntry[] = [];
     let page = 1;
     let maxPages = 1;
-    let reachedOlder = false;
+    let consecutiveOlderPages = 0;
 
-    while (page <= maxPages && !reachedOlder && page <= 50) {
+    // Scrape all pages that contain today/yesterday data
+    while (page <= maxPages && page <= 100) {
       const { entries, totalPages } = await scrapePage(page);
       maxPages = totalPages;
 
+      let foundRelevant = false;
       for (const entry of entries) {
         const entryDate = entry.date.split(' ')[0];
         if (entryDate === todayStr || entryDate === yesterdayStr) {
-          allEntries.push(entry);
-        } else {
-          reachedOlder = true;
+          // Only keep tracked items
+          if (isTrackedItem(entry.item)) {
+            allEntries.push(entry);
+          }
+          foundRelevant = true;
         }
+      }
+
+      // Stop after 2 consecutive pages with no today/yesterday entries
+      if (!foundRelevant) {
+        consecutiveOlderPages++;
+        if (consecutiveOlderPages >= 2) break;
+      } else {
+        consecutiveOlderPages = 0;
       }
 
       page++;
     }
 
-    // Group by date and item, keeping details
     interface ItemDetail {
       nick: string;
       map: string;
@@ -122,7 +142,7 @@ Deno.serve(async (req) => {
 
     for (const entry of allEntries) {
       const entryDate = entry.date.split(' ')[0];
-      const itemKey = entry.item || 'Desconhecido';
+      const itemKey = entry.item;
       const time = entry.date.split(' ')[1] || '';
       const detail: ItemDetail = { nick: entry.nick, map: entry.map, boss: entry.boss, source: entry.source, time };
 
@@ -149,6 +169,7 @@ Deno.serve(async (req) => {
       yesterday: { date: yesterdayStr, total: yesterdayTotal, items: sortItems(yesterdayItems) },
       scrapedAt: new Date().toISOString(),
       pagesScraped: page - 1,
+      trackedItems: [...TRACKED_ITEMS, '*inferno*'],
     };
 
     console.log(`Scraped ${page - 1} pages. Today: ${todayTotal}, Yesterday: ${yesterdayTotal}`);
