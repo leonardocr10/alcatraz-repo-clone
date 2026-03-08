@@ -415,12 +415,14 @@ export default function PlayersPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="font-display font-bold text-sm truncate">{player.nickname}</span>
-                    {ranking && (
-                      <span className="text-[10px] font-display font-bold text-muted-foreground">Lv.{ranking.level}</span>
-                    )}
                     {(() => {
+                      const label = getClanRoleLabel(player.clan_role);
                       const emoji = getClanRoleEmoji(player.clan_role);
-                      return emoji ? <span className="text-[10px]" title="Staff">{emoji}</span> : null;
+                      return (
+                        <span className="text-[10px] font-display font-bold text-muted-foreground">
+                          {emoji ? `${emoji} ` : ""}{label}
+                        </span>
+                      );
                     })()}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
@@ -432,21 +434,16 @@ export default function PlayersPage() {
                     ) : (
                       <span className="text-[10px] text-muted-foreground">Sem classe</span>
                     )}
-                    {player.phone && (
-                      <span className="text-[10px] text-muted-foreground font-body">{formatPhone(player.phone)}</span>
-                    )}
                   </div>
                 </div>
 
-                {/* Clan Role */}
-                <div className="text-right shrink-0">
-                  <p className="font-display text-xs font-bold text-primary capitalize">
-                    {getClanRoleLabel(player.clan_role)}
-                  </p>
-                  {ranking && (
-                    <p className="text-[10px] text-muted-foreground font-body">Lv.{ranking.level}</p>
-                  )}
-                </div>
+                {/* Level/XP */}
+                {ranking && (
+                  <div className="text-right shrink-0">
+                    <p className="font-display text-sm font-extrabold text-gold">Lv.{ranking.level}</p>
+                    <p className="text-[10px] text-muted-foreground font-body">{ranking.xp?.endsWith('%') ? ranking.xp : `${ranking.xp}%`}</p>
+                  </div>
+                )}
 
                 {/* Actions */}
                 {isAdmin && (
