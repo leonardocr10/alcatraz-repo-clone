@@ -94,42 +94,10 @@ const LoginPage = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
-              <>
-                <div>
-                  <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">Nickname</label>
-                  <input type="text" value={nickname} onChange={(e) => setNickname(e.target.value)} required className="input-modern" placeholder="Seu nome de guerra" />
-                </div>
-
-                {/* Class selection */}
-                <div>
-                  <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">Classe</label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {classIcons.map((c) => (
-                      <button
-                        key={c.name}
-                        type="button"
-                        onClick={() => setSelectedClass(c.name)}
-                        className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
-                          selectedClass === c.name
-                            ? "border-primary bg-primary/15 shadow-[0_0_12px_hsl(var(--primary)/0.3)]"
-                            : "border-border/40 hover:border-muted-foreground/30"
-                        }`}
-                      >
-                        {c.image_url ? (
-                          <img src={c.image_url} alt={c.name} className="w-8 h-8 rounded-lg object-cover" />
-                        ) : (
-                          <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-                            {c.name.charAt(0)}
-                          </div>
-                        )}
-                        <span className="text-[9px] font-body font-semibold uppercase tracking-wider text-muted-foreground truncate w-full text-center">
-                          {c.name}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </>
+              <div>
+                <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">Nickname</label>
+                <input type="text" value={nickname} onChange={(e) => setNickname(e.target.value)} required className="input-modern" placeholder="Seu nome de guerra" />
+              </div>
             )}
             <div>
               <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">Telefone</label>
@@ -144,6 +112,36 @@ const LoginPage = () => {
                 </button>
               </div>
             </div>
+            {isSignUp && (
+              <div>
+                <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">Classe</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {classIcons.map((c) => (
+                    <button
+                      key={c.name}
+                      type="button"
+                      onClick={() => setSelectedClass(c.name)}
+                      className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
+                        selectedClass === c.name
+                          ? "border-primary bg-primary/15 shadow-[0_0_12px_hsl(var(--primary)/0.3)]"
+                          : "border-border/40 hover:border-muted-foreground/30"
+                      }`}
+                    >
+                      {c.image_url ? (
+                        <img src={c.image_url} alt={c.name} className="w-8 h-8 rounded-lg object-cover" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                          {c.name.charAt(0)}
+                        </div>
+                      )}
+                      <span className="text-[9px] font-body font-semibold uppercase tracking-wider text-muted-foreground truncate w-full text-center">
+                        {c.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <button type="submit" disabled={loading} className="w-full btn-primary font-display tracking-wider uppercase text-sm">
               {loading ? <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mx-auto" /> : isSignUp ? "⚔️ CRIAR CONTA" : "⚔️ ENTRAR"}
             </button>
