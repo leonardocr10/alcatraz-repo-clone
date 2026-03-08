@@ -56,6 +56,7 @@ const RouletteGamePage = () => {
   const fetchActiveSession = useCallback(async () => {
     const { data } = await supabase.from("roulette_sessions").select("*").eq("is_running", true).limit(1).maybeSingle();
     setSession(data);
+    setSessionLoading(false);
     return data;
   }, []);
 
