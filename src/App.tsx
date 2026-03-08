@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/AppLayout";
 import LoginPage from "@/pages/LoginPage";
+import HomePage from "@/pages/HomePage";
 import RouletteGamePage from "@/pages/RouletteGamePage";
 import AdminPage from "@/pages/AdminPage";
 import PlayersPage from "@/pages/PlayersPage";
@@ -33,14 +34,14 @@ const App = () => {
   function AdminRoute({ children }: { children: React.ReactNode }) {
     const { isAdmin, loading } = useAuth();
     if (loading) return null;
-    if (!isAdmin) return <Navigate to="/roleta" replace />;
+    if (!isAdmin) return <Navigate to="/inicio" replace />;
     return <>{children}</>;
   }
 
   function PublicRoute({ children }: { children: React.ReactNode }) {
     const { authUser, loading } = useAuth();
     if (loading) return null;
-    if (authUser) return <Navigate to="/roleta" replace />;
+    if (authUser) return <Navigate to="/inicio" replace />;
     return <>{children}</>;
   }
 
@@ -52,8 +53,9 @@ const App = () => {
         <BrowserRouter>
           <AuthProvider>
             <Routes>
-            <Route path="/" element={<Navigate to="/roleta" replace />} />
+            <Route path="/" element={<Navigate to="/inicio" replace />} />
             <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+            <Route path="/inicio" element={<ProtectedRoute><AppLayout><HomePage /></AppLayout></ProtectedRoute>} />
             <Route path="/roleta" element={<ProtectedRoute><AppLayout><RouletteGamePage /></AppLayout></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute><AppLayout><AdminPage /></AppLayout></ProtectedRoute>} />
             <Route path="/jogadores" element={<ProtectedRoute><AdminRoute><AppLayout><PlayersPage /></AppLayout></AdminRoute></ProtectedRoute>} />
