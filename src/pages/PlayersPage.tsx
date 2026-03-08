@@ -438,13 +438,15 @@ export default function PlayersPage() {
                   </div>
                 </div>
 
-                {/* Level/XP */}
-                {ranking && (
-                  <div className="text-right shrink-0">
-                    <p className="font-display text-sm font-extrabold text-gold">Lv.{ranking.level}</p>
-                    <p className="text-[10px] text-muted-foreground font-body">{ranking.xp?.endsWith('%') ? ranking.xp : `${ranking.xp}%`}</p>
-                  </div>
-                )}
+                {/* Clan Role */}
+                <div className="text-right shrink-0">
+                  <p className="font-display text-xs font-bold text-primary capitalize">
+                    {getClanRoleLabel(player.clan_role)}
+                  </p>
+                  {ranking && (
+                    <p className="text-[10px] text-muted-foreground font-body">Lv.{ranking.level}</p>
+                  )}
+                </div>
 
                 {/* Actions */}
                 {isAdmin && (
