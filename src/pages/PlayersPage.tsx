@@ -580,6 +580,33 @@ export default function PlayersPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Class Detail Modal */}
+      <Dialog open={!!viewClass} onOpenChange={() => setViewClass(null)}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="font-display text-center">{viewClass?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4">
+            {viewClass?.image_url && (
+              <img
+                src={viewClass.image_url}
+                alt={viewClass.name}
+                className="w-32 h-32 rounded-2xl object-cover border-2 border-border/40"
+              />
+            )}
+            {viewClass?.description ? (
+              <p className="text-sm text-muted-foreground font-body text-center leading-relaxed">
+                {viewClass.description}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground font-body text-center italic">
+                Sem descrição disponível.
+              </p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
