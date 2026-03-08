@@ -38,6 +38,7 @@ interface Play {
 const RouletteGamePage = () => {
   const { profile, isAdmin } = useAuth();
   const [session, setSession] = useState<any>(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
   const [currentItem, setCurrentItem] = useState<SessionItem | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [totalTime, setTotalTime] = useState(0);
@@ -55,6 +56,7 @@ const RouletteGamePage = () => {
   const fetchActiveSession = useCallback(async () => {
     const { data } = await supabase.from("roulette_sessions").select("*").eq("is_running", true).limit(1).maybeSingle();
     setSession(data);
+    setSessionLoading(false);
     return data;
   }, []);
 
@@ -227,7 +229,11 @@ const RouletteGamePage = () => {
       )}
 
       {/* Active Session / Game Area */}
-      {!session ? (
+      {sessionLoading ? (
+        <div className="glass-card p-10 flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : !session ? (
         <div className="glass-card p-10 text-center animate-fade-in">
           <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-4">
             <Swords className="w-7 h-7 text-muted-foreground" />
