@@ -212,16 +212,30 @@ const HomePage = () => {
               )}
             </div>
           </div>
-          <button
-            onClick={bossNotify.toggle}
-            className={`shrink-0 text-xs font-display font-bold px-3 py-1.5 rounded-xl transition-colors ${
-              bossNotify.enabled
-                ? "bg-primary/15 text-primary hover:bg-primary/25"
-                : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-            }`}
-          >
-            {bossNotify.enabled ? "Desativar" : "Ativar"}
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {bossNotify.enabled && isAdmin && (
+              <button
+                onClick={() => {
+                  const ok = bossNotify.sendTestNotification();
+                  if (ok) toast.success("Notificação de teste enviada!");
+                  else toast.error("Permissão não concedida");
+                }}
+                className="text-[10px] font-display font-bold px-2 py-1.5 rounded-xl bg-gold/15 text-gold hover:bg-gold/25 transition-colors"
+              >
+                Testar
+              </button>
+            )}
+            <button
+              onClick={bossNotify.toggle}
+              className={`text-xs font-display font-bold px-3 py-1.5 rounded-xl transition-colors ${
+                bossNotify.enabled
+                  ? "bg-primary/15 text-primary hover:bg-primary/25"
+                  : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+              }`}
+            >
+              {bossNotify.enabled ? "Desativar" : "Ativar"}
+            </button>
+          </div>
         </div>
       )}
 
