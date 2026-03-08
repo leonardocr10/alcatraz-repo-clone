@@ -57,7 +57,12 @@ export default function ConfigPage() {
   }, []);
 
   useEffect(() => {
-    if (isAdmin) fetchConfig();
+    if (isAdmin) {
+      fetchConfig();
+      supabase.from("clan_rules").select("id, content").limit(1).maybeSingle().then(({ data }) => {
+        if (data) { setRulesContent(data.content); setRulesId(data.id); }
+      });
+    }
   }, [isAdmin, fetchConfig]);
 
   const onSaveWhatsApp = async () => {
