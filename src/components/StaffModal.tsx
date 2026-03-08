@@ -49,7 +49,7 @@ export function StaffModal({ open, onOpenChange }: { open: boolean; onOpenChange
           // Store with lowercase key for case-insensitive lookup
           map[u.nickname.toLowerCase()] = {
             nickname: u.nickname,
-            className: u.class,
+            className: u.class as string | null,
             classIcon: u.class ? classMap.get(u.class) ?? null : null,
           };
         });
