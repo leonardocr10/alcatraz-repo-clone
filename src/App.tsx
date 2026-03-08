@@ -14,6 +14,7 @@ import PlayersPage from "@/pages/PlayersPage";
 import ClassesPage from "@/pages/ClassesPage";
 import ConfigPage from "@/pages/ConfigPage";
 import RulesPage from "@/pages/RulesPage";
+import HistoryPage from "@/pages/HistoryPage";
 import NotFound from "@/pages/NotFound";
 
 
