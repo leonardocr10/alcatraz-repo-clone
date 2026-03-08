@@ -15,6 +15,17 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    // Parse request body for force mode or specific boss
+    let force = false;
+    let forceBossId: string | null = null;
+    let forceAll = false;
+    try {
+      const body = await req.json();
+      force = body.force === true;
+      forceBossId = body.boss_id || null;
+      forceAll = body.all === true;
+    } catch { /* no body = cron call */ }
+
     // Get WhatsApp config
     const { data: config } = await supabase
       .from("whatsapp_config")
@@ -34,13 +45,14 @@ Deno.serve(async (req) => {
     const brazilTime = new Date(now.getTime() + (brazilOffset + now.getTimezoneOffset()) * 60000);
     const currentHour = brazilTime.getHours();
     const currentMinute = brazilTime.getMinutes();
+    const today = brazilTime.toISOString().split("T")[0];
 
-    console.log(`Current Brazil time: ${currentHour}:${currentMinute.toString().padStart(2, "0")}`);
+    console.log(`Current Brazil time: ${currentHour}:${currentMinute.toString().padStart(2, "0")} | force=${force} forceBossId=${forceBossId} forceAll=${forceAll}`);
 
     // Get all boss schedules with boss info
     const { data: schedules } = await supabase
       .from("boss_schedules")
-      .select("*, bosses(name)")
+      .select("*, bosses(name, map_level, image_url, map_image_url, description)")
       .order("spawn_time");
 
     if (!schedules || schedules.length === 0) {
@@ -49,36 +61,82 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Find schedules that need notification NOW
-    const toNotify: typeof schedules = [];
-    const today = brazilTime.toISOString().split("T")[0];
+    // Determine which schedules to notify
+    const toNotifyBefore: typeof schedules = []; // pre-spawn alerts
+    const toNotifySpawn: typeof schedules = [];  // exact spawn alerts
 
-    for (const schedule of schedules) {
-      const [spawnH, spawnM] = schedule.spawn_time.split(":").map(Number);
-      const notifyMinsBefore = schedule.notify_minutes_before || 10;
+    if (force && forceBossId) {
+      // Force mode: send for specific boss (next upcoming schedule)
+      const bossScheds = schedules.filter((s) => s.boss_id === forceBossId);
+      if (bossScheds.length > 0) {
+        // Find the next upcoming schedule for this boss
+        const currentMins = currentHour * 60 + currentMinute;
+        let closest = bossScheds[0];
+        let closestDiff = Infinity;
+        for (const s of bossScheds) {
+          const [h, m] = s.spawn_time.split(":").map(Number);
+          let diff = h * 60 + m - currentMins;
+          if (diff < 0) diff += 24 * 60;
+          if (diff < closestDiff) { closestDiff = diff; closest = s; }
+        }
+        toNotifyBefore.push(closest);
+      }
+    } else if (force && forceAll) {
+      // Force all: send for all bosses (next upcoming schedule per boss)
+      const bossIds = [...new Set(schedules.map((s) => s.boss_id))];
+      const currentMins = currentHour * 60 + currentMinute;
+      for (const bossId of bossIds) {
+        const bossScheds = schedules.filter((s) => s.boss_id === bossId);
+        let closest = bossScheds[0];
+        let closestDiff = Infinity;
+        for (const s of bossScheds) {
+          const [h, m] = s.spawn_time.split(":").map(Number);
+          let diff = h * 60 + m - currentMins;
+          if (diff < 0) diff += 24 * 60;
+          if (diff < closestDiff) { closestDiff = diff; closest = s; }
+        }
+        toNotifyBefore.push(closest);
+      }
+    } else {
+      // Normal cron mode: check timing
+      for (const schedule of schedules) {
+        const [spawnH, spawnM] = schedule.spawn_time.split(":").map(Number);
+        const notifyMinsBefore = schedule.notify_minutes_before || 10;
 
-      // Calculate notification time
-      let notifyTotalMins = spawnH * 60 + spawnM - notifyMinsBefore;
-      if (notifyTotalMins < 0) notifyTotalMins += 24 * 60;
-      const notifyH = Math.floor(notifyTotalMins / 60) % 24;
-      const notifyM = notifyTotalMins % 60;
+        // Check PRE-SPAWN notification time
+        let notifyTotalMins = spawnH * 60 + spawnM - notifyMinsBefore;
+        if (notifyTotalMins < 0) notifyTotalMins += 24 * 60;
+        const notifyH = Math.floor(notifyTotalMins / 60) % 24;
+        const notifyM = notifyTotalMins % 60;
 
-      if (notifyH === currentHour && notifyM === currentMinute) {
-        // Check if already sent today for this schedule
-        const notifKey = `${schedule.id}-${today}-${spawnH}:${spawnM}`;
-        const { data: existing } = await supabase
-          .from("boss_notification_log")
-          .select("id")
-          .eq("notification_key", notifKey)
-          .maybeSingle();
+        if (notifyH === currentHour && notifyM === currentMinute) {
+          const notifKey = `pre-${schedule.id}-${today}-${spawnH}:${spawnM}`;
+          const { data: existing } = await supabase
+            .from("boss_notification_log")
+            .select("id")
+            .eq("notification_key", notifKey)
+            .maybeSingle();
+          if (!existing) {
+            toNotifyBefore.push(schedule);
+          }
+        }
 
-        if (!existing) {
-          toNotify.push(schedule);
+        // Check EXACT SPAWN notification time
+        if (spawnH === currentHour && spawnM === currentMinute) {
+          const notifKey = `spawn-${schedule.id}-${today}-${spawnH}:${spawnM}`;
+          const { data: existing } = await supabase
+            .from("boss_notification_log")
+            .select("id")
+            .eq("notification_key", notifKey)
+            .maybeSingle();
+          if (!existing) {
+            toNotifySpawn.push(schedule);
+          }
         }
       }
     }
 
-    if (toNotify.length === 0) {
+    if (toNotifyBefore.length === 0 && toNotifySpawn.length === 0) {
       return new Response(JSON.stringify({ message: "No notifications due now" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -110,28 +168,67 @@ Deno.serve(async (req) => {
       }
     }
 
-    for (const schedule of toNotify) {
-      const bossName = (schedule as any).bosses?.name || "Boss";
+    // Helper: send text message
+    const sendText = async (phone: string, text: string) => {
+      let body = config.body_template;
+      body = body.replace(/\{\{number\}\}/g, phone);
+      body = body.replace(/\{\{text\}\}/g, text);
+      const resp = await fetch(config.api_url, {
+        method: "POST",
+        headers: apiHeaders,
+        body: body,
+      });
+      return resp;
+    };
+
+    // Helper: send image message (try multiple endpoints)
+    const sendImage = async (phone: string, imageUrl: string, caption: string) => {
+      // Try /sendImage endpoint
+      const baseUrl = config.api_url.replace(/\/sendText$/, "").replace(/\/send-message$/, "").replace(/\/sendMessage$/, "");
+      
+      const imageEndpoints = [
+        { url: `${baseUrl}/sendImage`, body: JSON.stringify({ number: phone, image: imageUrl, caption }) },
+        { url: `${baseUrl}/sendFile`, body: JSON.stringify({ number: phone, url: imageUrl, caption, fileName: "map.jpg" }) },
+      ];
+
+      for (const ep of imageEndpoints) {
+        try {
+          const resp = await fetch(ep.url, {
+            method: "POST",
+            headers: apiHeaders,
+            body: ep.body,
+          });
+          if (resp.ok) return resp;
+          await resp.text(); // consume body
+        } catch { /* try next */ }
+      }
+      return null;
+    };
+
+    // Process PRE-SPAWN notifications
+    for (const schedule of toNotifyBefore) {
+      const boss = (schedule as any).bosses;
+      const bossName = boss?.name || "Boss";
+      const mapLevel = boss?.map_level || "";
+      const mapImageUrl = boss?.map_image_url || "";
       const spawnTime = schedule.spawn_time.substring(0, 5);
       const minutesBefore = schedule.notify_minutes_before;
 
-      const messageText = `⚔️ *Boss Alert - Painel AZ!*\n\n🐉 Boss: *${bossName}*\n⏰ Spawna em ${minutesBefore} minutos (${spawnTime})\n\n⚔️ Prepare-se guerreiro!`;
+      let messageText = `⚔️ *Boss Alert - Painel AZ!*\n\n🐉 Boss: *${bossName}*`;
+      if (mapLevel) messageText += `\n📍 Local: *${mapLevel}*`;
+      messageText += `\n⏰ Spawna em *${minutesBefore} minutos* (${spawnTime})`;
+      messageText += `\n\n⚔️ Prepare-se guerreiro!`;
+      if (mapImageUrl) messageText += `\n\n🗺️ Mapa: ${mapImageUrl}`;
 
       for (const user of eligibleUsers) {
         try {
-          // Replace template variables
-          let body = config.body_template;
-          body = body.replace(/\{\{number\}\}/g, user.phone);
-          body = body.replace(/\{\{text\}\}/g, messageText);
-
-          const resp = await fetch(config.api_url, {
-            method: "POST",
-            headers: apiHeaders,
-            body: body,
-          });
-
+          const resp = await sendText(user.phone, messageText);
           if (resp.ok) {
             sentCount++;
+            // Try to send map image separately
+            if (mapImageUrl) {
+              await sendImage(user.phone, mapImageUrl, `🗺️ ${bossName} - ${mapLevel}`);
+            }
           } else {
             const errText = await resp.text();
             errors.push(`Failed for ${user.nickname}: ${resp.status} ${errText}`);
@@ -141,10 +238,52 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Log notification
-      const today2 = brazilTime.toISOString().split("T")[0];
+      // Log notification (skip log in force/test mode)
+      if (!force) {
+        const [sH, sM] = schedule.spawn_time.split(":").map(Number);
+        const notifKey = `pre-${schedule.id}-${today}-${sH}:${sM}`;
+        await supabase.from("boss_notification_log").insert({
+          boss_id: schedule.boss_id,
+          schedule_id: schedule.id,
+          notification_key: notifKey,
+        });
+      }
+    }
+
+    // Process SPAWN notifications (boss just spawned!)
+    for (const schedule of toNotifySpawn) {
+      const boss = (schedule as any).bosses;
+      const bossName = boss?.name || "Boss";
+      const mapLevel = boss?.map_level || "";
+      const mapImageUrl = boss?.map_image_url || "";
+      const spawnTime = schedule.spawn_time.substring(0, 5);
+
+      let messageText = `🔥 *BOSS NASCEU! - Painel AZ!*\n\n🐉 Boss: *${bossName}*`;
+      if (mapLevel) messageText += `\n📍 Local: *${mapLevel}*`;
+      messageText += `\n⏰ Horário: *${spawnTime}*`;
+      messageText += `\n\n🔥 CORRE GUERREIRO! O boss está vivo!`;
+      if (mapImageUrl) messageText += `\n\n🗺️ Mapa: ${mapImageUrl}`;
+
+      for (const user of eligibleUsers) {
+        try {
+          const resp = await sendText(user.phone, messageText);
+          if (resp.ok) {
+            sentCount++;
+            if (mapImageUrl) {
+              await sendImage(user.phone, mapImageUrl, `🔥 ${bossName} NASCEU! - ${mapLevel}`);
+            }
+          } else {
+            const errText = await resp.text();
+            errors.push(`Spawn failed for ${user.nickname}: ${resp.status} ${errText}`);
+          }
+        } catch (e: any) {
+          errors.push(`Spawn error for ${user.nickname}: ${e.message}`);
+        }
+      }
+
+      // Log spawn notification
       const [sH, sM] = schedule.spawn_time.split(":").map(Number);
-      const notifKey = `${schedule.id}-${today2}-${sH}:${sM}`;
+      const notifKey = `spawn-${schedule.id}-${today}-${sH}:${sM}`;
       await supabase.from("boss_notification_log").insert({
         boss_id: schedule.boss_id,
         schedule_id: schedule.id,
@@ -154,7 +293,7 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        message: `Sent ${sentCount} notifications for ${toNotify.length} boss(es)`,
+        message: `Sent ${sentCount} notifications (${toNotifyBefore.length} pre-spawn, ${toNotifySpawn.length} spawn)`,
         errors: errors.length > 0 ? errors : undefined,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
