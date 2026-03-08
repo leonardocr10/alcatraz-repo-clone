@@ -125,6 +125,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   <Shield className="h-3 w-3 text-primary" />
                 )}
                 <p className="text-xs font-bold leading-none font-body">{profile?.nickname ?? "..."}</p>
+                {playerRanking?.level && (
+                  <span className="text-[9px] font-display font-bold text-gold leading-none">Lv.{playerRanking.level}</span>
+                )}
               </button>
 
               {menuOpen && (
