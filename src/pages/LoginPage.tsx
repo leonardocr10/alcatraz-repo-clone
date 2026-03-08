@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Sword, Shield, Eye, EyeOff } from "lucide-react";
+import { Sword, Shield, Eye, EyeOff, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import logoAz from "@/assets/logo-az.jpeg";
 import bgBoss from "@/assets/bg-boss.jpg";
@@ -26,8 +26,10 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [selectedClass, setSelectedClass] = useState<CharacterClass | "">("");
   const [classIcons, setClassIcons] = useState<{ name: CharacterClass; image_url: string | null }[]>([]);
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, authUser, isApproved, signOut } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isPending = searchParams.get("pending") === "1";
 
   useEffect(() => {
     supabase.from("character_classes").select("name, image_url").then(({ data }) => {
@@ -47,7 +49,9 @@ const LoginPage = () => {
         if (!nickname.trim()) throw new Error("Informe um nickname");
         if (!selectedClass) throw new Error("Selecione uma classe");
         await signUp(nickname.trim(), password, phone, selectedClass);
-        toast.success("Conta criada! Bem-vindo guerreiro!");
+        toast.success("Conta criada! Aguardando aprovação do admin.");
+        navigate("/login?pending=1");
+        return;
       } else {
         await signIn(phone, password);
         toast.success("Bem-vindo de volta!");
@@ -85,6 +89,18 @@ const LoginPage = () => {
           <p className="text-sm text-muted-foreground mt-1 font-body">Sistema de Gestão</p>
         </div>
 
+        {isPending && authUser && !isApproved ? (
+          <div className="glass-card glow-primary p-6 bg-background/70 backdrop-blur-xl text-center space-y-4">
+            <Clock className="w-12 h-12 text-gold mx-auto" />
+            <h2 className="font-display text-lg font-bold text-foreground">Aguardando Aprovação</h2>
+            <p className="text-sm text-muted-foreground font-body">
+              Sua conta foi criada com sucesso! Um administrador precisa aprovar seu acesso antes de você poder entrar.
+            </p>
+            <button onClick={() => { signOut(); navigate("/login"); }} className="w-full btn-secondary text-sm font-display tracking-wider uppercase">
+              Voltar
+            </button>
+          </div>
+        ) : (
         <div className="glass-card glow-primary p-6 bg-background/70 backdrop-blur-xl">
           <p className="text-center text-muted-foreground font-body text-sm mb-6 flex items-center justify-center gap-2">
             <Sword className="w-4 h-4 text-primary" />
@@ -153,6 +169,7 @@ const LoginPage = () => {
             </button>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

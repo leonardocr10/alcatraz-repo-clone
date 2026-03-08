@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, Trash2, Play, Square, Trophy, Check, GripVertical, Users, Upload, Skull, Clock, MapPin, Image, Crown, Package, Layers, X } from "lucide-react";
+import { Plus, Trash2, Play, Square, Trophy, Check, GripVertical, Users, Upload, Skull, Clock, MapPin, Image, Crown, Package, Layers, X, UserCheck, UserX } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const AdminPage = () => {
@@ -39,8 +39,9 @@ const AdminPage = () => {
   const [newScheduleMinutes, setNewScheduleMinutes] = useState<Record<string, number>>({});
 
   // Tab
-  const [tab, setTab] = useState<"boss" | "items" | "sessions" | "winners">("boss");
+  const [tab, setTab] = useState<"boss" | "items" | "sessions" | "winners" | "approvals">("boss");
   const [showBossModal, setShowBossModal] = useState(false);
+  const [pendingUsers, setPendingUsers] = useState<any[]>([]);
 
 
   // Fetch functions
@@ -72,7 +73,12 @@ const AdminPage = () => {
     }
   }, []);
 
-  useEffect(() => { fetchItems(); fetchSessions(); fetchWinners(); fetchBosses(); }, [fetchItems, fetchSessions, fetchWinners, fetchBosses]);
+  const fetchPendingUsers = useCallback(async () => {
+    const { data } = await supabase.from("users").select("*").eq("approved", false).order("created_at", { ascending: false });
+    setPendingUsers(data || []);
+  }, []);
+
+  useEffect(() => { fetchItems(); fetchSessions(); fetchWinners(); fetchBosses(); fetchPendingUsers(); }, [fetchItems, fetchSessions, fetchWinners, fetchBosses, fetchPendingUsers]);
 
   // Upload helper
   const uploadFile = async (file: File, bucket: string) => {
@@ -179,7 +185,20 @@ const AdminPage = () => {
 
   if (loading) return null;
 
+  const approveUser = async (userId: string) => {
+    const { error } = await supabase.from("users").update({ approved: true }).eq("id", userId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Usuário aprovado!"); fetchPendingUsers();
+  };
+
+  const rejectUser = async (userId: string) => {
+    const { error } = await supabase.from("users").delete().eq("id", userId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Usuário rejeitado!"); fetchPendingUsers();
+  };
+
   const tabs = [
+    { key: "approvals" as const, label: `Aprovações${pendingUsers.length > 0 ? ` (${pendingUsers.length})` : ""}`, icon: UserCheck },
     { key: "boss" as const, label: "Boss", icon: Skull },
     { key: "items" as const, label: "Itens", icon: Package },
     { key: "sessions" as const, label: "Sessões", icon: Layers },
@@ -205,7 +224,40 @@ const AdminPage = () => {
         ))}
       </div>
 
-      {/* ========== BOSS TAB ========== */}
+      {/* ========== APPROVALS TAB ========== */}
+      {tab === "approvals" && (
+        <div className="space-y-3">
+          {pendingUsers.length === 0 ? (
+            <div className="text-center py-10">
+              <UserCheck className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground font-body">Nenhuma conta pendente</p>
+            </div>
+          ) : (
+            pendingUsers.map((user) => (
+              <div key={user.id} className="glass-card p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gold/15 flex items-center justify-center shrink-0">
+                  <Clock className="w-5 h-5 text-gold" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-display font-bold truncate">{user.nickname}</p>
+                  <p className="text-[11px] text-muted-foreground font-body">{user.class || "Sem classe"} · {user.phone}</p>
+                  <p className="text-[10px] text-muted-foreground/60 font-body">{new Date(user.created_at).toLocaleString("pt-BR")}</p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button onClick={() => approveUser(user.id)} className="p-2.5 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                    <UserCheck className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => rejectUser(user.id)} className="p-2.5 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors">
+                    <UserX className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+
       {tab === "boss" && (
         <div className="space-y-3">
           <button onClick={() => setShowBossModal(true)} className="w-full btn-primary text-sm flex items-center justify-center gap-2 py-3">
