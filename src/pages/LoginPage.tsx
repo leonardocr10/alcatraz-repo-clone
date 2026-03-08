@@ -2,12 +2,13 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Sword, Shield, Eye, EyeOff } from "lucide-react";
+import { Sword, Shield, Eye, EyeOff, Phone } from "lucide-react";
 import logoAz from "@/assets/logo-az.jpeg";
 
 const LoginPage = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [nickname, setNickname] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -19,7 +20,10 @@ const LoginPage = () => {
     setLoading(true);
     try {
       if (isSignUp) {
-        await signUp(nickname, password);
+        if (!phone || phone.replace(/\D/g, "").length < 10) {
+          throw new Error("Informe um telefone válido com DDD (mínimo 10 dígitos)");
+        }
+        await signUp(nickname, password, phone);
         toast.success("Conta criada! Bem-vindo guerreiro!");
       } else {
         await signIn(nickname, password);
@@ -75,6 +79,25 @@ const LoginPage = () => {
                 placeholder="Seu nome de guerra"
               />
             </div>
+
+            {isSignUp && (
+              <div>
+                <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">
+                  <span className="flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5" />
+                    Telefone (WhatsApp)
+                  </span>
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                  className="input-modern"
+                  placeholder="(11) 99999-9999"
+                />
+              </div>
+            )}
 
             <div>
               <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">

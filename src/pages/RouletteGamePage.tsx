@@ -370,29 +370,7 @@ const RouletteGamePage = () => {
   const isUrgent = timeLeft <= 5 && timeLeft > 0;
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/80 border-b border-border/40">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <h1 className="font-display text-lg font-bold tracking-wider text-foreground flex items-center gap-2">
-            <Swords className="w-5 h-5 text-primary" />
-            PAINEL <span className="text-primary">AZ</span>
-          </h1>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground font-body bg-secondary px-3 py-1.5 rounded-full">
-              {profile?.nickname}
-            </span>
-            {isAdmin && (
-              <Link to="/admin" className="text-muted-foreground hover:text-primary transition-colors bg-secondary p-2 rounded-full">
-                <Settings className="w-4 h-4" />
-              </Link>
-            )}
-            <button onClick={handleLogout} className="text-muted-foreground hover:text-destructive transition-colors bg-secondary p-2 rounded-full">
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </header>
+    <div className="flex flex-col">
 
       {/* Winner Announcement Overlay */}
       {winnerAnnouncement && (
