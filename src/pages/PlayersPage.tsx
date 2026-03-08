@@ -235,7 +235,7 @@ export default function PlayersPage() {
                     {menuOpen === player.id && (
                       <>
                         <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(null)} />
-                        <div className="absolute right-0 top-full mt-1 z-50 w-44 glass-card border border-border/60 rounded-xl shadow-xl overflow-hidden animate-fade-in">
+                        <div className="absolute right-0 bottom-full mb-1 z-50 w-44 glass-card border border-border/60 rounded-xl shadow-xl overflow-hidden animate-fade-in">
                           <button
                             onClick={() => openEdit(player)}
                             className="w-full px-4 py-2.5 text-left text-sm font-body flex items-center gap-2.5 hover:bg-secondary/50 transition-colors"
