@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 export interface ThemeColors {
-  primary: string; // HSL values like "0 70% 45%"
+  primary: string;
   gold: string;
   border: string;
 }
@@ -10,28 +10,28 @@ const THEME_KEY = "roleta-war-theme";
 
 const PRESET_THEMES: { name: string; colors: ThemeColors }[] = [
   {
-    name: "Vermelho (Padrão)",
-    colors: { primary: "0 70% 45%", gold: "40 80% 55%", border: "0 40% 25%" },
+    name: "Dourado (Padrão)",
+    colors: { primary: "35 90% 55%", gold: "40 85% 58%", border: "220 14% 20%" },
   },
   {
     name: "Azul Gelo",
-    colors: { primary: "210 70% 50%", gold: "40 80% 55%", border: "210 40% 25%" },
+    colors: { primary: "200 70% 50%", gold: "40 85% 58%", border: "210 14% 20%" },
   },
   {
-    name: "Verde Veneno",
-    colors: { primary: "140 70% 40%", gold: "40 80% 55%", border: "140 40% 25%" },
+    name: "Ciano",
+    colors: { primary: "190 85% 48%", gold: "40 85% 58%", border: "210 14% 20%" },
   },
   {
-    name: "Roxo Arcano",
-    colors: { primary: "270 70% 50%", gold: "40 80% 55%", border: "270 40% 25%" },
+    name: "Vermelho",
+    colors: { primary: "0 70% 50%", gold: "40 85% 58%", border: "0 20% 20%" },
   },
   {
-    name: "Laranja Fogo",
-    colors: { primary: "25 90% 50%", gold: "40 80% 55%", border: "25 40% 25%" },
+    name: "Verde",
+    colors: { primary: "140 70% 40%", gold: "40 85% 58%", border: "140 20% 20%" },
   },
   {
-    name: "Dourado Imperial",
-    colors: { primary: "40 80% 50%", gold: "40 90% 60%", border: "40 40% 25%" },
+    name: "Roxo",
+    colors: { primary: "270 70% 55%", gold: "40 85% 58%", border: "270 20% 20%" },
   },
 ];
 
