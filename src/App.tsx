@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/AppLayout";
+import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/HomePage";
 import RouletteGamePage from "@/pages/RouletteGamePage";
