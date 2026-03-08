@@ -3,8 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, Trash2, Play, Square, Trophy, Check, GripVertical, Users, Palette, AlertTriangle, Upload, Skull, MessageCircle, Clock, Send, MapPin, Image } from "lucide-react";
-import { useTheme } from "@/hooks/useTheme";
+import { Plus, Trash2, Play, Square, Trophy, Check, GripVertical, Users, Upload, Skull, Clock, MapPin, Image, Crown, Package, Layers } from "lucide-react";
 
 const AdminPage = () => {
   const { isAdmin, loading } = useAuth();
@@ -38,19 +37,8 @@ const AdminPage = () => {
   const [newScheduleTime, setNewScheduleTime] = useState<Record<string, string>>({});
   const [newScheduleMinutes, setNewScheduleMinutes] = useState<Record<string, number>>({});
 
-  // WhatsApp config state
-  const [waConfig, setWaConfig] = useState<any>(null);
-  const [waApiUrl, setWaApiUrl] = useState("");
-  const [waHeaders, setWaHeaders] = useState<{ key: string; value: string }[]>([]);
-  const [waBodyTemplate, setWaBodyTemplate] = useState('{\n  "text": "{{text}}",\n  "number": "{{number}}"\n}');
-  const [waEnabled, setWaEnabled] = useState(false);
-  const [waAllowOptout, setWaAllowOptout] = useState(false);
-  const [waSaving, setWaSaving] = useState(false);
-  const [waTesting, setWaTesting] = useState(false);
-
   // Tab
   const [tab, setTab] = useState<"boss" | "items" | "sessions" | "winners">("boss");
-  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAdmin) navigate("/roleta");
@@ -85,19 +73,7 @@ const AdminPage = () => {
     }
   }, []);
 
-  const fetchWaConfig = useCallback(async () => {
-    const { data } = await supabase.from("whatsapp_config").select("*").limit(1).maybeSingle();
-    if (data) {
-      setWaConfig(data);
-      setWaApiUrl(data.api_url || "");
-      setWaHeaders(Array.isArray(data.headers) ? (data.headers as any[]).map((h: any) => ({ key: h.key || "", value: h.value || "" })) : []);
-      setWaBodyTemplate(data.body_template || '{\n  "text": "{{text}}",\n  "number": "{{number}}"\n}');
-      setWaEnabled(data.is_enabled || false);
-      setWaAllowOptout(data.allow_user_optout || false);
-    }
-  }, []);
-
-  useEffect(() => { fetchItems(); fetchSessions(); fetchWinners(); fetchBosses(); fetchWaConfig(); }, [fetchItems, fetchSessions, fetchWinners, fetchBosses, fetchWaConfig]);
+  useEffect(() => { fetchItems(); fetchSessions(); fetchWinners(); fetchBosses(); }, [fetchItems, fetchSessions, fetchWinners, fetchBosses]);
 
   // Upload helper
   const uploadFile = async (file: File, bucket: string) => {
@@ -205,246 +181,245 @@ const AdminPage = () => {
   if (loading) return null;
 
   const tabs = [
-    { key: "boss" as const, label: "Boss", icon: MapPin },
-    { key: "items" as const, label: "Itens", icon: MapPin },
-    { key: "sessions" as const, label: "Sessões", icon: MapPin },
+    { key: "boss" as const, label: "Boss", icon: Skull },
+    { key: "items" as const, label: "Itens", icon: Package },
+    { key: "sessions" as const, label: "Sessões", icon: Layers },
     { key: "winners" as const, label: "Ganhadores", icon: Trophy },
   ];
 
   return (
-    <div className="flex flex-col">
-      {/* Tabs */}
-      <div className="sticky top-[53px] z-30 backdrop-blur-xl bg-background/80 border-b border-border/40 -mx-4 px-4">
-        <div className="max-w-2xl mx-auto overflow-x-auto">
-          <div className="flex min-w-max">
-            {tabs.map((t) => (
-              <button key={t.key} onClick={() => setTab(t.key)}
-                className={`px-5 py-3 text-xs font-display uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                  tab === t.key ? "text-primary border-b-2 border-primary bg-primary/5" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+          <Crown className="w-5 h-5 text-primary" />
         </div>
+        <h2 className="font-display text-xl font-extrabold uppercase tracking-wider">Gerenciar</h2>
       </div>
 
-      <div className="max-w-2xl mx-auto w-full space-y-4 pt-4">
+      {/* Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`tab-pill flex items-center gap-1.5 whitespace-nowrap ${
+              tab === t.key ? "tab-pill-active" : "tab-pill-inactive"
+            }`}
+          >
+            <t.icon className="w-3.5 h-3.5" />
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-        {/* ========== BOSS TAB ========== */}
-        {tab === "boss" && (
-          <>
-            <div className="glass-card p-5 space-y-4">
-              <h2 className="font-display text-sm uppercase tracking-wider text-foreground flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-primary" /> Cadastrar Boss
-              </h2>
-              <input value={newBossName} onChange={(e) => setNewBossName(e.target.value)} placeholder="Nome do boss (ex: Robô Mutante)" className="input-modern text-sm" />
-              <input value={newBossMap} onChange={(e) => setNewBossMap(e.target.value)} placeholder="Nome do mapa (ex: Forgotten Land)" className="input-modern text-sm" />
-              <textarea value={newBossDesc} onChange={(e) => setNewBossDesc(e.target.value)} placeholder="Descrição do boss..." rows={2} className="input-modern text-sm" />
+      {/* ========== BOSS TAB ========== */}
+      {tab === "boss" && (
+        <div className="space-y-3">
+          <div className="glass-card p-4 space-y-3">
+            <h3 className="font-display text-sm font-extrabold uppercase tracking-wider flex items-center gap-2">
+              <Skull className="w-4 h-4 text-primary" /> Cadastrar Boss
+            </h3>
+            <input value={newBossName} onChange={(e) => setNewBossName(e.target.value)} placeholder="Nome do boss" className="input-modern" />
+            <input value={newBossMap} onChange={(e) => setNewBossMap(e.target.value)} placeholder="Nome do mapa" className="input-modern" />
+            <textarea value={newBossDesc} onChange={(e) => setNewBossDesc(e.target.value)} placeholder="Descrição..." rows={2} className="input-modern" />
 
-              <label className="flex items-center gap-2 input-modern cursor-pointer hover:border-primary/50">
-                <MapPin className="w-4 h-4 text-muted-foreground" />
-                <span className="text-muted-foreground truncate text-sm">{newBossFile ? newBossFile.name : "Imagem do boss"}</span>
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setNewBossFile(e.target.files[0]); }} />
-              </label>
+            <label className="flex items-center gap-2 input-modern cursor-pointer hover:border-primary/50">
+              <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="text-muted-foreground truncate">{newBossFile ? newBossFile.name : "Imagem do boss"}</span>
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setNewBossFile(e.target.files[0]); }} />
+            </label>
 
-              <label className="flex items-center gap-2 input-modern cursor-pointer hover:border-primary/50">
-                <Image className="w-4 h-4 text-muted-foreground" />
-                <span className="text-muted-foreground truncate text-sm">{newBossMapFile ? newBossMapFile.name : "Imagem do mapa"}</span>
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setNewBossMapFile(e.target.files[0]); }} />
-              </label>
+            <label className="flex items-center gap-2 input-modern cursor-pointer hover:border-primary/50">
+              <Image className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="text-muted-foreground truncate">{newBossMapFile ? newBossMapFile.name : "Imagem do mapa"}</span>
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setNewBossMapFile(e.target.files[0]); }} />
+            </label>
 
-              <button onClick={createBoss} disabled={uploading} className="w-full btn-primary font-display text-sm tracking-wider uppercase flex items-center justify-center gap-2">
-                {uploading ? <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
-                {uploading ? "Enviando..." : "Cadastrar Boss"}
-              </button>
-            </div>
+            <button onClick={createBoss} disabled={uploading} className="w-full btn-primary text-sm flex items-center justify-center gap-2">
+              {uploading ? <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
+              {uploading ? "Enviando..." : "Cadastrar Boss"}
+            </button>
+          </div>
 
-            {bosses.map((boss) => (
-              <div key={boss.id} className="glass-card overflow-hidden">
-                <div className="px-5 py-4 border-b border-border/40 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {boss.image_url ? (
-                      <img src={boss.image_url} alt={boss.name} className="w-10 h-10 rounded-lg object-cover border border-border/40" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center"><Skull className="w-5 h-5 text-muted-foreground" /></div>
-                    )}
-                    <div>
-                      <h3 className="font-display text-base font-bold text-foreground">{boss.name}</h3>
-                      {boss.map_level && <p className="text-xs text-muted-foreground font-body">{boss.map_level}</p>}
-                    </div>
-                  </div>
-                  <button onClick={() => deleteBoss(boss.id)} className="text-destructive/60 hover:text-destructive transition-colors p-2 rounded-full hover:bg-destructive/10">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="p-5 space-y-3">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-body">Horários de Spawn</p>
-                  {(bossSchedules[boss.id] || []).length === 0 && (
-                    <p className="text-xs text-muted-foreground/50 font-body italic">Nenhum horário cadastrado</p>
+          {bosses.map((boss) => (
+            <div key={boss.id} className="glass-card overflow-hidden">
+              <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0">
+                  {boss.image_url ? (
+                    <img src={boss.image_url} alt={boss.name} className="w-10 h-10 rounded-xl object-cover border border-border/40 shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center shrink-0"><Skull className="w-5 h-5 text-muted-foreground" /></div>
                   )}
-                  {(bossSchedules[boss.id] || []).map((sched) => {
-                    const spawnTime = sched.spawn_time.substring(0, 5);
-                    const [h, m] = spawnTime.split(":").map(Number);
-                    let totalMins = h * 60 + m - sched.notify_minutes_before;
-                    if (totalMins < 0) totalMins += 24 * 60;
-                    const notifH = Math.floor(totalMins / 60) % 24;
-                    const notifM = totalMins % 60;
-                    const notifTime = `${notifH.toString().padStart(2, "0")}:${notifM.toString().padStart(2, "0")}`;
-                    return (
-                      <div key={sched.id} className="flex items-center gap-3 bg-secondary/40 px-4 py-3 rounded-xl border border-border/30">
-                        <Clock className="w-4 h-4 text-gold shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <span className="text-sm font-display font-bold text-foreground">{spawnTime}</span>
-                          <span className="text-[11px] text-muted-foreground font-body ml-2">→ Aviso às <span className="text-gold font-semibold">{notifTime}</span> ({sched.notify_minutes_before}min antes)</span>
-                        </div>
-                        <button onClick={() => deleteSchedule(sched.id)} className="text-destructive/60 hover:text-destructive transition-colors p-1.5 rounded-full hover:bg-destructive/10 shrink-0">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                  <div className="flex items-center gap-2 pt-2">
-                    <input type="time" value={newScheduleTime[boss.id] || ""} onChange={(e) => setNewScheduleTime({ ...newScheduleTime, [boss.id]: e.target.value })} className="input-modern text-sm w-32" />
-                    <input type="number" value={newScheduleMinutes[boss.id] || 10} onChange={(e) => setNewScheduleMinutes({ ...newScheduleMinutes, [boss.id]: parseInt(e.target.value) || 10 })} className="input-modern text-sm w-16 text-center" min={1} max={60} />
-                    <span className="text-[11px] text-muted-foreground">min</span>
-                    <button onClick={() => addSchedule(boss.id)} className="btn-primary py-2.5 px-4 text-xs shrink-0"><Plus className="w-3.5 h-3.5" /></button>
+                  <div className="min-w-0">
+                    <h3 className="font-display text-sm font-extrabold truncate">{boss.name}</h3>
+                    {boss.map_level && <p className="text-[11px] text-muted-foreground font-body">{boss.map_level}</p>}
                   </div>
+                </div>
+                <button onClick={() => deleteBoss(boss.id)} className="text-destructive/60 hover:text-destructive p-2 rounded-xl hover:bg-destructive/10 shrink-0">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-4 space-y-2">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Horários de Spawn</p>
+                {(bossSchedules[boss.id] || []).length === 0 && (
+                  <p className="text-xs text-muted-foreground/50 font-body italic">Nenhum horário</p>
+                )}
+                {(bossSchedules[boss.id] || []).map((sched) => {
+                  const spawnTime = sched.spawn_time.substring(0, 5);
+                  const [h, m] = spawnTime.split(":").map(Number);
+                  let totalMins = h * 60 + m - sched.notify_minutes_before;
+                  if (totalMins < 0) totalMins += 24 * 60;
+                  const notifH = Math.floor(totalMins / 60) % 24;
+                  const notifM = totalMins % 60;
+                  const notifTime = `${notifH.toString().padStart(2, "0")}:${notifM.toString().padStart(2, "0")}`;
+                  return (
+                    <div key={sched.id} className="flex items-center gap-2 bg-secondary/40 px-3 py-2.5 rounded-xl border border-border/30">
+                      <Clock className="w-3.5 h-3.5 text-gold shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-display font-extrabold">{spawnTime}</span>
+                        <span className="text-[10px] text-muted-foreground font-body ml-1.5">→ {notifTime} ({sched.notify_minutes_before}min)</span>
+                      </div>
+                      <button onClick={() => deleteSchedule(sched.id)} className="text-destructive/60 hover:text-destructive p-1 rounded-lg shrink-0">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
+                <div className="flex items-center gap-2 pt-1">
+                  <input type="time" value={newScheduleTime[boss.id] || ""} onChange={(e) => setNewScheduleTime({ ...newScheduleTime, [boss.id]: e.target.value })} className="input-modern w-28 text-center" />
+                  <input type="number" value={newScheduleMinutes[boss.id] || 10} onChange={(e) => setNewScheduleMinutes({ ...newScheduleMinutes, [boss.id]: parseInt(e.target.value) || 10 })} className="input-modern w-14 text-center" min={1} max={60} />
+                  <span className="text-[10px] text-muted-foreground shrink-0">min</span>
+                  <button onClick={() => addSchedule(boss.id)} className="btn-primary py-2.5 px-3 shrink-0"><Plus className="w-3.5 h-3.5" /></button>
                 </div>
               </div>
-            ))}
+            </div>
+          ))}
 
-            {bosses.length === 0 && (
-              <div className="text-center py-12">
-                <Skull className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground font-body">Nenhum boss cadastrado</p>
+          {bosses.length === 0 && (
+            <div className="text-center py-10">
+              <Skull className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground font-body">Nenhum boss cadastrado</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========== ITEMS TAB ========== */}
+      {tab === "items" && (
+        <div className="space-y-3">
+          <div className="glass-card p-4 space-y-3">
+            <h3 className="font-display text-sm font-extrabold uppercase tracking-wider">Novo Item</h3>
+            <input value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="Nome do item" className="input-modern" />
+            <input value={newItemDesc} onChange={(e) => setNewItemDesc(e.target.value)} placeholder="Descrição (opcional)" className="input-modern" />
+            <label className="flex items-center gap-2 input-modern cursor-pointer hover:border-primary/50">
+              <Upload className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="text-muted-foreground truncate">{newItemFile ? newItemFile.name : "Selecionar imagem"}</span>
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) { setNewItemFile(file); const r = new FileReader(); r.onload = (ev) => setNewItemPreview(ev.target?.result as string); r.readAsDataURL(file); }
+              }} />
+            </label>
+            {newItemPreview && <img src={newItemPreview} alt="Preview" className="w-16 h-16 rounded-xl border border-border/40 object-cover" />}
+            <button onClick={createItem} disabled={uploading} className="w-full btn-primary text-sm flex items-center justify-center gap-2">
+              {uploading ? <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
+              {uploading ? "Enviando..." : "Adicionar Item"}
+            </button>
+          </div>
+          {items.map((item) => (
+            <div key={item.id} className="glass-card p-3 flex items-center gap-3">
+              <img src={item.image_url} alt={item.name} className="w-11 h-11 rounded-xl border border-border/40 object-cover shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-display font-bold truncate">{item.name}</p>
+                {item.description && <p className="text-[11px] text-muted-foreground font-body truncate">{item.description}</p>}
+              </div>
+              <button onClick={() => deleteItem(item.id)} className="text-destructive/60 hover:text-destructive p-2 rounded-xl hover:bg-destructive/10 shrink-0"><Trash2 className="w-4 h-4" /></button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ========== SESSIONS TAB ========== */}
+      {tab === "sessions" && (
+        <div className="space-y-3">
+          <div className="glass-card p-4 space-y-3">
+            <h3 className="font-display text-sm font-extrabold uppercase tracking-wider">Nova Sessão</h3>
+            <input value={newSessionName} onChange={(e) => setNewSessionName(e.target.value)} placeholder="Nome da sessão" className="input-modern" />
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Selecionar itens:</p>
+            <div className="space-y-1 max-h-28 overflow-y-auto">
+              {items.map((item) => (
+                <button key={item.id} onClick={() => addItemToSession(item.id)} className="w-full text-left px-3 py-2 text-sm font-body bg-secondary/50 border border-border/40 rounded-xl hover:border-primary/40 transition-all truncate">
+                  + {item.name}
+                </button>
+              ))}
+            </div>
+            {selectedItems.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] text-gold uppercase tracking-wider font-bold">Itens selecionados:</p>
+                {selectedItems.map((si, idx) => {
+                  const item = items.find((i) => i.id === si.item_id);
+                  return (
+                    <div key={idx} className="flex items-center gap-2 bg-secondary/50 px-3 py-2 rounded-xl border border-border/30">
+                      <GripVertical className="w-3 h-3 text-muted-foreground shrink-0" />
+                      <span className="text-xs font-body flex-1 truncate">{idx + 1}. {item?.name}</span>
+                      <input type="number" value={si.duration} onChange={(e) => updateDuration(idx, parseInt(e.target.value) || 20)} className="w-12 bg-input border border-border/40 rounded-lg px-1.5 py-1 text-xs text-center" />
+                      <span className="text-[10px] text-muted-foreground">s</span>
+                      <button onClick={() => removeFromSession(idx)} className="text-destructive/70 hover:text-destructive"><Trash2 className="w-3 h-3" /></button>
+                    </div>
+                  );
+                })}
               </div>
             )}
-          </>
-        )}
-
-        {/* ========== ITEMS TAB ========== */}
-        {tab === "items" && (
-          <>
-            <div className="glass-card p-5 space-y-4">
-              <h2 className="font-display text-sm uppercase tracking-wider text-foreground">Novo Item</h2>
-              <input value={newItemName} onChange={(e) => setNewItemName(e.target.value)} placeholder="Nome do item" className="input-modern text-sm" />
-              <input value={newItemDesc} onChange={(e) => setNewItemDesc(e.target.value)} placeholder="Descrição (opcional)" className="input-modern text-sm" />
-              <div>
-                <label className="flex items-center gap-2 input-modern cursor-pointer hover:border-primary/50">
-                  <Upload className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-muted-foreground truncate text-sm">{newItemFile ? newItemFile.name : "Selecionar imagem"}</span>
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) { setNewItemFile(file); const r = new FileReader(); r.onload = (ev) => setNewItemPreview(ev.target?.result as string); r.readAsDataURL(file); }
-                  }} />
-                </label>
-                {newItemPreview && <img src={newItemPreview} alt="Preview" className="mt-3 w-20 h-20 rounded-xl border border-border/40 object-cover" />}
+            <button onClick={createSession} className="w-full btn-primary text-sm">Criar Sessão</button>
+          </div>
+          {sessions.map((sess) => (
+            <div key={sess.id} className="glass-card p-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-display font-bold truncate">{sess.name}</p>
+                <span className={`badge-status ${sess.is_running ? "bg-primary/15 text-primary" : sess.ended_at ? "bg-secondary text-muted-foreground" : "bg-gold/15 text-gold"}`}>
+                  {sess.is_running ? "ATIVA" : sess.ended_at ? "ENCERRADA" : "PRONTA"}
+                </span>
               </div>
-              <button onClick={createItem} disabled={uploading} className="w-full btn-primary font-display text-sm tracking-wider uppercase flex items-center justify-center gap-2">
-                {uploading ? <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
-                {uploading ? "Enviando..." : "Adicionar"}
-              </button>
-            </div>
-            <div className="space-y-2">
-              {items.map((item) => (
-                <div key={item.id} className="glass-card p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <img src={item.image_url} alt={item.name} className="w-11 h-11 rounded-xl border border-border/40 object-cover" />
-                    <div><p className="text-sm font-display text-foreground">{item.name}</p>{item.description && <p className="text-[11px] text-muted-foreground font-body">{item.description}</p>}</div>
-                  </div>
-                  <button onClick={() => deleteItem(item.id)} className="text-destructive/70 hover:text-destructive transition-colors p-2 rounded-full hover:bg-destructive/10"><Trash2 className="w-4 h-4" /></button>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* ========== SESSIONS TAB ========== */}
-        {tab === "sessions" && (
-          <>
-            <div className="glass-card p-5 space-y-4">
-              <h2 className="font-display text-sm uppercase tracking-wider text-foreground">Nova Sessão</h2>
-              <input value={newSessionName} onChange={(e) => setNewSessionName(e.target.value)} placeholder="Nome da sessão" className="input-modern text-sm" />
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Selecionar itens:</p>
-              <div className="space-y-1.5 max-h-32 overflow-y-auto">
-                {items.map((item) => (
-                  <button key={item.id} onClick={() => addItemToSession(item.id)} className="w-full text-left px-4 py-2.5 text-sm font-body text-foreground bg-secondary/50 border border-border/40 rounded-xl hover:border-primary/40 transition-all">
-                    + {item.name}
-                  </button>
-                ))}
-              </div>
-              {selectedItems.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs text-gold uppercase tracking-wider font-semibold">Itens na sessão:</p>
-                  {selectedItems.map((si, idx) => {
-                    const item = items.find((i) => i.id === si.item_id);
-                    return (
-                      <div key={idx} className="flex items-center gap-2 bg-secondary/50 px-4 py-2.5 rounded-xl border border-border/30">
-                        <GripVertical className="w-3 h-3 text-muted-foreground" />
-                        <span className="text-xs font-body text-foreground flex-1">{idx + 1}. {item?.name}</span>
-                        <input type="number" value={si.duration} onChange={(e) => updateDuration(idx, parseInt(e.target.value) || 20)} className="w-14 bg-input border border-border/40 rounded-lg px-2 py-1 text-xs text-foreground text-center" />
-                        <span className="text-[10px] text-muted-foreground">seg</span>
-                        <button onClick={() => removeFromSession(idx)} className="text-destructive/70 hover:text-destructive"><Trash2 className="w-3 h-3" /></button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              <button onClick={createSession} className="w-full btn-primary font-display text-sm tracking-wider uppercase">Criar Sessão</button>
-            </div>
-            <div className="space-y-2">
-              {sessions.map((sess) => (
-                <div key={sess.id} className="glass-card p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-display text-foreground">{sess.name}</p>
-                    <span className={`badge-status ${sess.is_running ? "bg-primary/15 text-primary" : sess.ended_at ? "bg-secondary text-muted-foreground" : "bg-gold/15 text-gold"}`}>
-                      {sess.is_running ? "ATIVA" : sess.ended_at ? "ENCERRADA" : "PRONTA"}
-                    </span>
-                  </div>
-                  <div className="flex gap-2">
-                    {!sess.is_running && !sess.ended_at && (
-                      <>
-                        <button onClick={() => startSession(sess.id)} className="flex-1 btn-primary py-2.5 font-display text-xs uppercase tracking-wider flex items-center justify-center gap-1.5"><Play className="w-3 h-3" /> Iniciar</button>
-                        <button onClick={() => simulateSession(sess.id)} disabled={simulating === sess.id} className="flex-1 btn-secondary py-2.5 font-display text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 disabled:opacity-50 text-gold border-gold/20">
-                          {simulating === sess.id ? <div className="w-3 h-3 border-2 border-gold/30 border-t-gold rounded-full animate-spin" /> : <Users className="w-3 h-3" />} Simular
-                        </button>
-                      </>
-                    )}
-                    {sess.is_running && (
-                      <button onClick={() => stopSession(sess.id)} className="flex-1 py-2.5 bg-destructive/10 text-destructive font-display text-xs uppercase tracking-wider rounded-xl hover:bg-destructive/20 transition-colors flex items-center justify-center gap-1.5"><Square className="w-3 h-3" /> Encerrar</button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* ========== WINNERS TAB ========== */}
-        {tab === "winners" && (
-          <div className="space-y-2">
-            {winners.length === 0 && <p className="text-center text-muted-foreground text-sm py-12 font-body">Nenhum vencedor ainda</p>}
-            {winners.map((w) => (
-              <div key={w.id} className="glass-card p-4 flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-display text-foreground truncate">{w.roulette_items?.name}</p>
-                  <p className="text-xs text-gold font-body font-semibold">{w.users?.nickname} — #{w.number}</p>
-                  <p className="text-[10px] text-muted-foreground font-body">{new Date(w.created_at).toLocaleString("pt-BR")}</p>
-                </div>
-                <img src={w.roulette_items?.image_url} alt={w.roulette_items?.name} className="w-12 h-12 rounded-xl border border-border/40 object-contain bg-muted/50 shrink-0" />
-                {!w.claimed ? (
-                  <button onClick={() => claimWinner(w.id)} className="px-3 py-1.5 bg-gold/10 text-gold font-display text-xs uppercase rounded-xl hover:bg-gold/20 transition-colors flex items-center gap-1 shrink-0"><Check className="w-3 h-3" /> Entregar</button>
-                ) : (
-                  <span className="badge-status bg-secondary text-muted-foreground shrink-0">✓ ENTREGUE</span>
+              <div className="flex gap-2">
+                {!sess.is_running && !sess.ended_at && (
+                  <>
+                    <button onClick={() => startSession(sess.id)} className="flex-1 btn-primary py-2.5 text-xs uppercase tracking-wider flex items-center justify-center gap-1.5"><Play className="w-3 h-3" /> Iniciar</button>
+                    <button onClick={() => simulateSession(sess.id)} disabled={simulating === sess.id} className="flex-1 btn-secondary py-2.5 text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 disabled:opacity-50">
+                      {simulating === sess.id ? <div className="w-3 h-3 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" /> : <Users className="w-3 h-3" />} Simular
+                    </button>
+                  </>
+                )}
+                {sess.is_running && (
+                  <button onClick={() => stopSession(sess.id)} className="flex-1 py-2.5 bg-destructive/10 text-destructive font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-destructive/20 flex items-center justify-center gap-1.5"><Square className="w-3 h-3" /> Encerrar</button>
                 )}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ========== WINNERS TAB ========== */}
+      {tab === "winners" && (
+        <div className="space-y-2">
+          {winners.length === 0 && <p className="text-center text-muted-foreground text-sm py-10 font-body">Nenhum vencedor ainda</p>}
+          {winners.map((w) => (
+            <div key={w.id} className="glass-card p-3 flex items-center gap-3">
+              <img src={w.roulette_items?.image_url} alt={w.roulette_items?.name} className="w-11 h-11 rounded-xl border border-border/40 object-contain bg-muted/50 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-display font-bold truncate">{w.roulette_items?.name}</p>
+                <p className="text-xs text-gold font-body font-bold">{w.users?.nickname} · #{w.number}</p>
+                <p className="text-[10px] text-muted-foreground font-body">{new Date(w.created_at).toLocaleString("pt-BR")}</p>
+              </div>
+              {!w.claimed ? (
+                <button onClick={() => claimWinner(w.id)} className="px-3 py-1.5 bg-gold/10 text-gold font-bold text-xs uppercase rounded-xl hover:bg-gold/20 flex items-center gap-1 shrink-0"><Check className="w-3 h-3" /> Entregar</button>
+              ) : (
+                <span className="badge-status bg-secondary text-muted-foreground shrink-0">✓</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
