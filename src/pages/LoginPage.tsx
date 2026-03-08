@@ -49,7 +49,9 @@ const LoginPage = () => {
         if (!nickname.trim()) throw new Error("Informe um nickname");
         if (!selectedClass) throw new Error("Selecione uma classe");
         await signUp(nickname.trim(), password, phone, selectedClass);
-        toast.success("Conta criada! Bem-vindo guerreiro!");
+        toast.success("Conta criada! Aguardando aprovação do admin.");
+        navigate("/login?pending=1");
+        return;
       } else {
         await signIn(phone, password);
         toast.success("Bem-vindo de volta!");
