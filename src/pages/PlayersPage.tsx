@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Users, Search, Pencil, MessageCircle, Trash2, X, Save, KeyRound, MoreVertical, RefreshCw, Trophy, Send, CheckSquare, Square } from "lucide-react";
+import { getStaffEmoji } from "@/data/staffMembers";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -415,6 +416,10 @@ export default function PlayersPage() {
                     {ranking && (
                       <span className="text-[10px] font-display font-bold text-muted-foreground">Lv.{ranking.level}</span>
                     )}
+                    {(() => {
+                      const staffEmoji = getStaffEmoji(player.nickname);
+                      return staffEmoji ? <span className="text-[10px]" title="Staff">{staffEmoji}</span> : null;
+                    })()}
                     {player.role === "admin" && <span className="text-gold text-[10px]">👑</span>}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
