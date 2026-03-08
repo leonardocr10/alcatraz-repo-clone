@@ -237,6 +237,10 @@ export default function PlayersPage() {
 
             return (
               <div key={player.id} className="glass-card p-3 flex items-center gap-3">
+                {/* Position */}
+                <span className="font-display font-extrabold text-xs text-muted-foreground w-5 text-center shrink-0">
+                  {index + 1}
+                </span>
                 {/* Avatar */}
                 {iconUrl ? (
                   <img src={iconUrl} alt="" className="w-10 h-10 rounded-xl object-cover border border-border/40 shrink-0" />
