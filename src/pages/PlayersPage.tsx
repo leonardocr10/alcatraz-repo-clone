@@ -421,8 +421,8 @@ export default function PlayersPage() {
                       <span className="text-[10px] font-display font-bold text-muted-foreground">Lv.{ranking.level}</span>
                     )}
                     {(() => {
-                      const staffEmoji = getStaffEmoji(player.nickname);
-                      return staffEmoji ? <span className="text-[10px]" title="Staff">{staffEmoji}</span> : null;
+                      const emoji = getClanRoleEmoji(player.clan_role);
+                      return emoji ? <span className="text-[10px]" title="Staff">{emoji}</span> : null;
                     })()}
                     {player.role === "admin" && <span className="text-gold text-[10px]">👑</span>}
                   </div>
