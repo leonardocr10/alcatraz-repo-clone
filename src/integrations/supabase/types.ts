@@ -160,6 +160,24 @@ export type Database = {
         }
         Relationships: []
       }
+      history_cache: {
+        Row: {
+          data: Json
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          data?: Json
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          data?: Json
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       player_rankings: {
         Row: {
           clan: string | null
