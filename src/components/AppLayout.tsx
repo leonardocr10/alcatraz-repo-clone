@@ -40,6 +40,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Class icon
   const [classIcon, setClassIcon] = useState<string | null>(null);
+  const [playerRanking, setPlayerRanking] = useState<{ level: number | null; xp: string | null } | null>(null);
 
   useEffect(() => {
     if (profile?.class) {
@@ -53,6 +54,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         });
     }
   }, [profile?.class]);
+
+  useEffect(() => {
+    if (profile?.id) {
+      supabase
+        .from("player_rankings")
+        .select("level, xp")
+        .eq("user_id", profile.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setPlayerRanking(data);
+        });
+    }
+  }, [profile?.id]);
 
   const navItems = items.filter((item) => !item.adminOnly || isAdmin);
 
