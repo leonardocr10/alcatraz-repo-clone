@@ -50,6 +50,12 @@ export default function PlayersPage() {
   const [newPassword, setNewPassword] = useState("");
   const [resetting, setResetting] = useState(false);
 
+  // Message modal state
+  const [msgOpen, setMsgOpen] = useState(false);
+  const [msgText, setMsgText] = useState("");
+  const [msgSelected, setMsgSelected] = useState<Set<string>>(new Set());
+  const [msgSending, setMsgSending] = useState(false);
+
   const fetchData = async () => {
     setLoading(true);
     const [playersRes, iconsRes, rankingsRes] = await Promise.all([
