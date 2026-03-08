@@ -47,8 +47,14 @@ const HomePage = () => {
   const [sendingAll, setSendingAll] = useState(false);
   const [classCounts, setClassCounts] = useState<ClassCount[]>([]);
   const [classIcons, setClassIcons] = useState<ClassIcon[]>([]);
-  const [classesOpen, setClassesOpen] = useState(true);
-  const [bossesOpen, setBossesOpen] = useState(true);
+  const [classesOpen, setClassesOpen] = useState(() => {
+    const saved = localStorage.getItem("home-classes-open");
+    return saved !== null ? saved === "true" : true;
+  });
+  const [bossesOpen, setBossesOpen] = useState(() => {
+    const saved = localStorage.getItem("home-bosses-open");
+    return saved !== null ? saved === "true" : true;
+  });
   const bossNotify = useBossNotifications();
 
   useEffect(() => {
