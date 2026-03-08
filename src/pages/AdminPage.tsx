@@ -218,31 +218,38 @@ const AdminPage = () => {
       {/* ========== BOSS TAB ========== */}
       {tab === "boss" && (
         <div className="space-y-3">
-          <div className="glass-card p-4 space-y-3">
-            <h3 className="font-display text-sm font-extrabold uppercase tracking-wider flex items-center gap-2">
-              <Skull className="w-4 h-4 text-primary" /> Cadastrar Boss
-            </h3>
-            <input value={newBossName} onChange={(e) => setNewBossName(e.target.value)} placeholder="Nome do boss" className="input-modern" />
-            <input value={newBossMap} onChange={(e) => setNewBossMap(e.target.value)} placeholder="Nome do mapa" className="input-modern" />
-            <textarea value={newBossDesc} onChange={(e) => setNewBossDesc(e.target.value)} placeholder="Descrição..." rows={2} className="input-modern" />
+          <button onClick={() => setShowBossModal(true)} className="w-full btn-primary text-sm flex items-center justify-center gap-2 py-3">
+            <Plus className="w-4 h-4" /> Cadastrar Boss
+          </button>
 
-            <label className="flex items-center gap-2 input-modern cursor-pointer hover:border-primary/50">
-              <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
-              <span className="text-muted-foreground truncate">{newBossFile ? newBossFile.name : "Imagem do boss"}</span>
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setNewBossFile(e.target.files[0]); }} />
-            </label>
-
-            <label className="flex items-center gap-2 input-modern cursor-pointer hover:border-primary/50">
-              <Image className="w-4 h-4 text-muted-foreground shrink-0" />
-              <span className="text-muted-foreground truncate">{newBossMapFile ? newBossMapFile.name : "Imagem do mapa"}</span>
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setNewBossMapFile(e.target.files[0]); }} />
-            </label>
-
-            <button onClick={createBoss} disabled={uploading} className="w-full btn-primary text-sm flex items-center justify-center gap-2">
-              {uploading ? <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
-              {uploading ? "Enviando..." : "Cadastrar Boss"}
-            </button>
-          </div>
+          <Dialog open={showBossModal} onOpenChange={setShowBossModal}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="font-display text-sm font-extrabold uppercase tracking-wider flex items-center gap-2">
+                  <Skull className="w-4 h-4 text-primary" /> Cadastrar Boss
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <input value={newBossName} onChange={(e) => setNewBossName(e.target.value)} placeholder="Nome do boss" className="input-modern" />
+                <input value={newBossMap} onChange={(e) => setNewBossMap(e.target.value)} placeholder="Nome do mapa" className="input-modern" />
+                <textarea value={newBossDesc} onChange={(e) => setNewBossDesc(e.target.value)} placeholder="Descrição..." rows={2} className="input-modern" />
+                <label className="flex items-center gap-2 input-modern cursor-pointer hover:border-primary/50">
+                  <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground truncate">{newBossFile ? newBossFile.name : "Imagem do boss"}</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setNewBossFile(e.target.files[0]); }} />
+                </label>
+                <label className="flex items-center gap-2 input-modern cursor-pointer hover:border-primary/50">
+                  <Image className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground truncate">{newBossMapFile ? newBossMapFile.name : "Imagem do mapa"}</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setNewBossMapFile(e.target.files[0]); }} />
+                </label>
+                <button onClick={async () => { await createBoss(); setShowBossModal(false); }} disabled={uploading} className="w-full btn-primary text-sm flex items-center justify-center gap-2">
+                  {uploading ? <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
+                  {uploading ? "Enviando..." : "Cadastrar Boss"}
+                </button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {bosses.map((boss) => (
             <div key={boss.id} className="glass-card overflow-hidden">
