@@ -19,6 +19,7 @@ type Player = {
   role: AppRole;
   auth_id: string | null;
   created_at: string;
+  clan_role: string | null;
 };
 
 type ClassIcon = { name: string; image_url: string | null; description: string | null };
