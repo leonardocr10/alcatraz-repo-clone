@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -36,7 +36,10 @@ export default function PlayersPage() {
   const [rankings, setRankings] = useState<Ranking[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [lastSync, setLastSync] = useState<string | null>(null);
+  const [lastSync, setLastSync] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("players-last-sync");
+  });
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState<string | null>(searchParams.get("class"));
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -76,23 +79,46 @@ export default function PlayersPage() {
     setLoading(false);
   };
 
-  const syncRankings = async () => {
+  const updateLastSync = useCallback(() => {
+    const value = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    setLastSync(value);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("players-last-sync", value);
+    }
+  }, []);
+
+  const syncRankings = useCallback(async (showToast = true) => {
     setSyncing(true);
     try {
       const { data, error } = await supabase.functions.invoke("scrape-rankings", { body: {} });
       if (error) throw error;
-      toast.success(`Ranking atualizado! ${data.matched} jogadores sincronizados`);
-      setLastSync(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
-      // Refresh rankings data
+
       const { data: newRankings } = await supabase.from("player_rankings").select("user_id, level, xp, rank_position");
       setRankings((newRankings ?? []) as Ranking[]);
+      updateLastSync();
+
+      if (showToast) {
+        toast.success(`Ranking atualizado! ${data.matched} jogadores sincronizados`);
+      }
     } catch (err: any) {
-      toast.error(err.message || "Erro ao sincronizar ranking");
+      if (showToast) {
+        toast.error(err.message || "Erro ao sincronizar ranking");
+      } else {
+        console.error("Erro na sincronização automática:", err);
+      }
     }
     setSyncing(false);
-  };
+  }, [updateLastSync]);
 
   useEffect(() => { fetchData(); }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      syncRankings(false);
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [syncRankings]);
 
   const iconMap = useMemo(() => new Map(icons.map((c) => [c.name, c.image_url])), [icons]);
   const classDetailMap = useMemo(() => new Map(icons.map((c) => [c.name, c])), [icons]);
@@ -273,7 +299,9 @@ export default function PlayersPage() {
           </div>
           <div>
             <h2 className="font-display text-xl font-bold uppercase tracking-wider">Jogadores</h2>
-            <p className="text-xs text-muted-foreground font-body">{players.length} registrados</p>
+            <p className="text-xs text-muted-foreground font-body">
+              {players.length} registrados{lastSync ? ` • última sync ${lastSync}` : ""}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -288,7 +316,7 @@ export default function PlayersPage() {
           )}
           <div className="flex flex-col items-end">
             <button
-              onClick={syncRankings}
+              onClick={() => syncRankings(true)}
               disabled={syncing}
               className="flex items-center gap-1.5 text-xs font-display font-bold text-primary px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50"
             >
@@ -296,7 +324,7 @@ export default function PlayersPage() {
               {syncing ? "..." : "Sincronizar"}
             </button>
             {lastSync && (
-              <span className="text-[10px] text-muted-foreground font-body pr-1">{lastSync}</span>
+              <span className="text-[10px] text-muted-foreground font-body pr-1">Última sync: {lastSync}</span>
             )}
           </div>
         </div>
