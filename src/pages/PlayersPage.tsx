@@ -98,6 +98,9 @@ export default function PlayersPage() {
 
   const filtered = useMemo(() => {
     let list = players;
+    if (classFilter) {
+      list = list.filter((p) => p.class === classFilter);
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -115,7 +118,12 @@ export default function PlayersPage() {
       const xpB = parseFloat((rb?.xp ?? "0").replace(",", ".")) || 0;
       return xpB - xpA;
     });
-  }, [players, search, rankingMap]);
+  }, [players, search, classFilter, rankingMap]);
+
+  const clearClassFilter = () => {
+    setClassFilter(null);
+    setSearchParams({});
+  };
 
   const formatPhone = (phone: string | null) => {
     if (!phone) return "—";
