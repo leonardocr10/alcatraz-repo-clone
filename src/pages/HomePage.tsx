@@ -7,6 +7,7 @@ import { Swords, Clock, MapPin, ChevronDown, Send, MessageCircle, BellOff, BellR
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useBossNotifications } from "@/hooks/useBossNotifications";
+import { DiscordFloatingButton } from "@/components/DiscordFloatingButton";
 
 interface Boss {
   id: string;
