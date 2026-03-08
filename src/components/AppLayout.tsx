@@ -31,6 +31,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showStaffModal, setShowStaffModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
