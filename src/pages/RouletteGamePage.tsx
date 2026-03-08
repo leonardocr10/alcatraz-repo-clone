@@ -127,6 +127,14 @@ const RouletteGamePage = () => {
       .sort((a, b) => (a.nextSchedule?.minutesUntil || 9999) - (b.nextSchedule?.minutesUntil || 9999));
   }, [bosses, bossSchedules, getBrazilTime]);
 
+  const getTimeColor = (mins: number) => {
+    if (mins <= 5) return "text-red-500 animate-pulse";
+    if (mins <= 15) return "text-red-400";
+    if (mins <= 30) return "text-amber-400";
+    if (mins <= 60) return "text-yellow-400";
+    return "text-muted-foreground";
+  };
+
   const formatMinutesUntil = (mins: number) => {
     const h = Math.floor(mins / 60);
     const m = mins % 60;
@@ -428,8 +436,8 @@ const RouletteGamePage = () => {
                   {/* Time remaining + chevron */}
                   <div className="flex items-center gap-2 shrink-0">
                     {nextSchedule && (
-                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-body">
-                        <MapPin className="w-3.5 h-3.5" />
+                      <span className={`flex items-center gap-1.5 text-sm font-bold font-display tabular-nums ${getTimeColor(nextSchedule.minutesUntil)}`}>
+                        <Clock className="w-3.5 h-3.5" />
                         {formatMinutesUntil(nextSchedule.minutesUntil)}
                       </span>
                     )}
