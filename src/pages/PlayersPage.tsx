@@ -63,7 +63,7 @@ export default function PlayersPage() {
     setLoading(true);
     const [playersRes, iconsRes, rankingsRes] = await Promise.all([
       supabase.from("users").select("id, nickname, class, phone, role, auth_id, created_at").order("created_at", { ascending: false }),
-      supabase.from("character_classes").select("name, image_url"),
+      supabase.from("character_classes").select("name, image_url, description"),
       supabase.from("player_rankings").select("user_id, level, xp, rank_position"),
     ]);
     setPlayers((playersRes.data ?? []) as Player[]);
