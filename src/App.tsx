@@ -13,6 +13,7 @@ import AdminPage from "@/pages/AdminPage";
 import PlayersPage from "@/pages/PlayersPage";
 import ClassesPage from "@/pages/ClassesPage";
 import ConfigPage from "@/pages/ConfigPage";
+import RulesPage from "@/pages/RulesPage";
 import NotFound from "@/pages/NotFound";
 
 
