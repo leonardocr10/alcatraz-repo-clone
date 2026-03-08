@@ -19,7 +19,7 @@ type Player = {
   created_at: string;
 };
 
-type ClassIcon = { name: string; image_url: string | null };
+type ClassIcon = { name: string; image_url: string | null; description: string | null };
 type Ranking = { user_id: string; level: number | null; xp: string | null; rank_position: number | null };
 
 const ALL_CLASSES: CharacterClass[] = [
