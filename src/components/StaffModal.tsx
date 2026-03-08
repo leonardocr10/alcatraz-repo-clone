@@ -16,11 +16,11 @@ interface StaffGroup {
 }
 
 const STAFF_GROUPS: StaffGroup[] = [
-  { title: "LÍDER", emoji: <Crown className="w-4 h-4 text-yellow-400" />, members: ["Zeus"] },
-  { title: "VICE-LÍDER", emoji: <Swords className="w-4 h-4 text-red-400" />, members: ["Mangaverde"] },
-  { title: "CONSELHO", emoji: <ShieldCheck className="w-4 h-4 text-blue-400" />, members: ["FsPrime", "Nutella", "Brasileiro"] },
-  { title: "RECRUTADOR", emoji: <Megaphone className="w-4 h-4 text-green-400" />, members: ["Danadinha"] },
-  { title: "VETERANOS", emoji: <Star className="w-4 h-4 text-amber-400" />, members: ["Encrenca", "Liang"] },
+  { title: "LÍDER", emoji: <Crown className="w-4 h-4 text-primary" />, members: ["Zeus"] },
+  { title: "VICE-LÍDER", emoji: <Swords className="w-4 h-4 text-destructive" />, members: ["Mangaverde"] },
+  { title: "CONSELHO", emoji: <ShieldCheck className="w-4 h-4 text-accent-foreground" />, members: ["FsPrime", "Nutella", "Brasileiro"] },
+  { title: "RECRUTADOR", emoji: <Megaphone className="w-4 h-4 text-secondary-foreground" />, members: ["Danadinha"] },
+  { title: "VETERANOS", emoji: <Star className="w-4 h-4 text-primary" />, members: ["Encrenca", "Liang"] },
 ];
 
 export function StaffModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
