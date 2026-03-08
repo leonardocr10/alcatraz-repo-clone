@@ -63,7 +63,9 @@ export default function HistoryPage() {
   const [yesterdayOpen, setYesterdayOpen] = useState(true);
   const [selectedItem, setSelectedItem] = useState<ItemCount | null>(null);
   const [nickFilter, setNickFilter] = useState<string | null>(null);
+  const [nickInput, setNickInput] = useState("");
   const [mapFilter, setMapFilter] = useState<string | null>(null);
+  const [itemFilter, setItemFilter] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
   const fetchHistory = useCallback(async (showToast = false) => {
