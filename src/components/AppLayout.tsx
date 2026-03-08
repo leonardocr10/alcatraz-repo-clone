@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Dices, Shield, Users, Swords, Settings, LogOut, Crown, Home } from "lucide-react";
+import { Dices, Shield, Users, Swords, Settings, LogOut, Crown, Home, ScrollText } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import logoAz from "@/assets/logo-az.jpeg";
