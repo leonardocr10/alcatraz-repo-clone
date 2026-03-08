@@ -205,6 +205,30 @@ Deno.serve(async (req) => {
 
     console.log(`Scraped ${page - 1} pages (max detected: ${maxPages}). Today: ${todayTotal}, Yesterday: ${yesterdayTotal}`);
 
+    // Save to history_cache table
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const updateRes = await fetch(`${supabaseUrl}/rest/v1/history_cache?select=id&limit=1`, {
+      headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` },
+    });
+    const rows = await updateRes.json();
+
+    if (rows.length > 0) {
+      await fetch(`${supabaseUrl}/rest/v1/history_cache?id=eq.${rows[0].id}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({ data: result, updated_at: new Date().toISOString() }),
+      });
+    }
+
+    console.log('History cache updated in DB');
+
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
