@@ -10,6 +10,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   isAdmin: boolean;
+  isApproved: boolean;
   signUp: (nickname: string, password: string, phone: string, characterClass?: string) => Promise<void>;
   signIn: (phone: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
