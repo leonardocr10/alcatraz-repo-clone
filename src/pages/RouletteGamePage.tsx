@@ -324,11 +324,19 @@ const RouletteGamePage = () => {
     <div className="space-y-4">
       {/* Image Modal */}
       <Dialog open={!!imageModal} onOpenChange={() => setImageModal(null)}>
-        <DialogContent className="max-w-[95vw] max-h-[90vh] p-2 bg-background/95">
+        <DialogContent className="max-w-[95vw] max-h-[90vh] p-4 bg-background/95">
           {imageModal && (
-            <div className="text-center">
-              <p className="font-display text-sm font-extrabold mb-2">{imageModal.title}</p>
-              <img src={imageModal.url} alt={imageModal.title} className="max-w-full max-h-[75vh] object-contain rounded-xl mx-auto" />
+            <div className="text-center space-y-3">
+              <p className="font-display text-lg font-extrabold">{imageModal.title}</p>
+              {imageModal.mapLevel && (
+                <p className="text-xs text-muted-foreground font-body flex items-center justify-center gap-1">
+                  <MapPin className="w-3 h-3" /> {imageModal.mapLevel}
+                </p>
+              )}
+              <img src={imageModal.url} alt={imageModal.title} className="max-w-full max-h-[60vh] object-contain rounded-xl mx-auto" />
+              {imageModal.description && (
+                <p className="text-sm text-muted-foreground font-body text-left px-2">{imageModal.description}</p>
+              )}
             </div>
           )}
         </DialogContent>
