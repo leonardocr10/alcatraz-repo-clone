@@ -16,9 +16,9 @@ const items: NavItem[] = [
   { label: "Início", path: "/inicio", icon: Home },
   { label: "Roleta", path: "/roleta", icon: Dices },
   { label: "Regras", path: "/regras", icon: ScrollText },
+  { label: "Classes", path: "/classes", icon: Swords },
+  { label: "Jogadores", path: "/jogadores", icon: Users },
   { label: "Gerenciar", path: "/admin", icon: Crown, adminOnly: true },
-  { label: "Jogadores", path: "/jogadores", icon: Users, adminOnly: true },
-  { label: "Classes", path: "/classes", icon: Swords, adminOnly: true },
   { label: "Config", path: "/config", icon: Settings, adminOnly: true },
 ];
 
