@@ -57,6 +57,15 @@ const HomePage = () => {
   });
   const bossNotify = useBossNotifications();
 
+  const handleClassesToggle = (open: boolean) => {
+    setClassesOpen(open);
+    localStorage.setItem("home-classes-open", String(open));
+  };
+  const handleBossesToggle = (open: boolean) => {
+    setBossesOpen(open);
+    localStorage.setItem("home-bosses-open", String(open));
+  };
+
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(interval);
