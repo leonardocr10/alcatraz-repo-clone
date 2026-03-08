@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -29,12 +30,14 @@ const ALL_CLASSES: CharacterClass[] = [
 
 export default function PlayersPage() {
   const { isAdmin } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [players, setPlayers] = useState<Player[]>([]);
   const [icons, setIcons] = useState<ClassIcon[]>([]);
   const [rankings, setRankings] = useState<Ranking[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState("");
+  const [classFilter, setClassFilter] = useState<string | null>(searchParams.get("class"));
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
   // Edit modal state
@@ -95,6 +98,9 @@ export default function PlayersPage() {
 
   const filtered = useMemo(() => {
     let list = players;
+    if (classFilter) {
+      list = list.filter((p) => p.class === classFilter);
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -112,7 +118,12 @@ export default function PlayersPage() {
       const xpB = parseFloat((rb?.xp ?? "0").replace(",", ".")) || 0;
       return xpB - xpA;
     });
-  }, [players, search, rankingMap]);
+  }, [players, search, classFilter, rankingMap]);
+
+  const clearClassFilter = () => {
+    setClassFilter(null);
+    setSearchParams({});
+  };
 
   const formatPhone = (phone: string | null) => {
     if (!phone) return "—";
@@ -283,6 +294,22 @@ export default function PlayersPage() {
           </button>
         </div>
       </div>
+
+      {/* Class Filter Badge */}
+      {classFilter && (
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/15 text-primary text-xs font-display font-bold border border-primary/30">
+            {iconMap.get(classFilter) && (
+              <img src={iconMap.get(classFilter)!} alt="" className="w-4 h-4 rounded object-cover" />
+            )}
+            {classFilter}
+            <button onClick={clearClassFilter} className="ml-1 hover:text-foreground transition-colors">
+              <X className="w-3 h-3" />
+            </button>
+          </span>
+          <span className="text-xs text-muted-foreground font-body">{filtered.length} jogadores</span>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative">
