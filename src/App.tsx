@@ -2,9 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
-import { AppLayout } from "@/components/AppLayout";
 import LoginPage from "@/pages/LoginPage";
 import RouletteGamePage from "@/pages/RouletteGamePage";
 import AdminPage from "@/pages/AdminPage";
@@ -17,14 +16,20 @@ const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { authUser, loading } = useAuth();
-  if (loading) return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Carregando...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
   if (!authUser) return <Navigate to="/login" replace />;
-  return <AppLayout>{children}</AppLayout>;
+  return <>{children}</>;
 }
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin, loading } = useAuth();
-  if (loading) return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Carregando...</div>;
+  if (loading) return null;
   if (!isAdmin) return <Navigate to="/roleta" replace />;
   return <>{children}</>;
 }
@@ -47,7 +52,7 @@ const App = () => (
             <Route path="/" element={<Navigate to="/roleta" replace />} />
             <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
             <Route path="/roleta" element={<ProtectedRoute><RouletteGamePage /></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute><AdminRoute><AdminPage /></AdminRoute></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
             <Route path="/jogadores" element={<ProtectedRoute><AdminRoute><PlayersPage /></AdminRoute></ProtectedRoute>} />
             <Route path="/classes" element={<ProtectedRoute><AdminRoute><ClassesPage /></AdminRoute></ProtectedRoute>} />
             <Route path="/config" element={<ProtectedRoute><AdminRoute><ConfigPage /></AdminRoute></ProtectedRoute>} />
