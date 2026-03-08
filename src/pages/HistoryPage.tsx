@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ScrollText, RefreshCw, Package, TrendingUp, Calendar, User, MapPin, Crown } from "lucide-react";
+import { ScrollText, RefreshCw, Package, TrendingUp, Calendar, User, MapPin, Crown, Search, X } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -33,19 +33,43 @@ interface HistoryData {
   pagesScraped: number;
 }
 
+function filterDay(day: DayData, nickFilter: string | null, mapFilter: string | null): DayData {
+  if (!nickFilter && !mapFilter) return day;
+
+  const items: ItemCount[] = [];
+  let total = 0;
+
+  for (const item of day.items) {
+    const filtered = item.details.filter((d) => {
+      if (nickFilter && d.nick !== nickFilter) return false;
+      if (mapFilter && d.map !== mapFilter) return false;
+      return true;
+    });
+    if (filtered.length > 0) {
+      items.push({ name: item.name, count: filtered.length, details: filtered });
+      total += filtered.length;
+    }
+  }
+
+  items.sort((a, b) => b.count - a.count);
+  return { date: day.date, total, items };
+}
+
 export default function HistoryPage() {
   const [data, setData] = useState<HistoryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [todayOpen, setTodayOpen] = useState(true);
   const [yesterdayOpen, setYesterdayOpen] = useState(true);
   const [selectedItem, setSelectedItem] = useState<ItemCount | null>(null);
+  const [nickFilter, setNickFilter] = useState<string | null>(null);
+  const [mapFilter, setMapFilter] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   const fetchHistory = useCallback(async (showToast = false) => {
     try {
       const { data: result, error } = await supabase.functions.invoke("scrape-history");
       if (error) throw error;
       const r = result as any;
-      // Normalize items to always have details array
       const normalize = (day: any) => ({
         ...day,
         items: (day?.items || []).map((item: any) => ({
@@ -73,6 +97,32 @@ export default function HistoryPage() {
     const interval = setInterval(() => fetchHistory(), 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, [fetchHistory]);
+
+  // Extract unique nicks and maps from all data
+  const { allNicks, allMaps } = useMemo(() => {
+    if (!data) return { allNicks: [] as string[], allMaps: [] as string[] };
+    const nicks = new Set<string>();
+    const maps = new Set<string>();
+    const collectFromDay = (day: DayData) => {
+      for (const item of day.items) {
+        for (const d of item.details) {
+          nicks.add(d.nick);
+          maps.add(d.map);
+        }
+      }
+    };
+    collectFromDay(data.today);
+    collectFromDay(data.yesterday);
+    return {
+      allNicks: [...nicks].sort((a, b) => a.localeCompare(b)),
+      allMaps: [...maps].sort((a, b) => a.localeCompare(b)),
+    };
+  }, [data]);
+
+  const filteredToday = useMemo(() => data ? filterDay(data.today, nickFilter, mapFilter) : null, [data, nickFilter, mapFilter]);
+  const filteredYesterday = useMemo(() => data ? filterDay(data.yesterday, nickFilter, mapFilter) : null, [data, nickFilter, mapFilter]);
+
+  const hasActiveFilter = !!nickFilter || !!mapFilter;
 
   const formatScrapedAt = (iso: string) => {
     const d = new Date(iso);
@@ -158,42 +208,134 @@ export default function HistoryPage() {
             </p>
           </div>
         </div>
-        <button
-          onClick={() => { setLoading(true); fetchHistory(true); }}
-          disabled={loading}
-          className="flex items-center gap-1.5 text-xs font-display font-bold text-primary px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-          {loading ? "..." : "Atualizar"}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-1.5 text-xs font-display font-bold px-3 py-1.5 rounded-xl transition-colors ${
+              hasActiveFilter
+                ? "text-primary bg-primary/10"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
+            }`}
+          >
+            <Search className="w-3.5 h-3.5" />
+            Filtros
+            {hasActiveFilter && (
+              <span className="w-4 h-4 rounded-full bg-primary text-primary-foreground text-[9px] flex items-center justify-center font-bold">
+                {(nickFilter ? 1 : 0) + (mapFilter ? 1 : 0)}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => { setLoading(true); fetchHistory(true); }}
+            disabled={loading}
+            className="flex items-center gap-1.5 text-xs font-display font-bold text-primary px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            {loading ? "..." : "Atualizar"}
+          </button>
+        </div>
       </div>
+
+      {/* Filter Panel */}
+      {showFilters && data && (
+        <div className="glass-card p-3 space-y-3">
+          {hasActiveFilter && (
+            <button
+              onClick={() => { setNickFilter(null); setMapFilter(null); }}
+              className="text-[10px] font-display font-bold text-destructive flex items-center gap-1 hover:underline"
+            >
+              <X className="w-3 h-3" /> Limpar filtros
+            </button>
+          )}
+
+          {/* Nick filter */}
+          <div>
+            <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
+              <User className="w-3 h-3" /> Jogador
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {allNicks.map((nick) => (
+                <button
+                  key={nick}
+                  onClick={() => setNickFilter(nickFilter === nick ? null : nick)}
+                  className={`px-2 py-1 rounded-lg text-[10px] font-display font-bold transition-colors ${
+                    nickFilter === nick
+                      ? "bg-primary/20 text-primary border border-primary/30"
+                      : "bg-secondary/50 text-muted-foreground border border-border/20 hover:bg-secondary/80"
+                  }`}
+                >
+                  {nick}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Map filter */}
+          <div>
+            <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
+              <MapPin className="w-3 h-3" /> Mapa
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {allMaps.map((map) => (
+                <button
+                  key={map}
+                  onClick={() => setMapFilter(mapFilter === map ? null : map)}
+                  className={`px-2 py-1 rounded-lg text-[10px] font-display font-bold transition-colors ${
+                    mapFilter === map
+                      ? "bg-primary/20 text-primary border border-primary/30"
+                      : "bg-secondary/50 text-muted-foreground border border-border/20 hover:bg-secondary/80"
+                  }`}
+                >
+                  {map}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Active filter badges */}
+      {hasActiveFilter && !showFilters && (
+        <div className="flex flex-wrap gap-1.5">
+          {nickFilter && (
+            <button onClick={() => setNickFilter(null)} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-primary/15 text-primary text-[10px] font-display font-bold border border-primary/20">
+              <User className="w-3 h-3" /> {nickFilter} <X className="w-3 h-3" />
+            </button>
+          )}
+          {mapFilter && (
+            <button onClick={() => setMapFilter(null)} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-primary/15 text-primary text-[10px] font-display font-bold border border-primary/20">
+              <MapPin className="w-3 h-3" /> {mapFilter} <X className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      )}
 
       {loading && !data ? (
         <div className="text-center py-12">
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-xs text-muted-foreground font-body">Buscando histórico do servidor...</p>
         </div>
-      ) : data ? (
+      ) : data && filteredToday && filteredYesterday ? (
         <>
           {/* Summary Cards */}
           <div className="grid grid-cols-2 gap-2">
             <div className="glass-card p-3 text-center">
               <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-wider">Hoje</p>
-              <p className="text-2xl font-display font-extrabold text-primary tabular-nums mt-1">{data.today.total}</p>
-              <p className="text-[10px] text-muted-foreground">{data.today.items.length} itens</p>
+              <p className="text-2xl font-display font-extrabold text-primary tabular-nums mt-1">{filteredToday.total}</p>
+              <p className="text-[10px] text-muted-foreground">{filteredToday.items.length} itens</p>
             </div>
             <div className="glass-card p-3 text-center">
               <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-wider">Ontem</p>
-              <p className="text-2xl font-display font-extrabold text-gold tabular-nums mt-1">{data.yesterday.total}</p>
-              <p className="text-[10px] text-muted-foreground">{data.yesterday.items.length} itens</p>
+              <p className="text-2xl font-display font-extrabold text-gold tabular-nums mt-1">{filteredYesterday.total}</p>
+              <p className="text-[10px] text-muted-foreground">{filteredYesterday.items.length} itens</p>
             </div>
           </div>
 
           {/* Today */}
-          {renderDaySection(data.today, "Hoje", todayOpen, setTodayOpen, <TrendingUp className="w-4 h-4 text-primary" />)}
+          {renderDaySection(filteredToday, "Hoje", todayOpen, setTodayOpen, <TrendingUp className="w-4 h-4 text-primary" />)}
 
           {/* Yesterday */}
-          {renderDaySection(data.yesterday, "Ontem", yesterdayOpen, setYesterdayOpen, <Calendar className="w-4 h-4 text-gold" />)}
+          {renderDaySection(filteredYesterday, "Ontem", yesterdayOpen, setYesterdayOpen, <Calendar className="w-4 h-4 text-gold" />)}
 
           <p className="text-center text-[10px] text-muted-foreground font-body">
             Atualiza automaticamente a cada 5 minutos
