@@ -1,13 +1,23 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ScrollText, RefreshCw, Package, TrendingUp, Calendar } from "lucide-react";
+import { ScrollText, RefreshCw, Package, TrendingUp, Calendar, User, MapPin, Crown } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+
+interface ItemDetail {
+  nick: string;
+  map: string;
+  boss: string | null;
+  source: string;
+  time: string;
+}
 
 interface ItemCount {
   name: string;
   count: number;
+  details: ItemDetail[];
 }
 
 interface DayData {
@@ -28,6 +38,7 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [todayOpen, setTodayOpen] = useState(true);
   const [yesterdayOpen, setYesterdayOpen] = useState(true);
+  const [selectedItem, setSelectedItem] = useState<ItemCount | null>(null);
 
   const fetchHistory = useCallback(async (showToast = false) => {
     try {
@@ -45,7 +56,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     fetchHistory();
-    const interval = setInterval(() => fetchHistory(), 5 * 60 * 1000); // 5 min
+    const interval = setInterval(() => fetchHistory(), 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, [fetchHistory]);
 
@@ -83,7 +94,11 @@ export default function HistoryPage() {
           {day.items.length > 0 ? (
             <div className="divide-y divide-border/10">
               {day.items.map((item, i) => (
-                <div key={item.name} className="flex items-center justify-between px-4 py-2.5 hover:bg-secondary/20 transition-colors">
+                <button
+                  key={item.name}
+                  onClick={() => setSelectedItem(item)}
+                  className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-secondary/20 transition-colors text-left"
+                >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className="text-[10px] font-display font-bold text-muted-foreground w-5 text-right tabular-nums shrink-0">
                       {i + 1}
@@ -98,8 +113,9 @@ export default function HistoryPage() {
                         {((item.count / day.total) * 100).toFixed(0)}%
                       </span>
                     )}
+                    <ChevronDown className="w-3 h-3 text-muted-foreground -rotate-90" />
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           ) : (
@@ -160,22 +176,10 @@ export default function HistoryPage() {
           </div>
 
           {/* Today */}
-          {renderDaySection(
-            data.today,
-            "Hoje",
-            todayOpen,
-            setTodayOpen,
-            <TrendingUp className="w-4 h-4 text-primary" />
-          )}
+          {renderDaySection(data.today, "Hoje", todayOpen, setTodayOpen, <TrendingUp className="w-4 h-4 text-primary" />)}
 
           {/* Yesterday */}
-          {renderDaySection(
-            data.yesterday,
-            "Ontem",
-            yesterdayOpen,
-            setYesterdayOpen,
-            <Calendar className="w-4 h-4 text-gold" />
-          )}
+          {renderDaySection(data.yesterday, "Ontem", yesterdayOpen, setYesterdayOpen, <Calendar className="w-4 h-4 text-gold" />)}
 
           <p className="text-center text-[10px] text-muted-foreground font-body">
             Atualiza automaticamente a cada 5 minutos
@@ -186,6 +190,50 @@ export default function HistoryPage() {
           <p className="text-muted-foreground font-body text-sm">Erro ao carregar histórico</p>
         </div>
       )}
+
+      {/* Item Detail Dialog */}
+      <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
+        <DialogContent className="max-w-sm max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="font-display text-base font-extrabold uppercase tracking-wider flex items-center gap-2">
+              <Package className="w-4 h-4 text-primary" />
+              {selectedItem?.name}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {selectedItem?.count} drop{selectedItem && selectedItem.count > 1 ? "s" : ""} registrado{selectedItem && selectedItem.count > 1 ? "s" : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-y-auto -mx-6 px-6 divide-y divide-border/10">
+            {selectedItem?.details.map((d, i) => (
+              <div key={i} className="py-2.5 space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-xs font-display font-bold text-foreground">{d.nick}</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground font-body tabular-nums">{d.time}</span>
+                </div>
+                <div className="flex items-center gap-2 pl-5.5">
+                  <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
+                  <span className="text-[11px] text-muted-foreground font-body">{d.map}</span>
+                </div>
+                {d.boss && (
+                  <div className="flex items-center gap-2 pl-5.5">
+                    <Crown className="w-3 h-3 text-primary shrink-0" />
+                    <span className="text-[11px] text-primary font-display font-bold">{d.boss}</span>
+                  </div>
+                )}
+                {d.source === 'Boss' && !d.boss && (
+                  <div className="flex items-center gap-2 pl-5.5">
+                    <Crown className="w-3 h-3 text-primary shrink-0" />
+                    <span className="text-[11px] text-primary font-body">Boss drop</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
