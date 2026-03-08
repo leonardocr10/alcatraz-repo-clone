@@ -272,6 +272,12 @@ export default function HistoryPage() {
         </div>
         <div className="flex items-center gap-1">
           <button
+            onClick={() => setShowTop5(true)}
+            className="flex items-center gap-1.5 text-xs font-display font-bold text-muted-foreground hover:text-foreground hover:bg-secondary/30 px-2.5 py-1.5 rounded-xl transition-colors"
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+          </button>
+          <button
             onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-1.5 text-xs font-display font-bold px-3 py-1.5 rounded-xl transition-colors ${
               hasActiveFilter
