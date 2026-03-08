@@ -229,7 +229,11 @@ const RouletteGamePage = () => {
       )}
 
       {/* Active Session / Game Area */}
-      {!session ? (
+      {sessionLoading ? (
+        <div className="glass-card p-10 flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : !session ? (
         <div className="glass-card p-10 text-center animate-fade-in">
           <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-4">
             <Swords className="w-7 h-7 text-muted-foreground" />
