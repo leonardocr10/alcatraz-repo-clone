@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return `${digits}@phone.roleta.app`;
   };
 
-  const signUp = async (nickname: string, password: string, phone: string) => {
+  const signUp = async (nickname: string, password: string, phone: string, characterClass?: string) => {
     const fakeEmail = makeEmail(phone);
     const { data, error } = await supabase.auth.signUp({ email: fakeEmail, password });
     if (error) throw error;
@@ -69,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         auth_id: data.user.id,
         nickname,
         phone: phone.replace(/\D/g, ''),
+        class: (characterClass || null) as any,
       });
       if (profileError) throw profileError;
       await fetchProfile(data.user.id);
