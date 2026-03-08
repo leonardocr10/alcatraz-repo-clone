@@ -17,16 +17,20 @@ const LoginPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!phone || phone.replace(/\D/g, "").length < 10) {
+      toast.error("Informe um telefone válido com DDD");
+      return;
+    }
     setLoading(true);
     try {
       if (isSignUp) {
-        if (!phone || phone.replace(/\D/g, "").length < 10) {
-          throw new Error("Informe um telefone válido com DDD (mínimo 10 dígitos)");
+        if (!nickname.trim()) {
+          throw new Error("Informe um nickname");
         }
-        await signUp(nickname, password, phone);
+        await signUp(nickname.trim(), password, phone);
         toast.success("Conta criada! Bem-vindo guerreiro!");
       } else {
-        await signIn(nickname, password);
+        await signIn(phone, password);
         toast.success("Bem-vindo de volta!");
       }
       navigate("/roleta");
@@ -40,7 +44,6 @@ const LoginPage = () => {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-sm animate-fade-in">
-        {/* Logo & Title */}
         <div className="text-center mb-8">
           <div className="relative inline-block mb-4">
             <img
@@ -57,7 +60,6 @@ const LoginPage = () => {
           <p className="text-sm text-muted-foreground mt-1 font-body">Sistema de Gestão</p>
         </div>
 
-        {/* Card */}
         <div className="glass-card glow-primary p-6">
           <p className="text-center text-muted-foreground font-body text-sm mb-6 flex items-center justify-center gap-2">
             <Sword className="w-4 h-4 text-primary" />
@@ -66,38 +68,35 @@ const LoginPage = () => {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">
-                Nickname
-              </label>
-              <input
-                type="text"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                required
-                className="input-modern"
-                placeholder="Seu nome de guerra"
-              />
-            </div>
-
             {isSignUp && (
               <div>
                 <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">
-                  <span className="flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5" />
-                    Telefone (WhatsApp)
-                  </span>
+                  Nickname
                 </label>
                 <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  type="text"
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
                   required
                   className="input-modern"
-                  placeholder="(11) 99999-9999"
+                  placeholder="Seu nome de guerra"
                 />
               </div>
             )}
+
+            <div>
+              <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">
+                Telefone
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+                className="input-modern"
+                placeholder="(11) 99999-9999"
+              />
+            </div>
 
             <div>
               <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">

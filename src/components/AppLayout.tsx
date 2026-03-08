@@ -2,6 +2,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Dices, Layers, Users, Swords, Settings, LogOut, Shield } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import logoAz from "@/assets/logo-az.jpeg";
 
 interface NavItem {
   label: string;
@@ -12,7 +13,7 @@ interface NavItem {
 
 const items: NavItem[] = [
   { label: "Roleta", path: "/roleta", icon: Dices },
-  { label: "Admin", path: "/admin", icon: Layers, adminOnly: true },
+  { label: "Gerenciar", path: "/admin", icon: Layers, adminOnly: true },
   { label: "Jogadores", path: "/jogadores", icon: Users, adminOnly: true },
   { label: "Classes", path: "/classes", icon: Swords, adminOnly: true },
   { label: "Config", path: "/config", icon: Settings, adminOnly: true },
@@ -34,18 +35,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/95 backdrop-blur">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3">
-          <div>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">Painel AZ</p>
-            <h1 className="text-sm font-semibold">Centro de Controle</h1>
+          <div className="flex items-center gap-3">
+            <img src={logoAz} alt="AZ" className="w-8 h-8 rounded-lg border border-primary/30" />
+            <h1 className="font-display text-base font-bold tracking-wider">
+              PAINEL <span className="text-primary">AZ</span>
+            </h1>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="rounded-lg border border-border bg-card px-3 py-1.5 text-right">
-              <p className="text-xs font-medium leading-none">{profile?.nickname ?? "Sem perfil"}</p>
-              <p className="mt-1 flex items-center justify-end gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
-                {isAdmin ? <Shield className="h-3 w-3" /> : null}
-                {isAdmin ? "Admin" : "Membro"}
-              </p>
+            <div className="rounded-lg border border-border bg-card px-3 py-1.5 flex items-center gap-2">
+              <Shield className="h-3 w-3 text-muted-foreground" />
+              <p className="text-xs font-medium leading-none">{profile?.nickname ?? "..."}</p>
             </div>
             <button
               onClick={onLogout}
@@ -72,7 +72,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   active ? "text-primary" : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <item.icon className="h-4 w-4" />
+                <item.icon className="h-5 w-5" />
                 <span>{item.label}</span>
               </button>
             );

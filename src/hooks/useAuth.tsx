@@ -11,7 +11,7 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   signUp: (nickname: string, password: string, phone: string) => Promise<void>;
-  signIn: (nickname: string, password: string) => Promise<void>;
+  signIn: (phone: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -55,8 +55,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const makeEmail = (phone: string) => {
+    const digits = phone.replace(/\D/g, '');
+    return `${digits}@roleta.local`;
+  };
+
   const signUp = async (nickname: string, password: string, phone: string) => {
-    const fakeEmail = `${nickname.toLowerCase().replace(/[^a-z0-9]/g, '')}@roleta.local`;
+    const fakeEmail = makeEmail(phone);
     const { data, error } = await supabase.auth.signUp({ email: fakeEmail, password });
     if (error) throw error;
     if (data.user) {
@@ -70,8 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signIn = async (nickname: string, password: string) => {
-    const fakeEmail = `${nickname.toLowerCase().replace(/[^a-z0-9]/g, '')}@roleta.local`;
+  const signIn = async (phone: string, password: string) => {
+    const fakeEmail = makeEmail(phone);
     const { error } = await supabase.auth.signInWithPassword({ email: fakeEmail, password });
     if (error) throw error;
   };
