@@ -312,6 +312,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Staff Modal */}
+      <StaffModal open={showStaffModal} onOpenChange={setShowStaffModal} />
     </div>
   );
 }
