@@ -127,6 +127,14 @@ const RouletteGamePage = () => {
       .sort((a, b) => (a.nextSchedule?.minutesUntil || 9999) - (b.nextSchedule?.minutesUntil || 9999));
   }, [bosses, bossSchedules, getBrazilTime]);
 
+  const getTimeColor = (mins: number) => {
+    if (mins <= 5) return "text-red-500 animate-pulse";
+    if (mins <= 15) return "text-red-400";
+    if (mins <= 30) return "text-amber-400";
+    if (mins <= 60) return "text-yellow-400";
+    return "text-muted-foreground";
+  };
+
   const formatMinutesUntil = (mins: number) => {
     const h = Math.floor(mins / 60);
     const m = mins % 60;
