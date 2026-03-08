@@ -422,7 +422,6 @@ export default function PlayersPage() {
                       const emoji = getClanRoleEmoji(player.clan_role);
                       return emoji ? <span className="text-[10px]" title="Staff">{emoji}</span> : null;
                     })()}
-                    {player.role === "admin" && <span className="text-gold text-[10px]">👑</span>}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     {player.class ? (
