@@ -275,18 +275,7 @@ const AdminPage = () => {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/80 border-b border-border/40">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Link to="/roleta" className="text-muted-foreground hover:text-primary transition-colors bg-secondary p-2 rounded-full">
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <h1 className="font-display text-lg font-bold tracking-wider text-foreground">
-            ⚙ PAINEL <span className="text-primary">AZ</span> — Admin
-          </h1>
-        </div>
-      </header>
+    <div className="flex flex-col">
 
       {/* Tabs - scrollable */}
       <div className="sticky top-[53px] z-30 backdrop-blur-xl bg-background/80 border-b border-border/40">
