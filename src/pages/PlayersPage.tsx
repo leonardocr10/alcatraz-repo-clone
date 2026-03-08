@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Users, Search, Pencil, MessageCircle, Trash2, X, Save, KeyRound, MoreVertical, RefreshCw, Trophy, Send, CheckSquare, Square } from "lucide-react";
-import { getClanRoleEmoji, CLAN_ROLES } from "@/data/staffMembers";
+import { getClanRoleEmoji, getClanRoleLabel, CLAN_ROLES } from "@/data/staffMembers";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -422,7 +422,6 @@ export default function PlayersPage() {
                       const emoji = getClanRoleEmoji(player.clan_role);
                       return emoji ? <span className="text-[10px]" title="Staff">{emoji}</span> : null;
                     })()}
-                    {player.role === "admin" && <span className="text-gold text-[10px]">👑</span>}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     {player.class ? (
@@ -439,13 +438,15 @@ export default function PlayersPage() {
                   </div>
                 </div>
 
-                {/* Level/XP */}
-                {ranking && (
-                  <div className="text-right shrink-0">
-                    <p className="font-display text-sm font-extrabold text-gold">Lv.{ranking.level}</p>
-                    <p className="text-[10px] text-muted-foreground font-body">{ranking.xp?.endsWith('%') ? ranking.xp : `${ranking.xp}%`}</p>
-                  </div>
-                )}
+                {/* Clan Role */}
+                <div className="text-right shrink-0">
+                  <p className="font-display text-xs font-bold text-primary capitalize">
+                    {getClanRoleLabel(player.clan_role)}
+                  </p>
+                  {ranking && (
+                    <p className="text-[10px] text-muted-foreground font-body">Lv.{ranking.level}</p>
+                  )}
+                </div>
 
                 {/* Actions */}
                 {isAdmin && (
