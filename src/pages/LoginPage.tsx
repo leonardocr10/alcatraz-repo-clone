@@ -98,7 +98,7 @@ const LoginPage = () => {
               <input
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(formatPhone(e.target.value))}
                 required
                 className="input-modern"
                 placeholder="(11) 99999-9999"
