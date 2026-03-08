@@ -36,6 +36,7 @@ export default function PlayersPage() {
   const [rankings, setRankings] = useState<Ranking[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState<string | null>(searchParams.get("class"));
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -81,6 +82,7 @@ export default function PlayersPage() {
       const { data, error } = await supabase.functions.invoke("scrape-rankings", { body: {} });
       if (error) throw error;
       toast.success(`Ranking atualizado! ${data.matched} jogadores sincronizados`);
+      setLastSync(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
       // Refresh rankings data
       const { data: newRankings } = await supabase.from("player_rankings").select("user_id, level, xp, rank_position");
       setRankings((newRankings ?? []) as Ranking[]);
@@ -284,14 +286,19 @@ export default function PlayersPage() {
               Mensagem
             </button>
           )}
-          <button
-            onClick={syncRankings}
-            disabled={syncing}
-            className="flex items-center gap-1.5 text-xs font-display font-bold text-primary px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
-            {syncing ? "..." : "Sincronizar"}
-          </button>
+          <div className="flex flex-col items-end">
+            <button
+              onClick={syncRankings}
+              disabled={syncing}
+              className="flex items-center gap-1.5 text-xs font-display font-bold text-primary px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
+              {syncing ? "..." : "Sincronizar"}
+            </button>
+            {lastSync && (
+              <span className="text-[10px] text-muted-foreground font-body pr-1">{lastSync}</span>
+            )}
+          </div>
         </div>
       </div>
 
