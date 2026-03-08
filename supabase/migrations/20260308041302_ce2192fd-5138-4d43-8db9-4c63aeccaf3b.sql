@@ -1,0 +1,13 @@
+
+SELECT cron.unschedule('scrape-rankings-every-10min');
+SELECT cron.schedule(
+  'scrape-rankings-every-5min',
+  '*/5 * * * *',
+  $$
+  SELECT net.http_post(
+    url:='https://pmofvoekrrskgurydtnp.supabase.co/functions/v1/scrape-rankings',
+    headers:='{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtb2Z2b2VrcnJza2d1cnlkdG5wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MDk0NTMsImV4cCI6MjA4ODQ4NTQ1M30.a8SB38ryN9X06nhIFgSSDCLGYpB-vzD7eyZ8Z9PBV4I"}'::jsonb,
+    body:='{}'::jsonb
+  ) AS request_id;
+  $$
+);
