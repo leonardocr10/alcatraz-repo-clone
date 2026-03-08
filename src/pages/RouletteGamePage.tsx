@@ -318,7 +318,7 @@ const RouletteGamePage = () => {
 
   const progressPercent = totalTime > 0 ? (timeLeft / totalTime) * 100 : 0;
   const isUrgent = timeLeft <= 5 && timeLeft > 0;
-  const groupedBosses = getGroupedBosses().slice(0, 3);
+  const groupedBosses = getGroupedBosses();
 
   return (
     <div className="space-y-4">
