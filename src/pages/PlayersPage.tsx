@@ -212,7 +212,7 @@ export default function PlayersPage() {
           className="flex items-center gap-1.5 text-xs font-display font-bold text-primary px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
-          {syncing ? "Sync..." : "Sincronizar Rank"}
+          {syncing ? "..." : "Sincronizar"}
         </button>
       </div>
 
