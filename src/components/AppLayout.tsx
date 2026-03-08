@@ -112,6 +112,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Rules button */}
+            <button
+              onClick={() => navigate("/regras")}
+              className={cn(
+                "rounded-xl bg-background/60 backdrop-blur-md p-2 transition-colors border border-border/30",
+                location.pathname === "/regras"
+                  ? "text-primary border-primary/30"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/80"
+              )}
+            >
+              <ScrollText className="h-4 w-4" />
+            </button>
             {/* Player name with dropdown */}
             <div className="relative">
               <button
