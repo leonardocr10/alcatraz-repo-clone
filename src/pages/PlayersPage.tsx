@@ -556,6 +556,25 @@ export default function PlayersPage() {
               </div>
             </div>
 
+            <div className="space-y-1.5">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Cargo no Clã</span>
+              <div className="flex flex-wrap gap-1.5">
+                {CLAN_ROLES.map((r) => (
+                  <button
+                    key={r.value}
+                    onClick={() => setEditClanRole(r.value)}
+                    className={`px-3 py-2 rounded-xl text-xs font-display font-bold transition-all border ${
+                      editClanRole === r.value
+                        ? "border-primary bg-primary/15 text-primary"
+                        : "border-border/40 text-muted-foreground hover:border-muted-foreground/30"
+                    }`}
+                  >
+                    {r.emoji ? `${r.emoji} ` : ""}{r.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <label className="block space-y-1.5">
               <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Telefone</span>
               <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="input-modern" placeholder="34999999999" />
