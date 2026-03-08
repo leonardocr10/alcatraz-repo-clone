@@ -1,41 +1,20 @@
-export interface StaffRole {
-  title: string;
-  emoji: string;
-  members: string[];
+export const CLAN_ROLES = [
+  { value: "lider", label: "Líder", emoji: "👑" },
+  { value: "vice-lider", label: "Vice-Líder", emoji: "⚔️" },
+  { value: "conselho", label: "Conselho", emoji: "🛡" },
+  { value: "recrutador", label: "Recrutador", emoji: "📢" },
+  { value: "veterano", label: "Veterano", emoji: "⭐" },
+  { value: "membro", label: "Membro", emoji: "" },
+] as const;
+
+export type ClanRole = typeof CLAN_ROLES[number]["value"];
+
+export function getClanRoleEmoji(clanRole: string | null): string {
+  if (!clanRole || clanRole === "membro") return "";
+  return CLAN_ROLES.find(r => r.value === clanRole)?.emoji ?? "";
 }
 
-export const STAFF_ROLES: StaffRole[] = [
-  { title: "LÍDER", emoji: "👑", members: ["Zeus"] },
-  { title: "VICE-LÍDER", emoji: "⚔️", members: ["Mangaverde"] },
-  { title: "CONSELHO", emoji: "🛡", members: ["FsPrime", "Nutella", "Brasileiro"] },
-  { title: "RECRUTADOR", emoji: "📢", members: ["Danadinha"] },
-  { title: "VETERANOS", emoji: "⭐", members: ["Encrenca", "Liang"] },
-];
-
-/** Case-insensitive lookup: returns the staff role title for a nickname, or null */
-export function getStaffRole(nickname: string): string | null {
-  const lower = nickname.toLowerCase();
-  for (const role of STAFF_ROLES) {
-    if (role.members.some(m => m.toLowerCase() === lower)) {
-      return role.title;
-    }
-  }
-  return null;
-}
-
-/** Case-insensitive lookup: returns the emoji for a nickname, or null */
-export function getStaffEmoji(nickname: string): string | null {
-  const lower = nickname.toLowerCase();
-  for (const role of STAFF_ROLES) {
-    if (role.members.some(m => m.toLowerCase() === lower)) {
-      return role.emoji;
-    }
-  }
-  return null;
-}
-
-/** Returns all staff nicknames (lowercase) for quick membership checks */
-export function isStaff(nickname: string): boolean {
-  const lower = nickname.toLowerCase();
-  return STAFF_ROLES.some(role => role.members.some(m => m.toLowerCase() === lower));
+export function getClanRoleLabel(clanRole: string | null): string {
+  if (!clanRole) return "Membro";
+  return CLAN_ROLES.find(r => r.value === clanRole)?.label ?? "Membro";
 }

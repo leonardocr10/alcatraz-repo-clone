@@ -182,6 +182,7 @@ export default function PlayersPage() {
       class: editClass || null,
       role: editRole,
       phone: editPhone.replace(/\D/g, "") || null,
+      clan_role: editClanRole,
     };
     const { error } = await supabase.from("users").update(payload).eq("id", editPlayer.id);
     if (error) {
