@@ -42,9 +42,9 @@ const App = () => {
   }
 
   function PublicRoute({ children }: { children: React.ReactNode }) {
-    const { authUser, loading } = useAuth();
+    const { authUser, loading, isApproved } = useAuth();
     if (loading) return null;
-    if (authUser) return <Navigate to="/inicio" replace />;
+    if (authUser && isApproved) return <Navigate to="/inicio" replace />;
     return <>{children}</>;
   }
 
