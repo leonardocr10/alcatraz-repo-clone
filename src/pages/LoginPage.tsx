@@ -5,6 +5,13 @@ import { toast } from "sonner";
 import { Sword, Shield, Eye, EyeOff, Phone } from "lucide-react";
 import logoAz from "@/assets/logo-az.jpeg";
 
+const formatPhone = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+};
+
 const LoginPage = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [nickname, setNickname] = useState("");
@@ -91,7 +98,7 @@ const LoginPage = () => {
               <input
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(formatPhone(e.target.value))}
                 required
                 className="input-modern"
                 placeholder="(11) 99999-9999"
