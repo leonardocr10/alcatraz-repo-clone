@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ScrollText, RefreshCw, Package, TrendingUp, Calendar, User, MapPin, Crown, Search, X } from "lucide-react";
+import { ScrollText, RefreshCw, Package, TrendingUp, Calendar, User, MapPin, Crown, Search, X, BarChart3, Trophy } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
