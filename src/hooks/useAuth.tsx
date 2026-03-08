@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const makeEmail = (phone: string) => {
     const digits = phone.replace(/\D/g, '');
-    return `${digits}@roleta.local`;
+    return `${digits}@phone.roleta.app`;
   };
 
   const signUp = async (nickname: string, password: string, phone: string) => {
