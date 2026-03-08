@@ -21,7 +21,7 @@ const queryClient = new QueryClient();
 
 const App = () => {
   function ProtectedRoute({ children }: { children: React.ReactNode }) {
-    const { authUser, loading } = useAuth();
+    const { authUser, loading, isApproved } = useAuth();
     if (loading) {
       return (
         <div className="min-h-screen flex items-center justify-center">
@@ -30,6 +30,7 @@ const App = () => {
       );
     }
     if (!authUser) return <Navigate to="/login" replace />;
+    if (!isApproved) return <Navigate to="/login?pending=1" replace />;
     return <>{children}</>;
   }
 

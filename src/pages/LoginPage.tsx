@@ -26,8 +26,10 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [selectedClass, setSelectedClass] = useState<CharacterClass | "">("");
   const [classIcons, setClassIcons] = useState<{ name: CharacterClass; image_url: string | null }[]>([]);
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, authUser, isApproved, signOut } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isPending = searchParams.get("pending") === "1";
 
   useEffect(() => {
     supabase.from("character_classes").select("name, image_url").then(({ data }) => {
