@@ -31,7 +31,18 @@ serve(async (req) => {
       .single();
     if (!profile || profile.role !== "admin") throw new Error("Acesso negado");
 
-    const { action, session_id } = await req.json();
+    const body = await req.json();
+    const { action, session_id } = body;
+
+    if (action === "reset_password") {
+      const { auth_id, new_password } = body;
+      if (!auth_id || !new_password) throw new Error("auth_id e new_password são obrigatórios");
+      const { error } = await supabase.auth.admin.updateUserById(auth_id, { password: new_password });
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true, message: "Senha resetada" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (action === "start") {
       // Get session items

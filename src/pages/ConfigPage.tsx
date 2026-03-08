@@ -158,14 +158,28 @@ export default function ConfigPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
-            <label className="inline-flex items-center gap-2 text-sm font-body cursor-pointer">
-              <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="accent-primary w-4 h-4 rounded" />
+            <button
+              onClick={() => setEnabled(!enabled)}
+              className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border transition-all text-sm font-body ${
+                enabled ? "border-primary bg-primary/15 text-primary font-bold" : "border-border/40 text-muted-foreground"
+              }`}
+            >
+              <div className={`w-8 h-4.5 rounded-full transition-all relative ${enabled ? "bg-primary" : "bg-muted"}`}>
+                <div className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white transition-all ${enabled ? "left-[calc(100%-1rem)]" : "left-0.5"}`} />
+              </div>
               Ativar envio
-            </label>
-            <label className="inline-flex items-center gap-2 text-sm font-body cursor-pointer">
-              <input type="checkbox" checked={allowOptout} onChange={(e) => setAllowOptout(e.target.checked)} className="accent-primary w-4 h-4 rounded" />
+            </button>
+            <button
+              onClick={() => setAllowOptout(!allowOptout)}
+              className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border transition-all text-sm font-body ${
+                allowOptout ? "border-primary bg-primary/15 text-primary font-bold" : "border-border/40 text-muted-foreground"
+              }`}
+            >
+              <div className={`w-8 h-4.5 rounded-full transition-all relative ${allowOptout ? "bg-primary" : "bg-muted"}`}>
+                <div className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white transition-all ${allowOptout ? "left-[calc(100%-1rem)]" : "left-0.5"}`} />
+              </div>
               Permitir opt-out
-            </label>
+            </button>
           </div>
 
           <button onClick={onSaveWhatsApp} disabled={saving} className="w-full btn-primary text-sm flex items-center justify-center gap-2">

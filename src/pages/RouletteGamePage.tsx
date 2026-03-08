@@ -73,7 +73,7 @@ const RouletteGamePage = () => {
   const [bossSchedules, setBossSchedules] = useState<BossSchedule[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [expandedBoss, setExpandedBoss] = useState<string | null>(null);
-  const [imageModal, setImageModal] = useState<{ url: string; title: string } | null>(null);
+  const [imageModal, setImageModal] = useState<{ url: string; title: string; description?: string; mapLevel?: string } | null>(null);
   const [sendingBoss, setSendingBoss] = useState<string | null>(null);
   const [sendingAll, setSendingAll] = useState(false);
 
@@ -324,11 +324,19 @@ const RouletteGamePage = () => {
     <div className="space-y-4">
       {/* Image Modal */}
       <Dialog open={!!imageModal} onOpenChange={() => setImageModal(null)}>
-        <DialogContent className="max-w-[95vw] max-h-[90vh] p-2 bg-background/95">
+        <DialogContent className="max-w-[95vw] max-h-[90vh] p-4 bg-background/95">
           {imageModal && (
-            <div className="text-center">
-              <p className="font-display text-sm font-extrabold mb-2">{imageModal.title}</p>
-              <img src={imageModal.url} alt={imageModal.title} className="max-w-full max-h-[75vh] object-contain rounded-xl mx-auto" />
+            <div className="text-center space-y-3">
+              <p className="font-display text-lg font-extrabold">{imageModal.title}</p>
+              {imageModal.mapLevel && (
+                <p className="text-xs text-muted-foreground font-body flex items-center justify-center gap-1">
+                  <MapPin className="w-3 h-3" /> {imageModal.mapLevel}
+                </p>
+              )}
+              <img src={imageModal.url} alt={imageModal.title} className="max-w-full max-h-[60vh] object-contain rounded-xl mx-auto" />
+              {imageModal.description && (
+                <p className="text-sm text-muted-foreground font-body text-left px-2">{imageModal.description}</p>
+              )}
             </div>
           )}
         </DialogContent>
@@ -362,110 +370,109 @@ const RouletteGamePage = () => {
       {/* Bosses - Grouped */}
       {groupedBosses.length > 0 && (
         <div className="glass-card overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-border/40 flex items-center justify-between">
+          <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Swords className="w-4 h-4 text-primary" />
-              <span className="font-display text-xs font-extrabold uppercase tracking-wider">Próximos Boss</span>
+              <span className="font-display text-sm font-extrabold uppercase tracking-wider">Próximos Boss</span>
             </div>
             {isAdmin && (
               <button
                 onClick={sendAllBossNotify}
                 disabled={sendingAll}
-                className="text-[10px] font-display font-bold text-primary flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-primary/10 transition-colors disabled:opacity-50"
+                className="text-xs font-display font-bold text-primary flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50"
               >
-                <MessageCircle className="w-3 h-3" />
-                {sendingAll ? "..." : "Todos"}
+                <MessageCircle className="w-3.5 h-3.5" />
+                {sendingAll ? "..." : "Enviar Todos"}
               </button>
             )}
           </div>
           <div className="divide-y divide-border/20">
             {groupedBosses.map(({ boss, schedules, nextSchedule }) => (
               <div key={boss.id}>
-                <div className="flex items-center">
-                  {/* Boss image - clickable */}
+                <div className="flex items-center gap-3 px-4 py-3">
+                  {/* Boss image - clickable opens modal with description */}
                   <button
-                    onClick={() => boss.image_url && setImageModal({ url: boss.image_url, title: boss.name })}
-                    className="shrink-0 p-2.5 pl-4"
+                    onClick={() => boss.image_url && setImageModal({
+                      url: boss.image_url,
+                      title: boss.name,
+                      description: boss.description || undefined,
+                      mapLevel: boss.map_level || undefined,
+                    })}
+                    className="shrink-0"
                   >
                     {boss.image_url ? (
-                      <img src={boss.image_url} alt={boss.name} className="w-11 h-11 rounded-xl object-cover border border-border/40 hover:border-primary/50 transition-colors" />
+                      <img src={boss.image_url} alt={boss.name} className="w-12 h-12 rounded-xl object-cover border-2 border-border/40 hover:border-primary/50 transition-colors" />
                     ) : (
-                      <div className="w-11 h-11 rounded-xl bg-secondary flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center">
                         <Swords className="w-5 h-5 text-muted-foreground" />
                       </div>
                     )}
                   </button>
 
-                  {/* Boss info - clickable to expand */}
-                  <button
-                    onClick={() => setExpandedBoss(expandedBoss === boss.id ? null : boss.id)}
-                    className="flex-1 py-2.5 pr-2 flex items-center gap-2 min-w-0"
-                  >
-                    <div className="flex-1 text-left min-w-0">
-                      <span className="text-sm font-display font-extrabold text-gold block leading-tight truncate">{boss.name}</span>
-                      <span className="text-[11px] text-muted-foreground font-body">
-                        {nextSchedule && nextSchedule.spawn_time.substring(0, 5)} {boss.map_level && `· ${boss.map_level}`}
-                      </span>
+                  {/* Boss info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-display font-extrabold text-gold truncate">{boss.name}</span>
+                      {nextSchedule && (
+                        <span className={`text-[10px] font-display font-extrabold px-2 py-0.5 rounded-full shrink-0 ${
+                          nextSchedule.minutesUntil <= 10 ? "bg-destructive/20 text-destructive" :
+                          nextSchedule.minutesUntil <= 30 ? "bg-gold/20 text-gold" :
+                          "bg-secondary text-muted-foreground"
+                        }`}>
+                          {formatMinutesUntil(nextSchedule.minutesUntil)}
+                        </span>
+                      )}
                     </div>
-                    {nextSchedule && (
-                      <span className={`text-xs font-display font-extrabold px-2 py-0.5 rounded-full shrink-0 ${
-                        nextSchedule.minutesUntil <= 10 ? "bg-destructive/20 text-destructive" :
-                        nextSchedule.minutesUntil <= 30 ? "bg-gold/20 text-gold" :
-                        "bg-secondary text-muted-foreground"
-                      }`}>
-                        {formatMinutesUntil(nextSchedule.minutesUntil)}
-                      </span>
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-body mt-0.5">
+                      {boss.map_level && <><MapPin className="w-3 h-3" /><span>{boss.map_level}</span><span>·</span></>}
+                      <span>Próximo: {nextSchedule?.spawn_time.substring(0, 5)}</span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {boss.map_image_url && (
+                      <button
+                        onClick={() => setImageModal({ url: boss.map_image_url!, title: `Mapa - ${boss.name}` })}
+                        className="p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                      >
+                        <MapPin className="w-4 h-4" />
+                      </button>
                     )}
-                    <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform shrink-0 ${expandedBoss === boss.id ? "rotate-180" : ""}`} />
-                  </button>
-
-                  {/* Map icon */}
-                  {boss.map_image_url && (
                     <button
-                      onClick={() => setImageModal({ url: boss.map_image_url!, title: `Mapa - ${boss.name}` })}
-                      className="shrink-0 p-2 text-muted-foreground hover:text-primary transition-colors"
+                      onClick={() => setExpandedBoss(expandedBoss === boss.id ? null : boss.id)}
+                      className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                     >
-                      <MapPin className="w-4 h-4" />
+                      <ChevronDown className={`w-4 h-4 transition-transform ${expandedBoss === boss.id ? "rotate-180" : ""}`} />
                     </button>
-                  )}
-
-                  {/* Admin send button per boss */}
-                  {isAdmin && (
-                    <button
-                      onClick={() => sendBossNotify(boss.id)}
-                      disabled={sendingBoss === boss.id}
-                      className="shrink-0 p-2 pr-3 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
-                    >
-                      <Send className={`w-3.5 h-3.5 ${sendingBoss === boss.id ? "animate-pulse" : ""}`} />
-                    </button>
-                  )}
+                    {isAdmin && (
+                      <button
+                        onClick={() => sendBossNotify(boss.id)}
+                        disabled={sendingBoss === boss.id}
+                        className="p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+                      >
+                        <Send className={`w-3.5 h-3.5 ${sendingBoss === boss.id ? "animate-pulse" : ""}`} />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                {/* Expanded: All schedules */}
+                {/* Expanded: Schedules only, single line each */}
                 {expandedBoss === boss.id && (
-                  <div className="px-4 pb-3 space-y-1.5">
-                    {boss.description && (
-                      <p className="text-xs text-muted-foreground font-body mb-2">{boss.description}</p>
-                    )}
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Horários</p>
+                  <div className="px-4 pb-3 flex flex-wrap gap-1.5">
                     {schedules.map((sched) => {
                       const isNext = sched.id === nextSchedule?.id;
                       return (
-                        <div
+                        <span
                           key={sched.id}
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs ${
-                            isNext ? "bg-primary/15 border border-primary/30" : "bg-secondary/30"
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-display font-bold ${
+                            isNext ? "bg-primary/20 text-primary border border-primary/30" : "bg-secondary/50 text-muted-foreground"
                           }`}
                         >
-                          <Clock className={`w-3 h-3 shrink-0 ${isNext ? "text-primary" : "text-muted-foreground"}`} />
-                          <span className={`font-display font-extrabold ${isNext ? "text-primary" : "text-foreground"}`}>
-                            {sched.spawn_time.substring(0, 5)}
-                          </span>
-                          <span className="text-muted-foreground font-body">
-                            em {formatMinutesUntil(sched.minutesUntil)}
-                          </span>
-                          {isNext && <span className="text-[9px] text-primary font-bold ml-auto">PRÓXIMO</span>}
-                        </div>
+                          <Clock className="w-3 h-3" />
+                          {sched.spawn_time.substring(0, 5)}
+                          {isNext && <span className="text-[9px] opacity-70">← próximo</span>}
+                        </span>
                       );
                     })}
                   </div>
