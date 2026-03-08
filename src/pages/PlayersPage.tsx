@@ -199,6 +199,53 @@ export default function PlayersPage() {
     Magician: "bg-cyan-500/20 text-cyan-400",
   };
 
+  const playersWithPhone = useMemo(() => players.filter(p => p.phone && p.phone.replace(/\D/g, "").length >= 10), [players]);
+
+  const openMsgModal = () => {
+    setMsgOpen(true);
+    setMsgText("");
+    setMsgSelected(new Set(playersWithPhone.map(p => p.id)));
+  };
+
+  const toggleMsgPlayer = (id: string) => {
+    setMsgSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllMsg = () => {
+    if (msgSelected.size === playersWithPhone.length) {
+      setMsgSelected(new Set());
+    } else {
+      setMsgSelected(new Set(playersWithPhone.map(p => p.id)));
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!msgText.trim() || msgSelected.size === 0) return;
+    setMsgSending(true);
+    try {
+      const phones = playersWithPhone
+        .filter(p => msgSelected.has(p.id))
+        .map(p => ({ phone: p.phone!, nickname: p.nickname }));
+      const { data, error } = await supabase.functions.invoke("send-message", {
+        body: { phones, message: msgText.trim() },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Mensagem enviada para ${data.sent}/${data.total} jogadores!`);
+      if (data?.errors?.length) {
+        console.warn("Send errors:", data.errors);
+      }
+      setMsgOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao enviar mensagem");
+    }
+    setMsgSending(false);
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
