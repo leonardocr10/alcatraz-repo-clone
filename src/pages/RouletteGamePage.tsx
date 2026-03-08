@@ -318,7 +318,7 @@ const RouletteGamePage = () => {
 
   const progressPercent = totalTime > 0 ? (timeLeft / totalTime) * 100 : 0;
   const isUrgent = timeLeft <= 5 && timeLeft > 0;
-  const groupedBosses = getGroupedBosses().slice(0, 3);
+  const groupedBosses = getGroupedBosses();
 
   return (
     <div className="space-y-4">
@@ -367,7 +367,7 @@ const RouletteGamePage = () => {
         <span className="text-[10px] text-muted-foreground font-body bg-secondary px-1.5 py-0.5 rounded-md">BRT</span>
       </div>
 
-      {/* Bosses - Grouped */}
+      {/* Bosses */}
       {groupedBosses.length > 0 && (
         <div className="glass-card overflow-hidden">
           <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between">
@@ -389,92 +389,95 @@ const RouletteGamePage = () => {
           <div className="divide-y divide-border/20">
             {groupedBosses.map(({ boss, schedules, nextSchedule }) => (
               <div key={boss.id}>
-                <div className="flex items-center gap-3 px-4 py-3">
-                  {/* Boss image - clickable opens modal with description */}
-                  <button
-                    onClick={() => boss.image_url && setImageModal({
+                <button
+                  onClick={() => setExpandedBoss(expandedBoss === boss.id ? null : boss.id)}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors text-left"
+                >
+                  {/* Boss image */}
+                  <div className="shrink-0" onClick={(e) => {
+                    e.stopPropagation();
+                    if (boss.image_url) setImageModal({
                       url: boss.image_url,
                       title: boss.name,
                       description: boss.description || undefined,
                       mapLevel: boss.map_level || undefined,
-                    })}
-                    className="shrink-0"
-                  >
+                    });
+                  }}>
                     {boss.image_url ? (
-                      <img src={boss.image_url} alt={boss.name} className="w-12 h-12 rounded-xl object-cover border-2 border-border/40 hover:border-primary/50 transition-colors" />
+                      <img src={boss.image_url} alt={boss.name} className="w-11 h-11 rounded-full object-cover border-2 border-border/40" />
                     ) : (
-                      <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center">
+                      <div className="w-11 h-11 rounded-full bg-secondary flex items-center justify-center">
                         <Swords className="w-5 h-5 text-muted-foreground" />
                       </div>
                     )}
-                  </button>
+                  </div>
 
-                  {/* Boss info */}
+                  {/* Name + map + spawn */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <span className="text-sm font-display font-extrabold text-gold truncate">{boss.name}</span>
-                      {nextSchedule && (
-                        <span className={`text-[10px] font-display font-extrabold px-2 py-0.5 rounded-full shrink-0 ${
-                          nextSchedule.minutesUntil <= 10 ? "bg-destructive/20 text-destructive" :
-                          nextSchedule.minutesUntil <= 30 ? "bg-gold/20 text-gold" :
-                          "bg-secondary text-muted-foreground"
-                        }`}>
-                          {formatMinutesUntil(nextSchedule.minutesUntil)}
-                        </span>
+                      {boss.map_level && (
+                        <span className="text-xs text-muted-foreground font-body truncate">({boss.map_level})</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-body mt-0.5">
-                      {boss.map_level && <><MapPin className="w-3 h-3" /><span>{boss.map_level}</span><span>·</span></>}
-                      <span>Próximo: {nextSchedule?.spawn_time.substring(0, 5)}</span>
-                    </div>
+                    <p className="text-xs text-muted-foreground font-body mt-0.5">
+                      Spawn às {nextSchedule?.spawn_time.substring(0, 5)}
+                    </p>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    {boss.map_image_url && (
-                      <button
-                        onClick={() => setImageModal({ url: boss.map_image_url!, title: `Mapa - ${boss.name}` })}
-                        className="p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                      >
-                        <MapPin className="w-4 h-4" />
-                      </button>
+                  {/* Time remaining + chevron */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {nextSchedule && (
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-body">
+                        <MapPin className="w-3.5 h-3.5" />
+                        {formatMinutesUntil(nextSchedule.minutesUntil)}
+                      </span>
                     )}
-                    <button
-                      onClick={() => setExpandedBoss(expandedBoss === boss.id ? null : boss.id)}
-                      className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                    >
-                      <ChevronDown className={`w-4 h-4 transition-transform ${expandedBoss === boss.id ? "rotate-180" : ""}`} />
-                    </button>
-                    {isAdmin && (
-                      <button
-                        onClick={() => sendBossNotify(boss.id)}
-                        disabled={sendingBoss === boss.id}
-                        className="p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
-                      >
-                        <Send className={`w-3.5 h-3.5 ${sendingBoss === boss.id ? "animate-pulse" : ""}`} />
-                      </button>
-                    )}
+                    <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${expandedBoss === boss.id ? "rotate-180" : ""}`} />
                   </div>
-                </div>
+                </button>
 
-                {/* Expanded: Schedules only, single line each */}
+                {/* Expanded content */}
                 {expandedBoss === boss.id && (
-                  <div className="px-4 pb-3 flex flex-wrap gap-1.5">
-                    {schedules.map((sched) => {
-                      const isNext = sched.id === nextSchedule?.id;
-                      return (
-                        <span
-                          key={sched.id}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-display font-bold ${
-                            isNext ? "bg-primary/20 text-primary border border-primary/30" : "bg-secondary/50 text-muted-foreground"
-                          }`}
+                  <div className="px-4 pb-3 space-y-2.5 border-t border-border/10 pt-2.5">
+                    {/* Schedule pills */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {schedules.map((sched) => {
+                        const isNext = sched.id === nextSchedule?.id;
+                        return (
+                          <span
+                            key={sched.id}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-display font-bold ${
+                              isNext ? "bg-primary/20 text-primary border border-primary/30" : "bg-secondary/50 text-muted-foreground"
+                            }`}
+                          >
+                            <Clock className="w-3 h-3" />
+                            {sched.spawn_time.substring(0, 5)}
+                            {isNext && <span className="text-[9px] opacity-70">← próximo</span>}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    {/* Admin actions */}
+                    <div className="flex items-center gap-2">
+                      {boss.map_image_url && (
+                        <button
+                          onClick={() => setImageModal({ url: boss.map_image_url!, title: `Mapa - ${boss.name}` })}
+                          className="text-xs font-body text-muted-foreground flex items-center gap-1 px-2.5 py-1.5 rounded-lg hover:bg-secondary transition-colors"
                         >
-                          <Clock className="w-3 h-3" />
-                          {sched.spawn_time.substring(0, 5)}
-                          {isNext && <span className="text-[9px] opacity-70">← próximo</span>}
-                        </span>
-                      );
-                    })}
+                          <MapPin className="w-3.5 h-3.5" /> Ver mapa
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button
+                          onClick={() => sendBossNotify(boss.id)}
+                          disabled={sendingBoss === boss.id}
+                          className="text-xs font-body text-primary flex items-center gap-1 px-2.5 py-1.5 rounded-lg hover:bg-primary/10 transition-colors disabled:opacity-50"
+                        >
+                          <Send className={`w-3.5 h-3.5 ${sendingBoss === boss.id ? "animate-pulse" : ""}`} /> Notificar
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
