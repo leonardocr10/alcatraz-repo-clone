@@ -295,6 +295,22 @@ export default function PlayersPage() {
         </div>
       </div>
 
+      {/* Class Filter Badge */}
+      {classFilter && (
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/15 text-primary text-xs font-display font-bold border border-primary/30">
+            {iconMap.get(classFilter) && (
+              <img src={iconMap.get(classFilter)!} alt="" className="w-4 h-4 rounded object-cover" />
+            )}
+            {classFilter}
+            <button onClick={clearClassFilter} className="ml-1 hover:text-foreground transition-colors">
+              <X className="w-3 h-3" />
+            </button>
+          </span>
+          <span className="text-xs text-muted-foreground font-body">{filtered.length} jogadores</span>
+        </div>
+      )}
+
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
