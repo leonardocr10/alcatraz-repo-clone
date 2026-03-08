@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Users, Search, Pencil, MessageCircle, Trash2, X, Save } from "lucide-react";
+import { Users, Search, Pencil, MessageCircle, Trash2, X, Save, KeyRound, MoreVertical } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Database } from "@/integrations/supabase/types";
 
 type CharacterClass = Database["public"]["Enums"]["character_class"];
@@ -14,6 +15,7 @@ type Player = {
   class: CharacterClass | null;
   phone: string | null;
   role: AppRole;
+  auth_id: string | null;
   created_at: string;
 };
 
@@ -30,6 +32,7 @@ export default function PlayersPage() {
   const [icons, setIcons] = useState<ClassIcon[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
   // Edit modal state
   const [editPlayer, setEditPlayer] = useState<Player | null>(null);
@@ -39,10 +42,15 @@ export default function PlayersPage() {
   const [editPhone, setEditPhone] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Reset password modal
+  const [resetPlayer, setResetPlayer] = useState<Player | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [resetting, setResetting] = useState(false);
+
   const fetchData = async () => {
     setLoading(true);
     const [playersRes, iconsRes] = await Promise.all([
-      supabase.from("users").select("id, nickname, class, phone, role, created_at").order("created_at", { ascending: false }),
+      supabase.from("users").select("id, nickname, class, phone, role, auth_id, created_at").order("created_at", { ascending: false }),
       supabase.from("character_classes").select("name, image_url"),
     ]);
     setPlayers((playersRes.data ?? []) as Player[]);
@@ -50,9 +58,7 @@ export default function PlayersPage() {
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const iconMap = useMemo(() => new Map(icons.map((c) => [c.name, c.image_url])), [icons]);
 
@@ -60,9 +66,7 @@ export default function PlayersPage() {
     if (!search.trim()) return players;
     const q = search.toLowerCase();
     return players.filter(
-      (p) =>
-        p.nickname.toLowerCase().includes(q) ||
-        (p.phone && p.phone.includes(q))
+      (p) => p.nickname.toLowerCase().includes(q) || (p.phone && p.phone.includes(q))
     );
   }, [players, search]);
 
@@ -80,54 +84,66 @@ export default function PlayersPage() {
     setEditClass(player.class || "");
     setEditRole(player.role);
     setEditPhone(player.phone || "");
-  };
-
-  const closeEdit = () => {
-    setEditPlayer(null);
+    setMenuOpen(null);
   };
 
   const saveEdit = async () => {
     if (!editPlayer) return;
     setSaving(true);
-
     const payload: Record<string, unknown> = {
       nickname: editNickname.trim(),
       class: editClass || null,
       role: editRole,
       phone: editPhone.replace(/\D/g, "") || null,
     };
-
     const { error } = await supabase.from("users").update(payload).eq("id", editPlayer.id);
     if (error) {
       toast.error("Erro ao salvar: " + (error.message || "Erro desconhecido"));
     } else {
       toast.success("Jogador atualizado!");
       await fetchData();
-      closeEdit();
+      setEditPlayer(null);
     }
     setSaving(false);
   };
 
-  const deletePlayer = async (id: string) => {
-    if (!confirm("Tem certeza que deseja remover este jogador?")) return;
-    const { error } = await supabase.from("users").delete().eq("id", id);
+  const deletePlayer = async (player: Player) => {
+    if (!confirm(`Tem certeza que deseja remover ${player.nickname}?`)) return;
+    setMenuOpen(null);
+    const { error } = await supabase.from("users").delete().eq("id", player.id);
     if (error) {
       toast.error("Erro ao remover jogador");
     } else {
       toast.success("Jogador removido");
-      setPlayers((prev) => prev.filter((p) => p.id !== id));
+      setPlayers((prev) => prev.filter((p) => p.id !== player.id));
     }
   };
 
   const openWhatsApp = (player: Player) => {
-    if (!player.phone) {
-      toast.error("Jogador sem telefone cadastrado");
-      return;
-    }
+    setMenuOpen(null);
+    if (!player.phone) { toast.error("Jogador sem telefone cadastrado"); return; }
     const digits = player.phone.replace(/\D/g, "");
     const number = digits.startsWith("55") ? digits : `55${digits}`;
-    const message = encodeURIComponent(`Olá ${player.nickname}! 🎮`);
-    window.open(`https://wa.me/${number}?text=${message}`, "_blank");
+    window.open(`https://wa.me/${number}?text=${encodeURIComponent(`Olá ${player.nickname}! 🎮`)}`, "_blank");
+  };
+
+  const resetPassword = async () => {
+    if (!resetPlayer || !newPassword.trim()) return;
+    if (newPassword.length < 6) { toast.error("Senha deve ter pelo menos 6 caracteres"); return; }
+    setResetting(true);
+    try {
+      // Use edge function or admin API - for now use supabase auth admin
+      const { error } = await supabase.functions.invoke("roulette-admin", {
+        body: { action: "reset_password", auth_id: resetPlayer.auth_id, new_password: newPassword },
+      });
+      if (error) throw error;
+      toast.success(`Senha de ${resetPlayer.nickname} resetada!`);
+      setResetPlayer(null);
+      setNewPassword("");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao resetar senha");
+    }
+    setResetting(false);
   };
 
   const getInitial = (name: string) => name.charAt(0).toUpperCase();
@@ -159,12 +175,7 @@ export default function PlayersPage() {
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por nickname ou telefone..."
-          className="input-modern pl-11"
-        />
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nickname ou telefone..." className="input-modern pl-11" />
       </div>
 
       {loading ? (
@@ -174,164 +185,195 @@ export default function PlayersPage() {
       ) : filtered.length === 0 ? (
         <p className="text-center text-muted-foreground text-sm py-12 font-body">Nenhum jogador encontrado.</p>
       ) : (
-        <div className="glass-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-border/40">
-                  <th className="px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground font-display">Jogador</th>
-                  <th className="px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground font-display">Classe</th>
-                  <th className="px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground font-display">Telefone</th>
-                  {isAdmin && <th className="px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground font-display text-right">Ações</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((player) => {
-                  const iconUrl = player.class ? iconMap.get(player.class) : null;
-                  const colorClass = player.class ? classColors[player.class] || "bg-secondary text-muted-foreground" : "";
+        <div className="space-y-2">
+          {filtered.map((player) => {
+            const iconUrl = player.class ? iconMap.get(player.class) : null;
+            const colorClass = player.class ? classColors[player.class] || "bg-secondary text-muted-foreground" : "";
 
-                  return (
-                    <tr key={player.id} className="border-b border-border/20 hover:bg-secondary/30 transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          {iconUrl ? (
-                            <img src={iconUrl} alt="" className="w-8 h-8 rounded-lg object-cover border border-border/40" />
-                          ) : (
-                            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-                              {getInitial(player.nickname)}
-                            </div>
-                          )}
-                          <span className="font-medium text-foreground">
-                            {player.nickname}
-                            {player.role === "admin" && (
-                              <span className="ml-1.5 text-gold text-[10px]">👑</span>
-                            )}
-                          </span>
+            return (
+              <div key={player.id} className="glass-card p-3 flex items-center gap-3">
+                {/* Avatar */}
+                {iconUrl ? (
+                  <img src={iconUrl} alt="" className="w-10 h-10 rounded-xl object-cover border border-border/40 shrink-0" />
+                ) : (
+                  <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-sm font-bold text-primary shrink-0">
+                    {getInitial(player.nickname)}
+                  </div>
+                )}
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-display font-bold text-sm truncate">{player.nickname}</span>
+                    {player.role === "admin" && <span className="text-gold text-[10px]">👑</span>}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {player.class ? (
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${colorClass}`}>
+                        {iconUrl && <img src={iconUrl} alt="" className="w-3 h-3 rounded object-cover" />}
+                        {player.class}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">Sem classe</span>
+                    )}
+                    {player.phone && (
+                      <span className="text-[10px] text-muted-foreground font-body">{formatPhone(player.phone)}</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                {isAdmin && (
+                  <div className="relative shrink-0">
+                    <button
+                      onClick={() => setMenuOpen(menuOpen === player.id ? null : player.id)}
+                      className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+
+                    {menuOpen === player.id && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(null)} />
+                        <div className="absolute right-0 top-full mt-1 z-50 w-44 glass-card border border-border/60 rounded-xl shadow-xl overflow-hidden animate-fade-in">
+                          <button
+                            onClick={() => openEdit(player)}
+                            className="w-full px-4 py-2.5 text-left text-sm font-body flex items-center gap-2.5 hover:bg-secondary/50 transition-colors"
+                          >
+                            <Pencil className="w-3.5 h-3.5 text-primary" /> Editar
+                          </button>
+                          <button
+                            onClick={() => { setResetPlayer(player); setMenuOpen(null); }}
+                            className="w-full px-4 py-2.5 text-left text-sm font-body flex items-center gap-2.5 hover:bg-secondary/50 transition-colors"
+                          >
+                            <KeyRound className="w-3.5 h-3.5 text-gold" /> Resetar Senha
+                          </button>
+                          <button
+                            onClick={() => openWhatsApp(player)}
+                            className="w-full px-4 py-2.5 text-left text-sm font-body flex items-center gap-2.5 hover:bg-secondary/50 transition-colors"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5 text-green-400" /> WhatsApp
+                          </button>
+                          <button
+                            onClick={() => deletePlayer(player)}
+                            className="w-full px-4 py-2.5 text-left text-sm font-body flex items-center gap-2.5 hover:bg-destructive/10 text-destructive transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Remover
+                          </button>
                         </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {player.class ? (
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider ${colorClass}`}>
-                            {iconUrl && <img src={iconUrl} alt="" className="w-3.5 h-3.5 rounded object-cover" />}
-                            {player.class}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground font-body">
-                        {formatPhone(player.phone)}
-                      </td>
-                      {isAdmin && (
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-end gap-1">
-                            <button
-                              onClick={() => openEdit(player)}
-                              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                              title="Editar"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => openWhatsApp(player)}
-                              className="p-1.5 rounded-lg text-muted-foreground hover:text-green-400 hover:bg-green-500/10 transition-colors"
-                              title="WhatsApp"
-                            >
-                              <MessageCircle className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => deletePlayer(player.id)}
-                              className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                              title="Remover"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
       {/* Edit Modal */}
-      {editPlayer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={closeEdit}>
-          <div className="glass-card w-full max-w-md p-6 space-y-4 animate-scale-in" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <h3 className="font-display text-lg font-bold">Editar Jogador</h3>
-              <button onClick={closeEdit} className="p-1 rounded-lg hover:bg-secondary transition-colors">
-                <X className="w-5 h-5 text-muted-foreground" />
-              </button>
+      <Dialog open={!!editPlayer} onOpenChange={() => setEditPlayer(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display">Editar Jogador</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <label className="block space-y-1.5">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Nickname</span>
+              <input value={editNickname} onChange={(e) => setEditNickname(e.target.value)} className="input-modern" />
+            </label>
+
+            <div className="space-y-1.5">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Classe</span>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  onClick={() => setEditClass("")}
+                  className={`px-3 py-2 rounded-xl text-xs font-body transition-all border ${
+                    editClass === "" ? "border-primary bg-primary/15 text-primary font-bold" : "border-border/40 hover:border-muted-foreground/30"
+                  }`}
+                >
+                  Nenhuma
+                </button>
+                {ALL_CLASSES.map((c) => {
+                  const cIcon = iconMap.get(c);
+                  return (
+                    <button
+                      key={c}
+                      onClick={() => setEditClass(c)}
+                      className={`px-3 py-2 rounded-xl text-xs font-body transition-all border flex items-center gap-1.5 ${
+                        editClass === c ? "border-primary bg-primary/15 text-primary font-bold" : "border-border/40 hover:border-muted-foreground/30"
+                      }`}
+                    >
+                      {cIcon && <img src={cIcon} alt="" className="w-4 h-4 rounded object-cover" />}
+                      {c}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="space-y-3">
-              <label className="block space-y-1">
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">Nickname</span>
-                <input
-                  value={editNickname}
-                  onChange={(e) => setEditNickname(e.target.value)}
-                  className="input-modern"
-                />
-              </label>
-
-              <label className="block space-y-1">
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">Classe</span>
-                <select
-                  value={editClass}
-                  onChange={(e) => setEditClass(e.target.value as CharacterClass | "")}
-                  className="input-modern"
-                >
-                  <option value="">Sem classe</option>
-                  {ALL_CLASSES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block space-y-1">
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">Role</span>
-                <select
-                  value={editRole}
-                  onChange={(e) => setEditRole(e.target.value as AppRole)}
-                  className="input-modern"
-                >
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </label>
-
-              <label className="block space-y-1">
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">Telefone</span>
-                <input
-                  value={editPhone}
-                  onChange={(e) => setEditPhone(e.target.value)}
-                  className="input-modern"
-                  placeholder="34999999999"
-                />
-              </label>
+            <div className="space-y-1.5">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Role</span>
+              <div className="flex gap-2">
+                {(["user", "admin"] as AppRole[]).map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => setEditRole(r)}
+                    className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-display font-bold uppercase tracking-wider transition-all border ${
+                      editRole === r
+                        ? r === "admin" ? "border-gold bg-gold/15 text-gold" : "border-primary bg-primary/15 text-primary"
+                        : "border-border/40 text-muted-foreground hover:border-muted-foreground/30"
+                    }`}
+                  >
+                    {r === "admin" ? "👑 Admin" : "🎮 User"}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            <label className="block space-y-1.5">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Telefone</span>
+              <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="input-modern" placeholder="34999999999" />
+            </label>
 
             <div className="flex gap-2 pt-2">
-              <button onClick={closeEdit} className="btn-secondary flex-1 text-sm py-2">
-                Cancelar
-              </button>
-              <button
-                onClick={saveEdit}
-                disabled={saving || !editNickname.trim()}
-                className="btn-primary flex-1 text-sm py-2 flex items-center justify-center gap-2"
-              >
+              <button onClick={() => setEditPlayer(null)} className="btn-secondary flex-1 text-sm py-2.5">Cancelar</button>
+              <button onClick={saveEdit} disabled={saving || !editNickname.trim()} className="btn-primary flex-1 text-sm py-2.5 flex items-center justify-center gap-2">
                 <Save className="w-4 h-4" />
                 {saving ? "Salvando..." : "Salvar"}
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Modal */}
+      <Dialog open={!!resetPlayer} onOpenChange={() => { setResetPlayer(null); setNewPassword(""); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display">Resetar Senha</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground font-body">
+              Definir nova senha para <span className="text-foreground font-bold">{resetPlayer?.nickname}</span>
+            </p>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Nova senha (mín. 6 caracteres)"
+              className="input-modern"
+            />
+            <div className="flex gap-2">
+              <button onClick={() => { setResetPlayer(null); setNewPassword(""); }} className="btn-secondary flex-1 text-sm py-2.5">Cancelar</button>
+              <button onClick={resetPassword} disabled={resetting || newPassword.length < 6} className="btn-primary flex-1 text-sm py-2.5 flex items-center justify-center gap-2">
+                <KeyRound className="w-4 h-4" />
+                {resetting ? "Resetando..." : "Resetar"}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
