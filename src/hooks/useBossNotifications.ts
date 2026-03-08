@@ -150,17 +150,15 @@ export function useBossNotifications() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [enabled, permission, notifyMinutes]);
+  }, [enabled, permission]);
 
   const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
 
   return {
     enabled,
     permission,
-    notifyMinutes,
     supported: typeof Notification !== "undefined" && !isMobile,
     toggle,
-    updateMinutes,
     sendTestNotification,
   };
 }
