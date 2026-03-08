@@ -90,6 +90,21 @@ Deno.serve(async (req) => {
         }
 
         const html = await resp.text();
+        console.log(`${user.nickname}: HTML length=${html.length}`);
+        
+        // Debug: check if rankLevel panel exists
+        const hasPanel = html.includes('id="rankLevel"');
+        const hasPvp = html.includes('id="rankPvp"');
+        console.log(`${user.nickname}: hasPanel=${hasPanel}, hasPvp=${hasPvp}`);
+        
+        if (hasPanel) {
+          const panelMatch = html.match(/id="rankLevel"([\s\S]*?)(?:id="rankPvp"|$)/);
+          if (panelMatch) {
+            const snippet = panelMatch[1].substring(0, 500);
+            console.log(`${user.nickname}: panel snippet: ${snippet}`);
+          }
+        }
+
         const player = extractLevelPlayer(html);
 
         if (!player) {
