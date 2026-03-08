@@ -114,7 +114,7 @@ export function useBossNotifications() {
         const today = brazilTime.toISOString().split("T")[0];
         const key = `${sched.id}-${today}`;
 
-        if (diffTotal <= notifyMinutes && !notifiedRef.current.has(key)) {
+        if (diffTotal <= sched.notify_minutes_before && !notifiedRef.current.has(key)) {
           notifiedRef.current.add(key);
 
           const boss = bosses.find((b) => b.id === sched.boss_id);
