@@ -331,7 +331,7 @@ const HomePage = () => {
 
       {/* Bosses - Collapsible */}
       {groupedBosses.length > 0 ? (
-        <Collapsible open={bossesOpen} onOpenChange={setBossesOpen}>
+        <Collapsible open={bossesOpen} onOpenChange={handleBossesToggle}>
           <div className="glass-card overflow-hidden">
             <CollapsibleTrigger asChild>
               <button className="w-full px-4 py-3 border-b border-border/40 flex items-center justify-between hover:bg-secondary/20 transition-colors">
