@@ -121,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         loading,
         isAdmin: profile?.role === "admin",
+        isApproved: profile?.approved ?? false,
         signUp,
         signIn,
         signOut,
