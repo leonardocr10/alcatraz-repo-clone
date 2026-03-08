@@ -39,17 +39,28 @@ const HomePage = () => {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    const fetchBosses = async () => {
-      const [bossRes, schedRes] = await Promise.all([
-        supabase.from("bosses").select("*").order("name"),
-        supabase.from("boss_schedules").select("*").order("spawn_time"),
-      ]);
-      setBosses((bossRes.data || []) as Boss[]);
-      setBossSchedules((schedRes.data || []) as BossSchedule[]);
-    };
-    fetchBosses();
+  const fetchBosses = useCallback(async () => {
+    const [bossRes, schedRes] = await Promise.all([
+      supabase.from("bosses").select("*").order("name"),
+      supabase.from("boss_schedules").select("*").order("spawn_time"),
+    ]);
+    setBosses((bossRes.data || []) as Boss[]);
+    setBossSchedules((schedRes.data || []) as BossSchedule[]);
   }, []);
+
+  useEffect(() => {
+    fetchBosses();
+  }, [fetchBosses]);
+
+  // Real-time subscription for bosses and schedules
+  useEffect(() => {
+    const ch = supabase
+      .channel("bosses-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "bosses" }, () => fetchBosses())
+      .on("postgres_changes", { event: "*", schema: "public", table: "boss_schedules" }, () => fetchBosses())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [fetchBosses]);
 
   const getBrazilTime = useCallback(() => {
     const now = currentTime;
