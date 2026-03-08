@@ -404,9 +404,6 @@ const HomePage = () => {
 
                     {expandedBoss === boss.id && (
                       <div className="px-4 pb-4 space-y-3 border-t border-border/10 pt-3 bg-secondary/10">
-                        {boss.description && (
-                          <p className="text-xs text-muted-foreground font-body leading-relaxed">{boss.description}</p>
-                        )}
                         {boss.drops && (
                           <div>
                             <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-wider mb-1">Drops</p>
