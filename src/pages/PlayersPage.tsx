@@ -222,6 +222,7 @@ export default function PlayersPage() {
           {filtered.map((player) => {
             const iconUrl = player.class ? iconMap.get(player.class) : null;
             const colorClass = player.class ? classColors[player.class] || "bg-secondary text-muted-foreground" : "";
+            const ranking = rankingMap.get(player.id);
 
             return (
               <div key={player.id} className="glass-card p-3 flex items-center gap-3">
