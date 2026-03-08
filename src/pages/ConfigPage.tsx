@@ -372,6 +372,33 @@ export default function ConfigPage() {
         </div>
       )}
 
+      {/* Rules Tab */}
+      {tab === "rules" && (
+        <div className="glass-card p-5 space-y-4">
+          <label className="block space-y-2">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Texto das Regras</span>
+            <p className="text-[10px] text-muted-foreground/60 font-body">
+              Use emojis e quebras de linha para formatar. O texto será exibido como está na página de Regras.
+            </p>
+            <textarea
+              value={rulesContent}
+              onChange={(e) => setRulesContent(e.target.value)}
+              rows={16}
+              className="input-modern text-sm font-body leading-relaxed resize-y min-h-[200px]"
+              placeholder="Digite as regras do clã..."
+            />
+          </label>
+          <button
+            onClick={saveRules}
+            disabled={savingRules}
+            className="w-full btn-primary text-sm flex items-center justify-center gap-2 py-3"
+          >
+            <Save className="w-4 h-4" />
+            {savingRules ? "Salvando..." : "Salvar Regras"}
+          </button>
+        </div>
+      )}
+
       {/* Clear Tab */}
       {tab === "clear" && (
         <div className="glass-card p-5 space-y-4">
