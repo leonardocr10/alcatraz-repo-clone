@@ -37,10 +37,6 @@ export function useBossNotifications() {
   const [permission, setPermission] = useState<NotificationPermission>(
     typeof Notification !== "undefined" ? Notification.permission : "denied"
   );
-  const [notifyMinutes, setNotifyMinutes] = useState(() => {
-    const saved = localStorage.getItem(NOTIFY_MINUTES_KEY);
-    return saved ? Number(saved) : DEFAULT_NOTIFY_MINUTES;
-  });
 
   const notifiedRef = useRef<Set<string>>(new Set());
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
