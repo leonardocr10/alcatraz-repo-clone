@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Sword, Shield, Eye, EyeOff, Phone } from "lucide-react";
+import { Sword, Shield, Eye, EyeOff } from "lucide-react";
 import logoAz from "@/assets/logo-az.jpeg";
+import bgBoss from "@/assets/bg-boss.jpg";
 
 const formatPhone = (value: string) => {
   const digits = value.replace(/\D/g, "").slice(0, 11);
@@ -31,9 +32,7 @@ const LoginPage = () => {
     setLoading(true);
     try {
       if (isSignUp) {
-        if (!nickname.trim()) {
-          throw new Error("Informe um nickname");
-        }
+        if (!nickname.trim()) throw new Error("Informe um nickname");
         await signUp(nickname.trim(), password, phone);
         toast.success("Conta criada! Bem-vindo guerreiro!");
       } else {
@@ -49,7 +48,13 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen relative flex items-center justify-center p-4">
+      {/* Background */}
+      <div className="fixed inset-0 -z-10">
+        <img src={bgBoss} alt="" className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/85 to-background/60" />
+      </div>
+
       <div className="w-full max-w-sm animate-fade-in">
         <div className="text-center mb-8">
           <div className="relative inline-block mb-4">
@@ -67,7 +72,7 @@ const LoginPage = () => {
           <p className="text-sm text-muted-foreground mt-1 font-body">Sistema de Gestão</p>
         </div>
 
-        <div className="glass-card glow-primary p-6">
+        <div className="glass-card glow-primary p-6 bg-background/70 backdrop-blur-xl">
           <p className="text-center text-muted-foreground font-body text-sm mb-6 flex items-center justify-center gap-2">
             <Sword className="w-4 h-4 text-primary" />
             {isSignUp ? "Criar conta de guerreiro" : "Entrar na arena"}
@@ -77,78 +82,30 @@ const LoginPage = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
               <div>
-                <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">
-                  Nickname
-                </label>
-                <input
-                  type="text"
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  required
-                  className="input-modern"
-                  placeholder="Seu nome de guerra"
-                />
+                <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">Nickname</label>
+                <input type="text" value={nickname} onChange={(e) => setNickname(e.target.value)} required className="input-modern" placeholder="Seu nome de guerra" />
               </div>
             )}
-
             <div>
-              <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">
-                Telefone
-              </label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(formatPhone(e.target.value))}
-                required
-                className="input-modern"
-                placeholder="(11) 99999-9999"
-              />
+              <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">Telefone</label>
+              <input type="tel" value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} required className="input-modern" placeholder="(11) 99999-9999" />
             </div>
-
             <div>
-              <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">
-                Senha
-              </label>
+              <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">Senha</label>
               <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="input-modern pr-10"
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
+                <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} required className="input-modern pr-10" placeholder="••••••••" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full btn-primary font-display tracking-wider uppercase text-sm"
-            >
-              {loading ? (
-                <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mx-auto" />
-              ) : isSignUp ? (
-                "⚔️ CRIAR CONTA"
-              ) : (
-                "⚔️ ENTRAR"
-              )}
+            <button type="submit" disabled={loading} className="w-full btn-primary font-display tracking-wider uppercase text-sm">
+              {loading ? <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mx-auto" /> : isSignUp ? "⚔️ CRIAR CONTA" : "⚔️ ENTRAR"}
             </button>
           </form>
 
           <div className="mt-5 pt-5 border-t border-border/60">
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="w-full text-center text-sm text-muted-foreground hover:text-primary transition-colors font-body"
-            >
+            <button type="button" onClick={() => setIsSignUp(!isSignUp)} className="w-full text-center text-sm text-muted-foreground hover:text-primary transition-colors font-body">
               {isSignUp ? "Já tenho conta → Entrar" : "Não tenho conta → Criar"}
             </button>
           </div>
