@@ -93,7 +93,7 @@ export default function HistoryPage() {
         .from("history_cache" as any)
         .select("data, updated_at")
         .limit(1)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       const row = rows as any;
       if (row?.data?.today) {
