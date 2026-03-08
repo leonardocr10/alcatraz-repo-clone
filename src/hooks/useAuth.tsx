@@ -32,19 +32,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setAuthUser(session?.user ?? null);
-        if (session?.user) {
-          setTimeout(() => fetchProfile(session.user.id), 0);
-        } else {
-          setProfile(null);
-        }
-        setLoading(false);
-      }
-    );
+    let mounted = true;
 
+    // First, restore session from storage
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
       setAuthUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
@@ -52,7 +44,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    // Then listen for subsequent auth changes (sign in/out, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (!mounted) return;
+        setAuthUser(session?.user ?? null);
+        if (session?.user) {
+          // Use setTimeout to avoid blocking the auth state change callback
+          setTimeout(() => {
+            if (mounted) fetchProfile(session.user.id);
+          }, 0);
+        } else {
+          setProfile(null);
+        }
+        if (event !== "INITIAL_SESSION") {
+          setLoading(false);
+        }
+      }
+    );
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const makeEmail = (phone: string) => {
