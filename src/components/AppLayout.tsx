@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Dices, Shield, Users, Swords, Settings, LogOut, Home, ScrollText, KeyRound, User, X, Save, Eye, EyeOff } from "lucide-react";
+import { Dices, Shield, Users, Swords, Settings, LogOut, Home, ScrollText, KeyRound, User, X, Save, Eye, EyeOff, History } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -18,9 +18,9 @@ interface NavItem {
 
 const items: NavItem[] = [
   { label: "Início", path: "/inicio", icon: Home },
+  { label: "Histórico", path: "/historico", icon: History },
   { label: "Roleta", path: "/roleta", icon: Dices },
   { label: "Regras", path: "/regras", icon: ScrollText },
-  { label: "Classes", path: "/classes", icon: Swords },
   { label: "Jogadores", path: "/jogadores", icon: Users },
   { label: "Config", path: "/config", icon: Settings, adminOnly: true },
 ];

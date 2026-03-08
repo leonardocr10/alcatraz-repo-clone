@@ -1,0 +1,191 @@
+import { useEffect, useState, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { ScrollText, RefreshCw, Package, TrendingUp, Calendar } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
+
+interface ItemCount {
+  name: string;
+  count: number;
+}
+
+interface DayData {
+  date: string;
+  total: number;
+  items: ItemCount[];
+}
+
+interface HistoryData {
+  today: DayData;
+  yesterday: DayData;
+  scrapedAt: string;
+  pagesScraped: number;
+}
+
+export default function HistoryPage() {
+  const [data, setData] = useState<HistoryData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [todayOpen, setTodayOpen] = useState(true);
+  const [yesterdayOpen, setYesterdayOpen] = useState(true);
+
+  const fetchHistory = useCallback(async (showToast = false) => {
+    try {
+      const { data: result, error } = await supabase.functions.invoke("scrape-history");
+      if (error) throw error;
+      setData(result as HistoryData);
+      if (showToast) toast.success("Histórico atualizado!");
+    } catch (err: any) {
+      console.error("Error fetching history:", err);
+      if (showToast) toast.error(err.message || "Erro ao buscar histórico");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchHistory();
+    const interval = setInterval(() => fetchHistory(), 5 * 60 * 1000); // 5 min
+    return () => clearInterval(interval);
+  }, [fetchHistory]);
+
+  const formatScrapedAt = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const renderDaySection = (
+    day: DayData,
+    label: string,
+    open: boolean,
+    setOpen: (v: boolean) => void,
+    icon: React.ReactNode
+  ) => (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <div className="glass-card overflow-hidden">
+        <CollapsibleTrigger asChild>
+          <button className="w-full px-4 py-3 border-b border-border/40 flex items-center justify-between hover:bg-secondary/20 transition-colors">
+            <div className="flex items-center gap-2">
+              {icon}
+              <div className="text-left">
+                <span className="font-display text-sm font-extrabold uppercase tracking-wider block">{label}</span>
+                <span className="text-[10px] text-muted-foreground font-body">{day.date}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-display font-extrabold text-primary tabular-nums">{day.total}</span>
+              <span className="text-[10px] text-muted-foreground">drops</span>
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+            </div>
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          {day.items.length > 0 ? (
+            <div className="divide-y divide-border/10">
+              {day.items.map((item, i) => (
+                <div key={item.name} className="flex items-center justify-between px-4 py-2.5 hover:bg-secondary/20 transition-colors">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="text-[10px] font-display font-bold text-muted-foreground w-5 text-right tabular-nums shrink-0">
+                      {i + 1}
+                    </span>
+                    <Package className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-xs font-display font-bold text-foreground truncate">{item.name}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-sm font-display font-extrabold text-primary tabular-nums">{item.count}</span>
+                    {day.total > 0 && (
+                      <span className="text-[10px] text-muted-foreground font-body tabular-nums w-10 text-right">
+                        {((item.count / day.total) * 100).toFixed(0)}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-6 text-center">
+              <p className="text-xs text-muted-foreground font-body">Nenhum drop registrado</p>
+            </div>
+          )}
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <ScrollText className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="font-display text-xl font-bold uppercase tracking-wider">Histórico</h2>
+            <p className="text-xs text-muted-foreground font-body">
+              Drops do servidor
+              {data && ` • Atualizado às ${formatScrapedAt(data.scrapedAt)}`}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => { setLoading(true); fetchHistory(true); }}
+          disabled={loading}
+          className="flex items-center gap-1.5 text-xs font-display font-bold text-primary px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+          {loading ? "..." : "Atualizar"}
+        </button>
+      </div>
+
+      {loading && !data ? (
+        <div className="text-center py-12">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-xs text-muted-foreground font-body">Buscando histórico do servidor...</p>
+        </div>
+      ) : data ? (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="glass-card p-3 text-center">
+              <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-wider">Hoje</p>
+              <p className="text-2xl font-display font-extrabold text-primary tabular-nums mt-1">{data.today.total}</p>
+              <p className="text-[10px] text-muted-foreground">{data.today.items.length} itens</p>
+            </div>
+            <div className="glass-card p-3 text-center">
+              <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-wider">Ontem</p>
+              <p className="text-2xl font-display font-extrabold text-gold tabular-nums mt-1">{data.yesterday.total}</p>
+              <p className="text-[10px] text-muted-foreground">{data.yesterday.items.length} itens</p>
+            </div>
+          </div>
+
+          {/* Today */}
+          {renderDaySection(
+            data.today,
+            "Hoje",
+            todayOpen,
+            setTodayOpen,
+            <TrendingUp className="w-4 h-4 text-primary" />
+          )}
+
+          {/* Yesterday */}
+          {renderDaySection(
+            data.yesterday,
+            "Ontem",
+            yesterdayOpen,
+            setYesterdayOpen,
+            <Calendar className="w-4 h-4 text-gold" />
+          )}
+
+          <p className="text-center text-[10px] text-muted-foreground font-body">
+            Atualiza automaticamente a cada 5 minutos
+          </p>
+        </>
+      ) : (
+        <div className="glass-card p-10 text-center">
+          <p className="text-muted-foreground font-body text-sm">Erro ao carregar histórico</p>
+        </div>
+      )}
+    </div>
+  );
+}
