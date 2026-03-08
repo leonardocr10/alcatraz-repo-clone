@@ -183,14 +183,26 @@ export default function PlayersPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Users className="w-5 h-5 text-primary" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Users className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="font-display text-xl font-bold uppercase tracking-wider">Jogadores</h2>
+            <p className="text-xs text-muted-foreground font-body">{players.length} registrados</p>
+          </div>
         </div>
-        <div>
-          <h2 className="font-display text-xl font-bold uppercase tracking-wider">Jogadores</h2>
-          <p className="text-xs text-muted-foreground font-body">{players.length} registrados</p>
-        </div>
+        {isAdmin && (
+          <button
+            onClick={syncRankings}
+            disabled={syncing}
+            className="flex items-center gap-1.5 text-xs font-display font-bold text-primary px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
+            {syncing ? "Sync..." : "Sync Ranking"}
+          </button>
+        )}
       </div>
 
       {/* Search */}
