@@ -187,6 +187,26 @@ export default function HistoryPage() {
       .slice(0, 5);
   }, [data]);
 
+  // Breakdown of items for a selected player
+  const selectedPlayerItems = useMemo(() => {
+    if (!data || !selectedPlayer) return [];
+    const itemCounts: Record<string, number> = {};
+    const collectFromDay = (day: DayData) => {
+      for (const item of day.items) {
+        for (const d of item.details) {
+          if (d.nick === selectedPlayer) {
+            itemCounts[item.name] = (itemCounts[item.name] || 0) + 1;
+          }
+        }
+      }
+    };
+    collectFromDay(data.today);
+    collectFromDay(data.yesterday);
+    return Object.entries(itemCounts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [data, selectedPlayer]);
+
   const formatScrapedAt = (iso: string) => {
     const d = new Date(iso);
     return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
