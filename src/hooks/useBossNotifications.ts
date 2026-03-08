@@ -142,6 +142,7 @@ export function useBossNotifications() {
             icon: boss.image_url || "/pwa-icon-192.png",
             badge: "/pwa-icon-192.png",
             tag: key,
+            requireInteraction: true,
           });
         }
       }
