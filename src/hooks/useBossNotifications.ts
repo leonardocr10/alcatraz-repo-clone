@@ -131,11 +131,13 @@ export function useBossNotifications() {
     };
   }, [enabled, permission, notifyMinutes]);
 
+  const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+
   return {
     enabled,
     permission,
     notifyMinutes,
-    supported: typeof Notification !== "undefined",
+    supported: typeof Notification !== "undefined" && !isMobile,
     toggle,
     updateMinutes,
   };
