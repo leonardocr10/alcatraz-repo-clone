@@ -239,6 +239,9 @@ export default function PlayersPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="font-display font-bold text-sm truncate">{player.nickname}</span>
+                    {ranking && (
+                      <span className="text-[10px] font-display font-bold text-gold">Lv.{ranking.level}</span>
+                    )}
                     {player.role === "admin" && <span className="text-gold text-[10px]">👑</span>}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
