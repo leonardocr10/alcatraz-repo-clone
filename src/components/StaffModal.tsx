@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Crown, Swords, ShieldCheck, Megaphone, Star } from "lucide-react";
+import { STAFF_ROLES } from "@/data/staffMembers";
 
 interface StaffMember {
   nickname: string;
@@ -9,46 +10,42 @@ interface StaffMember {
   className: string | null;
 }
 
-interface StaffGroup {
-  title: string;
-  emoji: React.ReactNode;
-  members: string[];
-}
-
-const STAFF_GROUPS: StaffGroup[] = [
-  { title: "LÍDER", emoji: <Crown className="w-4 h-4 text-primary" />, members: ["Zeus"] },
-  { title: "VICE-LÍDER", emoji: <Swords className="w-4 h-4 text-destructive" />, members: ["Mangaverde"] },
-  { title: "CONSELHO", emoji: <ShieldCheck className="w-4 h-4 text-accent-foreground" />, members: ["FsPrime", "Nutella", "Brasileiro"] },
-  { title: "RECRUTADOR", emoji: <Megaphone className="w-4 h-4 text-secondary-foreground" />, members: ["Danadinha"] },
-  { title: "VETERANOS", emoji: <Star className="w-4 h-4 text-primary" />, members: ["Encrenca", "Liang"] },
-];
+const ROLE_ICONS: Record<string, React.ReactNode> = {
+  "LÍDER": <Crown className="w-4 h-4 text-primary" />,
+  "VICE-LÍDER": <Swords className="w-4 h-4 text-destructive" />,
+  "CONSELHO": <ShieldCheck className="w-4 h-4 text-accent-foreground" />,
+  "RECRUTADOR": <Megaphone className="w-4 h-4 text-secondary-foreground" />,
+  "VETERANOS": <Star className="w-4 h-4 text-primary" />,
+};
 
 export function StaffModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const [staffData, setStaffData] = useState<Record<string, StaffMember>>({});
 
   useEffect(() => {
     if (!open) return;
-    const allNicks = STAFF_GROUPS.flatMap(g => g.members);
+    const allNicks = STAFF_ROLES.flatMap(g => g.members);
 
+    // Fetch all users and match case-insensitively
     supabase
       .from("users")
       .select("nickname, class")
-      .in("nickname", allNicks)
-      .then(async ({ data: users }) => {
-        if (!users) return;
+      .then(async ({ data: allUsers }) => {
+        if (!allUsers) return;
 
-        // Get unique classes
+        const lowerNicks = allNicks.map(n => n.toLowerCase());
+        const users = allUsers.filter(u => lowerNicks.includes(u.nickname.toLowerCase()));
+
         const classes = [...new Set(users.map(u => u.class).filter(Boolean))] as string[];
-        const { data: classData } = await supabase
-          .from("character_classes")
-          .select("name, image_url")
-          .in("name", classes as any);
+        const { data: classData } = classes.length > 0
+          ? await supabase.from("character_classes").select("name, image_url").in("name", classes as any)
+          : { data: [] };
 
         const classMap = new Map(classData?.map(c => [c.name, c.image_url]) ?? []);
 
         const map: Record<string, StaffMember> = {};
         users.forEach(u => {
-          map[u.nickname] = {
+          // Store with lowercase key for case-insensitive lookup
+          map[u.nickname.toLowerCase()] = {
             nickname: u.nickname,
             className: u.class,
             classIcon: u.class ? classMap.get(u.class) ?? null : null,
@@ -65,17 +62,18 @@ export function StaffModal({ open, onOpenChange }: { open: boolean; onOpenChange
           <DialogTitle className="font-display text-center">Staff do Clã</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          {STAFF_GROUPS.map(group => (
+          {STAFF_ROLES.map(group => (
             <div key={group.title}>
               <div className="flex items-center gap-2 mb-2">
-                {group.emoji}
+                {ROLE_ICONS[group.title]}
                 <span className="text-xs font-display font-bold uppercase tracking-wider text-muted-foreground">
                   {group.title}
                 </span>
               </div>
               <div className="space-y-1.5 pl-6">
                 {group.members.map(nick => {
-                  const member = staffData[nick];
+                  const member = staffData[nick.toLowerCase()];
+                  const displayName = member?.nickname ?? nick;
                   return (
                     <div key={nick} className="flex items-center gap-2.5 py-1">
                       {member?.classIcon ? (
@@ -85,7 +83,7 @@ export function StaffModal({ open, onOpenChange }: { open: boolean; onOpenChange
                           {nick.charAt(0)}
                         </div>
                       )}
-                      <span className="text-sm font-body font-medium">{nick}</span>
+                      <span className="text-sm font-body font-medium">{displayName}</span>
                       {member?.className && (
                         <span className="text-[10px] text-muted-foreground font-body">{member.className}</span>
                       )}
