@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Settings, MessageCircle, Palette, Trash2, Plus, X, Save, RotateCcw, Send, CheckCircle, AlertCircle, Zap } from "lucide-react";
+import { Settings, MessageCircle, Palette, Trash2, Plus, X, Save, RotateCcw, Send, CheckCircle, AlertCircle, Zap, ScrollText } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 
 type WhatsConfig = {
@@ -18,7 +18,7 @@ export default function ConfigPage() {
   const { isAdmin } = useAuth();
   const { currentTheme, setTheme, resetTheme, presets } = useTheme();
 
-  const [tab, setTab] = useState<"whatsapp" | "theme" | "clear">("whatsapp");
+  const [tab, setTab] = useState<"whatsapp" | "theme" | "rules" | "clear">("whatsapp");
 
   // WhatsApp state
   const [config, setConfig] = useState<WhatsConfig | null>(null);
@@ -33,6 +33,11 @@ export default function ConfigPage() {
 
   // Clear state
   const [clearing, setClearing] = useState(false);
+
+  // Rules state
+  const [rulesContent, setRulesContent] = useState("");
+  const [rulesId, setRulesId] = useState<string | null>(null);
+  const [savingRules, setSavingRules] = useState(false);
 
   const fetchConfig = useCallback(async () => {
     const { data } = await supabase.from("whatsapp_config").select("*").limit(1).maybeSingle();
@@ -52,7 +57,12 @@ export default function ConfigPage() {
   }, []);
 
   useEffect(() => {
-    if (isAdmin) fetchConfig();
+    if (isAdmin) {
+      fetchConfig();
+      supabase.from("clan_rules").select("id, content").limit(1).maybeSingle().then(({ data }) => {
+        if (data) { setRulesContent(data.content); setRulesId(data.id); }
+      });
+    }
   }, [isAdmin, fetchConfig]);
 
   const onSaveWhatsApp = async () => {
@@ -129,9 +139,24 @@ export default function ConfigPage() {
     return <p className="glass-card p-4 text-sm text-muted-foreground">Acesso restrito ao admin.</p>;
   }
 
+  const saveRules = async () => {
+    setSavingRules(true);
+    if (rulesId) {
+      const { error } = await supabase.from("clan_rules").update({ content: rulesContent, updated_at: new Date().toISOString() }).eq("id", rulesId);
+      if (error) toast.error("Erro ao salvar regras");
+      else toast.success("Regras atualizadas!");
+    } else {
+      const { data, error } = await supabase.from("clan_rules").insert({ content: rulesContent }).select("id").single();
+      if (error) toast.error("Erro ao salvar regras");
+      else { toast.success("Regras salvas!"); if (data) setRulesId(data.id); }
+    }
+    setSavingRules(false);
+  };
+
   const tabs = [
     { key: "whatsapp" as const, label: "WhatsApp", icon: MessageCircle },
     { key: "theme" as const, label: "Tema", icon: Palette },
+    { key: "rules" as const, label: "Regras", icon: ScrollText },
     { key: "clear" as const, label: "Limpar", icon: Trash2 },
   ];
 
@@ -343,6 +368,33 @@ export default function ConfigPage() {
           <button onClick={resetTheme} className="w-full btn-secondary text-sm flex items-center justify-center gap-2">
             <RotateCcw className="w-4 h-4" />
             Resetar para Padrão
+          </button>
+        </div>
+      )}
+
+      {/* Rules Tab */}
+      {tab === "rules" && (
+        <div className="glass-card p-5 space-y-4">
+          <label className="block space-y-2">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Texto das Regras</span>
+            <p className="text-[10px] text-muted-foreground/60 font-body">
+              Use emojis e quebras de linha para formatar. O texto será exibido como está na página de Regras.
+            </p>
+            <textarea
+              value={rulesContent}
+              onChange={(e) => setRulesContent(e.target.value)}
+              rows={16}
+              className="input-modern text-sm font-body leading-relaxed resize-y min-h-[200px]"
+              placeholder="Digite as regras do clã..."
+            />
+          </label>
+          <button
+            onClick={saveRules}
+            disabled={savingRules}
+            className="w-full btn-primary text-sm flex items-center justify-center gap-2 py-3"
+          >
+            <Save className="w-4 h-4" />
+            {savingRules ? "Salvando..." : "Salvar Regras"}
           </button>
         </div>
       )}
