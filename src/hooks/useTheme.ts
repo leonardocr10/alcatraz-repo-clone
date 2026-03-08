@@ -10,7 +10,7 @@ const THEME_KEY = "roleta-war-theme";
 
 const PRESET_THEMES: { name: string; colors: ThemeColors }[] = [
   {
-    name: "Dourado (Padrão)",
+    name: "Dourado",
     colors: { primary: "35 90% 55%", gold: "40 85% 58%", border: "220 14% 20%" },
   },
   {
