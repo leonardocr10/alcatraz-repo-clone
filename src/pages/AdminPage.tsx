@@ -40,6 +40,7 @@ const AdminPage = () => {
 
   // Tab
   const [tab, setTab] = useState<"boss" | "items" | "sessions" | "winners">("boss");
+  const [showBossModal, setShowBossModal] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAdmin) navigate("/roleta");
