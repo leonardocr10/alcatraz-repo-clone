@@ -42,9 +42,6 @@ const AdminPage = () => {
   const [tab, setTab] = useState<"boss" | "items" | "sessions" | "winners">("boss");
   const [showBossModal, setShowBossModal] = useState(false);
 
-  useEffect(() => {
-    if (!loading && !isAdmin) navigate("/roleta");
-  }, [loading, isAdmin, navigate]);
 
   // Fetch functions
   const fetchItems = useCallback(async () => {
