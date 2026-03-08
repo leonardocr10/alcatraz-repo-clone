@@ -309,31 +309,29 @@ export default function PlayersPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-3">
           {isAdmin && (
             <button
               onClick={openMsgModal}
-              className="flex items-center gap-1.5 text-xs font-display font-bold text-primary px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors"
+              className="flex flex-col items-center text-xs font-display font-bold text-primary px-3 py-1 rounded-xl hover:bg-primary/10 transition-colors"
             >
               <Send className="w-3.5 h-3.5" />
-              Mensagem
+              <span>Mensagem</span>
             </button>
           )}
-          <div className="flex flex-col items-end">
-            <button
-              onClick={() => syncRankings(true)}
-              disabled={syncing}
-              className="flex items-center gap-1.5 text-xs font-display font-bold text-primary px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
-              {syncing ? "..." : "Sincronizar"}
-            </button>
-            {lastSync && (
-              <span className="text-[10px] text-muted-foreground font-body pr-1">Última sync: {lastSync}</span>
-            )}
-          </div>
+          <button
+            onClick={() => syncRankings(true)}
+            disabled={syncing}
+            className="flex flex-col items-center text-xs font-display font-bold text-primary px-3 py-1 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
+            <span>{syncing ? "..." : "Sincronizar"}</span>
+          </button>
         </div>
       </div>
+      {lastSync && (
+        <p className="text-[10px] text-muted-foreground font-body text-right -mt-2">Última sync: {lastSync}</p>
+      )}
 
       {/* Class Filter Chips */}
       <div className="flex flex-wrap gap-1.5">
