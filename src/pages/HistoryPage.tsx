@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ScrollText, RefreshCw, Package, TrendingUp, Calendar, User, MapPin, Crown, Search, X } from "lucide-react";
+import { ScrollText, RefreshCw, Package, TrendingUp, Calendar, User, MapPin, Crown, Search, X, BarChart3, Trophy } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -67,6 +67,7 @@ export default function HistoryPage() {
   const [mapFilter, setMapFilter] = useState<string | null>(null);
   const [itemFilter, setItemFilter] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [showTop5, setShowTop5] = useState(false);
 
   const normalize = useCallback((day: any) => ({
     ...day,
@@ -166,6 +167,25 @@ export default function HistoryPage() {
 
   const hasActiveFilter = !!nickFilter || !!mapFilter || !!itemFilter;
 
+  // Top 5 players by total drops (today + yesterday)
+  const top5Players = useMemo(() => {
+    if (!data) return [];
+    const counts: Record<string, number> = {};
+    const collectFromDay = (day: DayData) => {
+      for (const item of day.items) {
+        for (const d of item.details) {
+          counts[d.nick] = (counts[d.nick] || 0) + 1;
+        }
+      }
+    };
+    collectFromDay(data.today);
+    collectFromDay(data.yesterday);
+    return Object.entries(counts)
+      .map(([nick, count]) => ({ nick, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [data]);
+
   const formatScrapedAt = (iso: string) => {
     const d = new Date(iso);
     return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -251,6 +271,12 @@ export default function HistoryPage() {
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowTop5(true)}
+            className="flex items-center gap-1.5 text-xs font-display font-bold text-muted-foreground hover:text-foreground hover:bg-secondary/30 px-2.5 py-1.5 rounded-xl transition-colors"
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+          </button>
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-1.5 text-xs font-display font-bold px-3 py-1.5 rounded-xl transition-colors ${
@@ -481,6 +507,51 @@ export default function HistoryPage() {
               </div>
             ))}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Top 5 Dialog */}
+      <Dialog open={showTop5} onOpenChange={setShowTop5}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display text-base font-extrabold uppercase tracking-wider flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-primary" />
+              Top 5 Droppers
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Jogadores com mais drops (hoje + ontem)
+            </DialogDescription>
+          </DialogHeader>
+          {top5Players.length > 0 ? (
+            <div className="space-y-2.5">
+              {top5Players.map((player, i) => {
+                const maxCount = top5Players[0]?.count || 1;
+                const pct = (player.count / maxCount) * 100;
+                const medals = ["🥇", "🥈", "🥉"];
+                return (
+                  <div key={player.nick} className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm w-6 text-center">
+                          {i < 3 ? medals[i] : <span className="text-[10px] font-display font-bold text-muted-foreground">{i + 1}º</span>}
+                        </span>
+                        <span className="text-xs font-display font-bold text-foreground">{player.nick}</span>
+                      </div>
+                      <span className="text-sm font-display font-extrabold text-primary tabular-nums">{player.count}</span>
+                    </div>
+                    <div className="ml-8 h-2 rounded-full bg-secondary/50 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-primary to-primary/60 transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground font-body text-center py-4">Sem dados disponíveis</p>
+          )}
         </DialogContent>
       </Dialog>
     </div>
