@@ -2,8 +2,9 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Swords, Clock, MapPin, ChevronDown, Send, MessageCircle } from "lucide-react";
+import { Swords, Clock, MapPin, ChevronDown, Send, MessageCircle, Bell, BellOff, BellRing } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useBossNotifications } from "@/hooks/useBossNotifications";
 
 interface Boss {
   id: string;
