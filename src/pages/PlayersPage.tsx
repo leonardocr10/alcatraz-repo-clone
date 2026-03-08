@@ -295,21 +295,44 @@ export default function PlayersPage() {
         </div>
       </div>
 
-      {/* Class Filter Badge */}
-      {classFilter && (
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/15 text-primary text-xs font-display font-bold border border-primary/30">
-            {iconMap.get(classFilter) && (
-              <img src={iconMap.get(classFilter)!} alt="" className="w-4 h-4 rounded object-cover" />
-            )}
-            {classFilter}
-            <button onClick={clearClassFilter} className="ml-1 hover:text-foreground transition-colors">
-              <X className="w-3 h-3" />
+      {/* Class Filter Chips */}
+      <div className="flex flex-wrap gap-1.5">
+        <button
+          onClick={clearClassFilter}
+          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-display font-bold transition-colors ${
+            !classFilter
+              ? "bg-primary/20 text-primary border border-primary/30"
+              : "bg-secondary/50 text-muted-foreground hover:bg-secondary/80"
+          }`}
+        >
+          Todas
+        </button>
+        {ALL_CLASSES.map((cls) => {
+          const icon = iconMap.get(cls);
+          const isActive = classFilter === cls;
+          return (
+            <button
+              key={cls}
+              onClick={() => {
+                if (isActive) {
+                  clearClassFilter();
+                } else {
+                  setClassFilter(cls);
+                  setSearchParams({ class: cls });
+                }
+              }}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-display font-bold transition-colors ${
+                isActive
+                  ? "bg-primary/20 text-primary border border-primary/30"
+                  : "bg-secondary/50 text-muted-foreground hover:bg-secondary/80"
+              }`}
+            >
+              {icon && <img src={icon} alt="" className="w-4 h-4 rounded object-cover" />}
+              {cls}
             </button>
-          </span>
-          <span className="text-xs text-muted-foreground font-body">{filtered.length} jogadores</span>
-        </div>
-      )}
+          );
+        })}
+      </div>
 
       {/* Search */}
       <div className="relative">
