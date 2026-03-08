@@ -191,13 +191,6 @@ const AdminPage = () => {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Crown className="w-5 h-5 text-primary" />
-        </div>
-        <h2 className="font-display text-xl font-extrabold uppercase tracking-wider">Gerenciar</h2>
-      </div>
 
       {/* Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-1">
