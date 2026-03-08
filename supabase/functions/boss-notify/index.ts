@@ -1,3 +1,4 @@
+// Boss Notify v2 - Fixed JSON body encoding
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
