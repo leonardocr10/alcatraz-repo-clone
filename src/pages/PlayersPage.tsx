@@ -56,6 +56,9 @@ export default function PlayersPage() {
   const [msgSelected, setMsgSelected] = useState<Set<string>>(new Set());
   const [msgSending, setMsgSending] = useState(false);
 
+  // Class detail modal
+  const [viewClass, setViewClass] = useState<ClassIcon | null>(null);
+
   const fetchData = async () => {
     setLoading(true);
     const [playersRes, iconsRes, rankingsRes] = await Promise.all([
