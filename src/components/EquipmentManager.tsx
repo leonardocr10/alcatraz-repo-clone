@@ -48,6 +48,7 @@ const LEVEL_OPTIONS = [
   { label: "120B", value: "120B", sort: 12002 },
   { label: "120C", value: "120C", sort: 12003 },
   { label: "120D", value: "120D", sort: 12004 },
+  { label: "VIP", value: "VIP", sort: 99999 },
 ];
 
 function getLevelSort(level: string): number {
