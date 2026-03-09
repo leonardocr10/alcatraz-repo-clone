@@ -283,15 +283,15 @@ const HomePage = () => {
                   <span className="text-[10px] text-muted-foreground font-bold uppercase">Clã:</span>
                   {clans.map((clan) => (
                     <button
-                      key={clan}
-                      onClick={() => setPendingClanMap(prev => ({ ...prev, [user.id]: clan }))}
+                      key={clan.name}
+                      onClick={() => setPendingClanMap(prev => ({ ...prev, [user.id]: clan.name }))}
                       className={`px-2.5 py-1 rounded-lg text-[11px] font-display font-bold transition-all border ${
-                        (pendingClanMap[user.id] || "AZ") === clan
+                        (pendingClanMap[user.id] || clans[0]?.name || "AZ") === clan.name
                           ? "border-primary bg-primary/15 text-primary"
                           : "border-border/40 text-muted-foreground hover:border-muted-foreground/30"
                       }`}
                     >
-                      {clan}
+                      {clan.name}
                     </button>
                   ))}
                 </div>
