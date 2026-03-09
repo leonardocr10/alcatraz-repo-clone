@@ -166,7 +166,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                   : selectedRarity === 'lendario' ? 'bg-yellow-500/10'
                   : 'bg-red-500/10'
                 : 'bg-secondary/20'
-            }`} style={{ minHeight: showMix ? '200px' : '180px' }}>
+            }`} style={{ minHeight: hasAging ? '180px' : '200px' }}>
               {selectedItem ? (
                 <div className="flex flex-col items-center gap-2 p-4">
                   <img
