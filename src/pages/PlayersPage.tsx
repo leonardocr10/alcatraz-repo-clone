@@ -624,7 +624,7 @@ export default function PlayersPage() {
             <div className="space-y-1.5">
               <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Clã</span>
               <div className="flex gap-2">
-                {["AZ", "AZ2"].map((c) => (
+                {clans.map((c) => (
                   <button
                     key={c}
                     onClick={() => setEditClan(c)}
