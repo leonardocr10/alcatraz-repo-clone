@@ -48,6 +48,48 @@ function extractLevelPlayer(html: string, targetName: string) {
   return null;
 }
 
+async function scrapePlayer(supabase: any, userId: string, nickname: string): Promise<boolean> {
+  const url = `https://arkanumpt.com.br/rankings?q=${encodeURIComponent(nickname)}&class=0&tab=rankLevel`;
+
+  const resp = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "Accept": "text/html",
+    },
+  });
+
+  if (!resp.ok) {
+    console.error(`${nickname}: HTTP ${resp.status}`);
+    return false;
+  }
+
+  const html = await resp.text();
+  const player = extractLevelPlayer(html, nickname);
+
+  if (player) {
+    const { error } = await supabase
+      .from("player_rankings")
+      .upsert({
+        user_id: userId,
+        nickname: player.name,
+        game_class: player.gameClass,
+        clan: player.clan,
+        level: player.level,
+        xp: player.xp,
+        rank_position: player.rank,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" });
+
+    if (!error) {
+      console.log(`✓ ${player.name}: Lv.${player.level} ${player.xp} (#${player.rank})`);
+      return true;
+    }
+  } else {
+    console.log(`✗ ${nickname}: não encontrado no ranking`);
+  }
+  return false;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -58,6 +100,18 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    const body = await req.json().catch(() => ({}));
+
+    // Single player sync
+    if (body.nickname && body.userId) {
+      const matched = await scrapePlayer(supabase, body.userId, body.nickname);
+      return new Response(
+        JSON.stringify({ success: true, total: 1, matched: matched ? 1 : 0, unmatched: matched ? 0 : 1 }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Full sync
     const { data: users, error: usersErr } = await supabase
       .from("users")
       .select("id, nickname");
@@ -67,46 +121,9 @@ Deno.serve(async (req) => {
     const unmatched: string[] = [];
 
     for (const user of users || []) {
-      const url = `https://arkanumpt.com.br/rankings?q=${encodeURIComponent(user.nickname)}&class=0&tab=rankLevel`;
-
-      const resp = await fetch(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          "Accept": "text/html",
-        },
-      });
-
-      if (!resp.ok) {
-        console.error(`${user.nickname}: HTTP ${resp.status}`);
-        unmatched.push(user.nickname);
-        continue;
-      }
-
-      const html = await resp.text();
-      const player = extractLevelPlayer(html, user.nickname);
-
-      if (player) {
-        const { error } = await supabase
-          .from("player_rankings")
-          .upsert({
-            user_id: user.id,
-            nickname: player.name,
-            game_class: player.gameClass,
-            clan: player.clan,
-            level: player.level,
-            xp: player.xp,
-            rank_position: player.rank,
-            updated_at: new Date().toISOString(),
-          }, { onConflict: "user_id" });
-
-        if (!error) {
-          matched++;
-          console.log(`✓ ${player.name}: Lv.${player.level} ${player.xp} (#${player.rank})`);
-        }
-      } else {
-        unmatched.push(user.nickname);
-        console.log(`✗ ${user.nickname}: não encontrado no ranking`);
-      }
+      const ok = await scrapePlayer(supabase, user.id, user.nickname);
+      if (ok) matched++;
+      else unmatched.push(user.nickname);
 
       // Small delay between requests
       await new Promise(r => setTimeout(r, 300));
