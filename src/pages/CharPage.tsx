@@ -192,14 +192,37 @@ export default function CharPage() {
     fetchEquipment();
   };
 
+  const convertImagesToBase64 = async (container: HTMLElement) => {
+    const images = container.querySelectorAll('img');
+    await Promise.all(
+      Array.from(images).map(async (img) => {
+        if (img.src.startsWith('data:') || img.src.startsWith('blob:')) return;
+        try {
+          const response = await fetch(img.src);
+          const blob = await response.blob();
+          const reader = new FileReader();
+          const base64 = await new Promise<string>((resolve) => {
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+          img.src = base64;
+        } catch {
+          // skip images that fail
+        }
+      })
+    );
+  };
+
   const handleShare = async () => {
     if (!shareRef.current) return;
     setSharing(true);
     try {
+      // Pre-convert all external images to base64 to avoid CORS issues
+      await convertImagesToBase64(shareRef.current);
+
       const dataUrl = await toPng(shareRef.current, {
         backgroundColor: '#1a1a2e',
         pixelRatio: 2,
-        cacheBust: true,
       });
 
       const blob = await (await fetch(dataUrl)).blob();
@@ -212,7 +235,6 @@ export default function CharPage() {
           files: [file],
         });
       } else {
-        // Fallback: download the image
         const link = document.createElement('a');
         link.href = dataUrl;
         link.download = `char-${profile?.nickname || 'player'}.png`;
@@ -222,6 +244,7 @@ export default function CharPage() {
     } catch (err: any) {
       if (err.name !== 'AbortError') {
         toast.error("Erro ao compartilhar");
+        console.error("Share error:", err);
       }
     }
     setSharing(false);
