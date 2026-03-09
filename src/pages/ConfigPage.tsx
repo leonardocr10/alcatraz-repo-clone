@@ -20,7 +20,10 @@ export default function ConfigPage() {
   const { isAdmin } = useAuth();
   const { currentTheme, setTheme, resetTheme, presets } = useTheme();
 
-  const [tab, setTab] = useState<"manage" | "whatsapp" | "theme" | "rules" | "discord" | "clear">("manage");
+  const [tab, setTab] = useState<"manage" | "clans" | "whatsapp" | "theme" | "rules" | "discord" | "clear">("manage");
+  const { clans, loading: clansLoading, refetch: refetchClans } = useClans();
+  const [newClanName, setNewClanName] = useState("");
+  const [addingClan, setAddingClan] = useState(false);
 
   // WhatsApp state
   const [config, setConfig] = useState<WhatsConfig | null>(null);
