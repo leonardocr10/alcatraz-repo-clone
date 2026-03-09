@@ -41,6 +41,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [selectedRarity, setSelectedRarity] = useState<Rarity>('normal');
   const [plusValue, setPlusValue] = useState(0);
+  const [maxAging, setMaxAging] = useState(12);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
