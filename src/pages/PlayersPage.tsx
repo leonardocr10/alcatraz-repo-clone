@@ -178,7 +178,7 @@ export default function PlayersPage() {
       const xpB = parseFloat((rb?.xp ?? "0").replace(",", ".")) || 0;
       return xpB - xpA;
     });
-  }, [players, search, classFilter, rankingMap]);
+  }, [players, search, classFilter, clanFilter, rankingMap]);
 
   const clearClassFilter = () => {
     setClassFilter(null);
