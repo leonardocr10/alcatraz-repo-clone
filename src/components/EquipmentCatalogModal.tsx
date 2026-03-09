@@ -217,6 +217,30 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                 ))}
               </div>
             </div>
+
+            {/* Aging Enhancement */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-widest">
+                  Aging Enhancement
+                </p>
+                <span className="text-sm font-display font-extrabold text-primary">
+                  +{plusValue}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={12}
+                value={plusValue}
+                onChange={e => setPlusValue(Number(e.target.value))}
+                className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-secondary/50 accent-primary"
+              />
+              <div className="flex justify-between mt-1">
+                <span className="text-[8px] text-muted-foreground">+0</span>
+                <span className="text-[8px] text-muted-foreground">+12</span>
+              </div>
+            </div>
           </div>
         </div>
 
