@@ -126,12 +126,12 @@ export default function EquipmentManager() {
       }
       const { error } = await supabase
         .from("equipment_items")
-        .update({ name: editName, image_url: finalUrl })
+        .update({ name: editName, image_url: finalUrl, category_id: editCategoryId })
         .eq("id", editingItem.id);
       if (error) throw error;
       toast.success("Item atualizado!");
       setItems(prev => prev.map(i =>
-        i.id === editingItem.id ? { ...i, name: editName, image_url: finalUrl } : i
+        i.id === editingItem.id ? { ...i, name: editName, image_url: finalUrl, category_id: editCategoryId } : i
       ));
       cancelEdit();
     } catch (err: any) {
