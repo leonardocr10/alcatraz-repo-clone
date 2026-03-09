@@ -1,0 +1,1 @@
+INSERT INTO equipment_categories (name, slot, sort_order) VALUES ('Varinhas', 'arma_2m', 8);
