@@ -626,15 +626,15 @@ export default function PlayersPage() {
               <div className="flex gap-2">
                 {clans.map((c) => (
                   <button
-                    key={c}
-                    onClick={() => setEditClan(c)}
+                    key={c.name}
+                    onClick={() => setEditClan(c.name)}
                     className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-display font-bold uppercase tracking-wider transition-all border ${
-                      editClan === c
+                      editClan === c.name
                         ? "border-primary bg-primary/15 text-primary"
                         : "border-border/40 text-muted-foreground hover:border-muted-foreground/30"
                     }`}
                   >
-                    {c}
+                    {c.name}
                   </button>
                 ))}
               </div>
