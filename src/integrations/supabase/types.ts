@@ -289,6 +289,7 @@ export type Database = {
         Row: {
           id: string
           item_id: string
+          mix: string | null
           plus_value: number | null
           rarity: Database["public"]["Enums"]["equipment_rarity"]
           slot: Database["public"]["Enums"]["equipment_slot"]
@@ -298,6 +299,7 @@ export type Database = {
         Insert: {
           id?: string
           item_id: string
+          mix?: string | null
           plus_value?: number | null
           rarity?: Database["public"]["Enums"]["equipment_rarity"]
           slot: Database["public"]["Enums"]["equipment_slot"]
@@ -307,6 +309,7 @@ export type Database = {
         Update: {
           id?: string
           item_id?: string
+          mix?: string | null
           plus_value?: number | null
           rarity?: Database["public"]["Enums"]["equipment_rarity"]
           slot?: Database["public"]["Enums"]["equipment_slot"]
