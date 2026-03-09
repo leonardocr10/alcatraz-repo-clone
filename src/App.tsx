@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/AppLayout";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { PWAUpdateBanner } from "@/components/PWAUpdateBanner";
+import Index from "@/pages/Index";
 import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/HomePage";
 import RouletteGamePage from "@/pages/RouletteGamePage";
