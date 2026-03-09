@@ -200,6 +200,7 @@ export default function PlayersPage() {
     setEditRole(player.role);
     setEditPhone(player.phone || "");
     setEditClanRole(player.clan_role || "membro");
+    setEditClan(player.clan || "AZ");
     setMenuOpen(null);
   };
 
