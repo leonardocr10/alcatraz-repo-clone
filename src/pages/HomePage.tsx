@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { useClans } from "@/hooks/useClans";
 import { toast } from "sonner";
 import { Swords, Clock, MapPin, ChevronDown, Send, MessageCircle, BellOff, BellRing, RefreshCw, Users, Shield, UserCheck, UserX, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
