@@ -232,6 +232,8 @@ export type Database = {
           created_at: string
           id: string
           image_url: string
+          level: string | null
+          level_sort: number | null
           name: string
           slot: Database["public"]["Enums"]["equipment_slot"]
         }
@@ -240,6 +242,8 @@ export type Database = {
           created_at?: string
           id?: string
           image_url: string
+          level?: string | null
+          level_sort?: number | null
           name: string
           slot: Database["public"]["Enums"]["equipment_slot"]
         }
@@ -248,6 +252,8 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string
+          level?: string | null
+          level_sort?: number | null
           name?: string
           slot?: Database["public"]["Enums"]["equipment_slot"]
         }
