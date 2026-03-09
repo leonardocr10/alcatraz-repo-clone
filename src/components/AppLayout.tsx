@@ -20,6 +20,7 @@ interface NavItem {
 const items: NavItem[] = [
   { label: "Início", path: "/inicio", icon: Home },
   { label: "Char", path: "/char", icon: UserCircle },
+  { label: "Histórico", path: "/historico", icon: History },
   { label: "Roleta", path: "/roleta", icon: Dices },
   { label: "Jogadores", path: "/jogadores", icon: Users },
   { label: "Config", path: "/config", icon: Settings, adminOnly: true },
