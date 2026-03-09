@@ -258,21 +258,40 @@ const HomePage = () => {
           </div>
           <div className="divide-y divide-border/20">
             {pendingUsers.map((user) => (
-              <div key={user.id} className="px-4 py-3 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gold/15 flex items-center justify-center shrink-0">
-                  <Clock className="w-4 h-4 text-gold" />
+              <div key={user.id} className="px-4 py-3 space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-gold/15 flex items-center justify-center shrink-0">
+                    <Clock className="w-4 h-4 text-gold" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-display font-bold truncate">{user.nickname}</p>
+                    <p className="text-[11px] text-muted-foreground font-body">{user.class || "Sem classe"} · {user.phone}</p>
+                  </div>
+                  <div className="flex gap-1.5 shrink-0">
+                    <button onClick={() => approveUser(user.id)} className="p-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                      <UserCheck className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => rejectUser(user.id)} className="p-2 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors">
+                      <UserX className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-display font-bold truncate">{user.nickname}</p>
-                  <p className="text-[11px] text-muted-foreground font-body">{user.class || "Sem classe"} · {user.phone}</p>
-                </div>
-                <div className="flex gap-1.5 shrink-0">
-                  <button onClick={() => approveUser(user.id)} className="p-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                    <UserCheck className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => rejectUser(user.id)} className="p-2 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors">
-                    <UserX className="w-4 h-4" />
-                  </button>
+                {/* Clan selector */}
+                <div className="flex items-center gap-2 pl-12">
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase">Clã:</span>
+                  {["AZ", "AZ2"].map((clan) => (
+                    <button
+                      key={clan}
+                      onClick={() => setPendingClanMap(prev => ({ ...prev, [user.id]: clan }))}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-display font-bold transition-all border ${
+                        (pendingClanMap[user.id] || "AZ") === clan
+                          ? "border-primary bg-primary/15 text-primary"
+                          : "border-border/40 text-muted-foreground hover:border-muted-foreground/30"
+                      }`}
+                    >
+                      {clan}
+                    </button>
+                  ))}
                 </div>
               </div>
             ))}

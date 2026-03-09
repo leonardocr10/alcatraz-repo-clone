@@ -213,6 +213,7 @@ export default function PlayersPage() {
       role: editRole,
       phone: editPhone.replace(/\D/g, "") || null,
       clan_role: editClanRole,
+      clan: editClan,
     };
     const { error } = await supabase.from("users").update(payload).eq("id", editPlayer.id);
     if (error) {
