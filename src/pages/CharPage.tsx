@@ -234,6 +234,8 @@ export default function CharPage() {
       await Promise.all(
         Array.from(images).map(async (img) => {
           if (img.src.startsWith('data:') || img.src.startsWith('blob:')) return;
+          // Skip local assets (placeholders) - they don't need conversion
+          if (!img.src.includes('supabase.co')) return;
           originalSrcs.push({ img, src: img.src });
           const base64 = await convertImageToBase64(img.src);
           img.src = base64;
