@@ -89,6 +89,7 @@ export default function EquipmentManager() {
     setEditName(item.name);
     setEditImageUrl(item.image_url);
     setEditCategoryId(item.category_id);
+    setEditSlot(item.slot);
     setEditFile(null);
     setEditPreview(null);
   };
@@ -98,6 +99,7 @@ export default function EquipmentManager() {
     setEditName("");
     setEditImageUrl("");
     setEditCategoryId("");
+    setEditSlot("arma_1m");
     setEditFile(null);
     setEditPreview(null);
   };
