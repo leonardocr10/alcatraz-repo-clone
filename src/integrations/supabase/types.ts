@@ -660,6 +660,7 @@ export type Database = {
         Row: {
           approved: boolean
           auth_id: string | null
+          avatar_url: string | null
           char_visible: boolean
           clan: string | null
           clan_role: string | null
@@ -675,6 +676,7 @@ export type Database = {
         Insert: {
           approved?: boolean
           auth_id?: string | null
+          avatar_url?: string | null
           char_visible?: boolean
           clan?: string | null
           clan_role?: string | null
@@ -690,6 +692,7 @@ export type Database = {
         Update: {
           approved?: boolean
           auth_id?: string | null
+          avatar_url?: string | null
           char_visible?: boolean
           clan?: string | null
           clan_role?: string | null

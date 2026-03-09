@@ -225,6 +225,17 @@ export default function CharPage() {
         </div>
       </div>
 
+      {/* Avatar display */}
+      {profile?.avatar_url && (
+        <div className="flex justify-center">
+          <img
+            src={profile.avatar_url}
+            alt={profile.nickname}
+            className="w-24 h-24 rounded-2xl object-cover border-2 border-primary/30 shadow-lg"
+          />
+        </div>
+      )}
+
       {/* Visibility toggle */}
       <button
         onClick={toggleVisibility}
