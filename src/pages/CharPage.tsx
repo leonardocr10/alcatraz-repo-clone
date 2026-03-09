@@ -192,65 +192,64 @@ export default function CharPage() {
     fetchEquipment();
   };
 
-  const convertImagesToBase64 = async (container: HTMLElement) => {
-    const images = container.querySelectorAll('img');
-    await Promise.all(
-      Array.from(images).map(async (img) => {
-        if (img.src.startsWith('data:') || img.src.startsWith('blob:')) return;
+  const convertImageToBase64 = (url: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => {
         try {
-          // Use canvas approach to convert image to base64
           const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
           const ctx = canvas.getContext('2d');
-          if (!ctx) return;
-
-          const image = new Image();
-          image.crossOrigin = 'anonymous';
-
-          const base64 = await new Promise<string>((resolve, reject) => {
-            image.onload = () => {
-              canvas.width = image.naturalWidth;
-              canvas.height = image.naturalHeight;
-              ctx.drawImage(image, 0, 0);
-              try {
-                resolve(canvas.toDataURL('image/png'));
-              } catch {
-                reject(new Error('canvas tainted'));
-              }
-            };
-            image.onerror = () => reject(new Error('load failed'));
-            image.src = img.src;
-          });
-          img.src = base64;
-        } catch {
-          // If canvas approach fails, try fetch as fallback
-          try {
-            const response = await fetch(img.src, { mode: 'cors' });
-            const blob = await response.blob();
-            const reader = new FileReader();
-            const base64 = await new Promise<string>((resolve) => {
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.readAsDataURL(blob);
-            });
-            img.src = base64;
-          } catch {
-            // Last resort: hide image to prevent toPng failure
+          if (ctx) {
+            ctx.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+            return;
           }
+        } catch (e) {
+          console.error('Canvas tainted for:', url);
         }
-      })
-    );
+        resolve(url); // fallback to original
+      };
+      img.onerror = () => {
+        console.error('Image load error for:', url);
+        resolve(url); // fallback to original
+      };
+      // Add cache buster to bypass cached non-CORS responses
+      const separator = url.includes('?') ? '&' : '?';
+      img.src = `${url}${separator}_cb=${Date.now()}`;
+      // Timeout after 5s
+      setTimeout(() => resolve(url), 5000);
+    });
   };
 
   const handleShare = async () => {
     if (!shareRef.current) return;
     setSharing(true);
     try {
-      // Pre-convert all external images to base64 to avoid CORS issues
-      await convertImagesToBase64(shareRef.current);
+      // Pre-convert all images to base64
+      const images = shareRef.current.querySelectorAll('img');
+      const originalSrcs: { img: HTMLImageElement; src: string }[] = [];
+      
+      await Promise.all(
+        Array.from(images).map(async (img) => {
+          if (img.src.startsWith('data:') || img.src.startsWith('blob:')) return;
+          originalSrcs.push({ img, src: img.src });
+          const base64 = await convertImageToBase64(img.src);
+          img.src = base64;
+        })
+      );
 
       const dataUrl = await toPng(shareRef.current, {
         backgroundColor: '#1a1a2e',
         pixelRatio: 2,
+        cacheBust: true,
+        imagePlaceholder: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
       });
+
+      // Restore original srcs to avoid broken images in UI
+      originalSrcs.forEach(({ img, src }) => { img.src = src; });
 
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], `char-${profile?.nickname || 'player'}.png`, { type: 'image/png' });
