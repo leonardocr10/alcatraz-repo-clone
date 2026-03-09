@@ -59,7 +59,7 @@ const Index = () => {
         supabase.from("character_classes").select("name, image_url"),
         supabase.from("roulette_items").select("id", { count: "exact", head: true }),
         supabase.from("roulette_sessions").select("id", { count: "exact", head: true }),
-        supabase.from("player_rankings").select("nickname, level, xp, game_class").order("level", { ascending: false }).order("xp", { ascending: false }).limit(5),
+        supabase.from("player_rankings").select("nickname, level, xp, game_class, clan").order("level", { ascending: false }).order("xp", { ascending: false }).limit(5),
         supabase
           .from("roulette_winners")
           .select("number, users!roulette_winners_user_id_fkey(nickname), roulette_items!roulette_winners_item_id_fkey(name)")
