@@ -185,8 +185,28 @@ export default function ConfigPage() {
     { key: "theme" as const, label: "Tema", icon: Palette },
     { key: "rules" as const, label: "Regras", icon: ScrollText },
     { key: "discord" as const, label: "Discord", icon: Link },
+    { key: "equip" as const, label: "Equip", icon: Package },
     { key: "clear" as const, label: "Limpar", icon: Trash2 },
   ];
+
+  const seedEquipment = async () => {
+    setSeeding(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke("seed-equipment", {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      if (res.error) throw res.error;
+      const result = res.data;
+      toast.success(`Importados: ${result.inserted} itens, ${result.categories} categorias. Ignorados: ${result.skipped}`);
+      if (result.errors?.length) {
+        console.warn("Seed errors:", result.errors);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao importar");
+    }
+    setSeeding(false);
+  };
 
   const addClan = async () => {
     const name = newClanName.trim().toUpperCase();
