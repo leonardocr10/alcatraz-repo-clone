@@ -41,6 +41,7 @@ interface ClassIcon {
 const HomePage = () => {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
+  const { clans } = useClans();
   const [bosses, setBosses] = useState<Boss[]>([]);
   const [bossSchedules, setBossSchedules] = useState<BossSchedule[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
