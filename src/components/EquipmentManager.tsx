@@ -389,6 +389,22 @@ export default function EquipmentManager() {
               <input value={editName} onChange={e => setEditName(e.target.value)} className="input-modern text-sm" />
             </label>
 
+            {/* Category selector */}
+            {editingItem && (
+              <label className="block space-y-1">
+                <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Categoria</span>
+                <select
+                  value={editCategoryId}
+                  onChange={e => setEditCategoryId(e.target.value)}
+                  className="input-modern text-sm"
+                >
+                  {categories.filter(c => c.slot === editingItem.slot).map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+
             <label className="block space-y-1">
               <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">URL da Imagem (prioritário)</span>
               <input value={editImageUrl} onChange={e => setEditImageUrl(e.target.value)} className="input-modern text-sm" placeholder="https://..." />
