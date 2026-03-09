@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, X } from "lucide-react";
+import { Loader2, X, Share2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { toPng } from "html-to-image";
 import slotSword from "@/assets/slot-sword.png";
 import slotShield from "@/assets/slot-shield.png";
 import slotArmor from "@/assets/slot-armor.png";
@@ -18,6 +20,7 @@ interface PlayerEquip {
   slot: EquipmentSlot;
   rarity: Rarity;
   plus_value: number | null;
+  mix: string | null;
   item?: { name: string; image_url: string };
 }
 
@@ -50,11 +53,44 @@ const RARITY_BG: Record<Rarity, string> = {
   boss: 'bg-red-500/10',
 };
 
+const MIX_COLORS: Record<string, { text: string; bg: string }> = {
+  Raident: { text: 'text-blue-400', bg: 'bg-blue-400/20' },
+  Celesto: { text: 'text-yellow-400', bg: 'bg-yellow-400/20' },
+  Enigma: { text: 'text-gray-400', bg: 'bg-gray-400/20' },
+};
+
 interface Props {
   playerId: string;
   playerName: string;
   onClose: () => void;
 }
+
+const convertImageToBase64 = (url: string): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+          return;
+        }
+      } catch (e) {
+        console.error('Canvas tainted for:', url);
+      }
+      resolve(url);
+    };
+    img.onerror = () => resolve(url);
+    const separator = url.includes('?') ? '&' : '?';
+    img.src = `${url}${separator}_cb=${Date.now()}`;
+    setTimeout(() => resolve(url), 5000);
+  });
+};
 
 export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
   const [equipment, setEquipment] = useState<PlayerEquip[]>([]);
@@ -63,13 +99,14 @@ export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
   const [xp, setXp] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [avatarExpanded, setAvatarExpanded] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const shareRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchData = async () => {
-      // Fetch avatar and equipment in parallel
       const [userRes, equipRes, rankRes] = await Promise.all([
         supabase.from("users").select("avatar_url").eq("id", playerId).single(),
-        supabase.from("player_equipment").select("slot, rarity, plus_value, item_id").eq("user_id", playerId),
+        supabase.from("player_equipment").select("slot, rarity, plus_value, mix, item_id").eq("user_id", playerId),
         supabase.from("player_rankings").select("level, xp").eq("user_id", playerId).maybeSingle(),
       ]);
       if (userRes.data?.avatar_url) setAvatarUrl(userRes.data.avatar_url);
@@ -90,6 +127,7 @@ export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
           slot: d.slot as EquipmentSlot,
           rarity: d.rarity as Rarity,
           plus_value: d.plus_value,
+          mix: d.mix || null,
           item: itemMap.get(d.item_id) as any,
         })));
       }
@@ -100,13 +138,73 @@ export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
 
   const getEquip = (slot: EquipmentSlot) => equipment.find(e => e.slot === slot);
 
+  const handleShare = async () => {
+    if (!shareRef.current) return;
+    setSharing(true);
+    try {
+      const images = shareRef.current.querySelectorAll('img');
+      const originalSrcs: { img: HTMLImageElement; src: string }[] = [];
+
+      await Promise.all(
+        Array.from(images).map(async (img) => {
+          if (img.src.startsWith('data:') || img.src.startsWith('blob:')) return;
+          originalSrcs.push({ img, src: img.src });
+          const base64 = await convertImageToBase64(img.src);
+          img.src = base64;
+        })
+      );
+
+      const dataUrl = await toPng(shareRef.current, {
+        backgroundColor: '#1a1a2e',
+        pixelRatio: 2,
+        cacheBust: true,
+        imagePlaceholder: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      });
+
+      originalSrcs.forEach(({ img, src }) => { img.src = src; });
+
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], `char-${playerName}.png`, { type: 'image/png' });
+
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: `Char de ${playerName}`,
+          text: `Confira o char de ${playerName}!`,
+          files: [file],
+        });
+      } else {
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = `char-${playerName}.png`;
+        link.click();
+        toast.success("Imagem salva!");
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        toast.error("Erro ao compartilhar");
+        console.error("Share error:", err);
+      }
+    }
+    setSharing(false);
+  };
+
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-display text-lg font-extrabold uppercase tracking-wide">
-            Char de {playerName}
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="font-display text-lg font-extrabold uppercase tracking-wide">
+              Char de {playerName}
+            </DialogTitle>
+            <button
+              onClick={handleShare}
+              disabled={sharing || loading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-display font-bold text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              {sharing ? 'Gerando...' : 'Compartilhar'}
+            </button>
+          </div>
         </DialogHeader>
 
         {loading ? (
@@ -114,12 +212,13 @@ export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="space-y-3">
+          <div ref={shareRef} className="space-y-3 p-1">
             {avatarUrl && (
               <div className="flex flex-col items-center gap-1">
                 <button onClick={() => setAvatarExpanded(true)} className="focus:outline-none">
                   <img src={avatarUrl} alt={playerName} className="w-20 h-20 rounded-2xl object-cover border-2 border-primary/30 shadow-lg hover:scale-105 transition-transform cursor-pointer" />
                 </button>
+                <p className="font-display font-extrabold text-sm uppercase tracking-wider">{playerName}</p>
                 <div className="flex items-center gap-2">
                   {level != null && (
                     <span className="text-[10px] font-display font-extrabold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
@@ -137,6 +236,7 @@ export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
             <div className="flex gap-3">
               {SLOT_CONFIG.filter(s => s.size === 'large').map(slotCfg => {
                 const equip = getEquip(slotCfg.slot);
+                const mixColors = equip?.mix ? MIX_COLORS[equip.mix] : null;
                 return (
                   <div key={slotCfg.slot} className="flex flex-col items-center gap-1 flex-1">
                     <div className={`relative w-full aspect-[3/4] rounded-xl border-2 flex items-center justify-center overflow-hidden ${
@@ -148,6 +248,11 @@ export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
                           {equip.plus_value != null && equip.plus_value > 0 && (
                             <span className="absolute bottom-1 right-1 text-[10px] font-display font-bold text-foreground bg-background/80 px-1 rounded">
                               +{equip.plus_value}
+                            </span>
+                          )}
+                          {equip.mix && mixColors && (
+                            <span className={`absolute top-0.5 left-0.5 text-[7px] font-display font-extrabold px-1 rounded ${mixColors.text} ${mixColors.bg}`}>
+                              Mix {equip.mix}
                             </span>
                           )}
                         </>
@@ -165,6 +270,7 @@ export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
             <div className="grid grid-cols-6 gap-2">
               {SLOT_CONFIG.filter(s => s.size === 'small').map(slotCfg => {
                 const equip = getEquip(slotCfg.slot);
+                const mixColors = equip?.mix ? MIX_COLORS[equip.mix] : null;
                 return (
                   <div key={slotCfg.slot} className="flex flex-col items-center gap-1">
                     <div className={`relative w-full aspect-square rounded-xl border-2 flex items-center justify-center overflow-hidden ${
@@ -176,6 +282,11 @@ export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
                           {equip.plus_value != null && equip.plus_value > 0 && (
                             <span className="absolute bottom-0.5 right-0.5 text-[8px] font-display font-bold text-foreground bg-background/80 px-1 rounded">
                               +{equip.plus_value}
+                            </span>
+                          )}
+                          {equip.mix && mixColors && (
+                            <span className={`absolute top-0.5 left-0.5 text-[6px] font-display font-extrabold px-0.5 rounded ${mixColors.text} ${mixColors.bg}`}>
+                              Mix {equip.mix}
                             </span>
                           )}
                         </>
