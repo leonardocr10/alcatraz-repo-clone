@@ -20,7 +20,8 @@ export default function ConfigPage() {
   const { isAdmin } = useAuth();
   const { currentTheme, setTheme, resetTheme, presets } = useTheme();
 
-  const [tab, setTab] = useState<"manage" | "clans" | "whatsapp" | "theme" | "rules" | "discord" | "clear">("manage");
+  const [tab, setTab] = useState<"manage" | "clans" | "whatsapp" | "theme" | "rules" | "discord" | "clear" | "equip">("manage");
+  const [seeding, setSeeding] = useState(false);
   const { clans, loading: clansLoading, refetch: refetchClans } = useClans();
   const [newClanName, setNewClanName] = useState("");
   const [addingClan, setAddingClan] = useState(false);
