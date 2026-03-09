@@ -197,7 +197,9 @@ const Index = () => {
                   </div>
                   <p className="font-display font-bold text-sm truncate">{player.nickname}</p>
                   {player.level && (
-                    <p className="text-xs text-primary font-display font-bold">Lv.{player.level}</p>
+                    <p className="text-xs text-primary font-display font-bold">
+                      Lv.{player.level} {player.xp ? `• ${player.xp.endsWith('%') ? player.xp : `${player.xp}%`}` : ""}
+                    </p>
                   )}
                   {player.game_class && (
                     <p className="text-[10px] text-muted-foreground font-body">{player.game_class}</p>
