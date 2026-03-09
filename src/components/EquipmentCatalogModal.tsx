@@ -42,7 +42,11 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
   const [selectedRarity, setSelectedRarity] = useState<Rarity>('normal');
   const [plusValue, setPlusValue] = useState(0);
   const [maxAging, setMaxAging] = useState(12);
+  const [selectedMix, setSelectedMix] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const showMix = ['anel_1', 'anel_2', 'colar'].includes(slot);
+  const MIX_OPTIONS = ['Raident', 'Celesto', 'Enigma'];
 
   useEffect(() => {
     const fetchData = async () => {
