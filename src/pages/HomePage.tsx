@@ -538,6 +538,40 @@ const HomePage = () => {
         </div>
       )}
 
+      {/* Confirm Send All Dialog */}
+      <Dialog open={confirmSendAll} onOpenChange={setConfirmSendAll}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display text-lg">Confirmar Envio</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground font-body">
+            Será enviada uma notificação para <span className="font-bold text-foreground">todos os bosses</span> abaixo:
+          </p>
+          <ul className="space-y-1.5 max-h-48 overflow-y-auto">
+            {groupedBosses.map(({ boss, nextSchedule }) => (
+              <li key={boss.id} className="flex items-center gap-2 text-sm font-body">
+                <Swords className="w-3.5 h-3.5 text-primary shrink-0" />
+                <span className="font-display font-bold text-gold">{boss.name}</span>
+                {nextSchedule && (
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {nextSchedule.spawn_time.substring(0, 5)}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setConfirmSendAll(false)}>Cancelar</Button>
+            <Button
+              onClick={() => { setConfirmSendAll(false); sendAllBossNotify(); }}
+              disabled={sendingAll}
+            >
+              {sendingAll ? "Enviando..." : "Confirmar Envio"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <DiscordFloatingButton />
     </div>
   );
