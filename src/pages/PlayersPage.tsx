@@ -90,6 +90,8 @@ export default function PlayersPage() {
     }
   }, []);
 
+  const [syncingPlayer, setSyncingPlayer] = useState<string | null>(null);
+
   const syncRankings = useCallback(async (showToast = true) => {
     setSyncing(true);
     try {
@@ -112,6 +114,27 @@ export default function PlayersPage() {
     }
     setSyncing(false);
   }, [updateLastSync]);
+
+  const syncSinglePlayer = useCallback(async (player: Player) => {
+    setMenuOpen(null);
+    setSyncingPlayer(player.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("scrape-rankings", {
+        body: { nickname: player.nickname, userId: player.id },
+      });
+      if (error) throw error;
+      if (data?.matched > 0) {
+        const { data: newRankings } = await supabase.from("player_rankings").select("user_id, level, xp, rank_position");
+        setRankings((newRankings ?? []) as Ranking[]);
+        toast.success(`${player.nickname} sincronizado!`);
+      } else {
+        toast.error(`${player.nickname} não encontrado no ranking`);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao sincronizar");
+    }
+    setSyncingPlayer(null);
+  }, []);
 
   useEffect(() => { fetchData(); }, []);
 
