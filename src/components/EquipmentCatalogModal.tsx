@@ -155,10 +155,10 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
             </div>
           </div>
 
-          {/* Right side - Preview & Rarity */}
-          <div className="w-44 flex flex-col gap-3">
-          {/* Item preview */}
-            <div className={`rounded-xl border border-border/40 aspect-square flex items-center justify-center overflow-hidden transition-colors ${
+          {/* Right side - Preview & Options */}
+          <div className="w-52 flex flex-col gap-3">
+            {/* Item preview - larger */}
+            <div className={`rounded-xl border border-border/40 flex items-center justify-center overflow-hidden transition-colors ${
               selectedItem
                 ? selectedRarity === 'normal' ? 'bg-green-500/10'
                   : selectedRarity === 'raro' ? 'bg-cyan-400/10'
@@ -166,18 +166,18 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                   : selectedRarity === 'lendario' ? 'bg-yellow-500/10'
                   : 'bg-red-500/10'
                 : 'bg-secondary/20'
-            }`}>
+            }`} style={{ minHeight: showMix ? '200px' : '180px' }}>
               {selectedItem ? (
-                <div className="flex flex-col items-center gap-2 p-3">
+                <div className="flex flex-col items-center gap-2 p-4">
                   <img
                     src={selectedItem.image_url}
                     alt={selectedItem.name}
-                    className="w-24 h-24 object-contain"
+                    className="w-32 h-32 object-contain"
                   />
-                  <p className="font-display font-extrabold text-xs text-center uppercase">
+                  <p className="font-display font-extrabold text-sm text-center uppercase">
                     {selectedItem.name}
                   </p>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-center gap-1.5">
                     <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
                       selectedRarity === 'normal' ? 'text-green-500 bg-green-500/20' :
                       selectedRarity === 'raro' ? 'text-cyan-400 bg-cyan-400/20' :
@@ -200,8 +200,8 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center gap-2 text-muted-foreground/30">
-                  <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground/20" />
+                <div className="flex flex-col items-center gap-2 text-muted-foreground/30 p-4">
+                  <div className="w-20 h-20 rounded-full border-2 border-dashed border-muted-foreground/20" />
                   <span className="text-[10px] font-display font-bold uppercase tracking-wider">
                     Aguardando Seleção
                   </span>
@@ -209,7 +209,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
               )}
             </div>
 
-            {/* Rarity selector + Aging in one row */}
+            {/* Rarity selector */}
             <div>
               <p className="text-[10px] font-display font-bold text-muted-foreground mb-2">
                 Selecione Raridade
@@ -234,30 +234,31 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
               </div>
             </div>
 
-            {/* Aging Enhancement */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-widest">
-                  Aging Enhancement
-                </p>
-                <span className="text-sm font-display font-extrabold text-primary">
-                  +{plusValue}
-                </span>
+            {/* Aging Enhancement - only for non-accessory slots */}
+            {!showMix && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-widest">
+                    Aging Enhancement
+                  </p>
+                  <span className="text-sm font-display font-extrabold text-primary">
+                    +{plusValue}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={maxAging}
+                  value={plusValue}
+                  onChange={e => setPlusValue(Number(e.target.value))}
+                  className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-secondary/50 accent-primary"
+                />
+                <div className="flex justify-between mt-1">
+                  <span className="text-[8px] text-muted-foreground">+0</span>
+                  <span className="text-[8px] text-muted-foreground">+{maxAging}</span>
+                </div>
               </div>
-              <input
-                type="range"
-                min={0}
-                max={maxAging}
-                value={plusValue}
-                onChange={e => setPlusValue(Number(e.target.value))}
-                className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-secondary/50 accent-primary"
-              />
-              <div className="flex justify-between mt-1">
-                <span className="text-[8px] text-muted-foreground">+0</span>
-                <span className="text-[8px] text-muted-foreground">+{maxAging}</span>
-              </div>
-            </div>
-          </div>
+            )}
 
             {/* Mix selector for rings and necklace */}
             {showMix && (
