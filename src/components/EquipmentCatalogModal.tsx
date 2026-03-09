@@ -228,14 +228,14 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
               <input
                 type="range"
                 min={0}
-                max={12}
+                max={maxAging}
                 value={plusValue}
                 onChange={e => setPlusValue(Number(e.target.value))}
                 className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-secondary/50 accent-primary"
               />
               <div className="flex justify-between mt-1">
                 <span className="text-[8px] text-muted-foreground">+0</span>
-                <span className="text-[8px] text-muted-foreground">+12</span>
+                <span className="text-[8px] text-muted-foreground">+{maxAging}</span>
               </div>
             </div>
           </div>
