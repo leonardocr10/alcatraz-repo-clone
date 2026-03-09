@@ -9,6 +9,7 @@ interface Boss {
   name: string;
   map_level: string | null;
   image_url: string | null;
+  audio_url: string | null;
 }
 
 interface BossSchedule {
