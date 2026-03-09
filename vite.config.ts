@@ -6,13 +6,13 @@ import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const buildVersion = `${now.getFullYear()}.${pad(now.getMonth() + 1)}.${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
-
+  const pkg = JSON.parse(require('fs').readFileSync('./package.json', 'utf-8'));
+  const [major, minor, patch] = (pkg.version || '0.0.0').split('.').map(Number);
+  const newVersion = `${major}.${minor}.${patch + 1}`;
+  require('fs').writeFileSync('./package.json', JSON.stringify({ ...pkg, version: newVersion }, null, 2) + '\n');
   return ({
   define: {
-    __APP_VERSION__: JSON.stringify(buildVersion),
+    __APP_VERSION__: JSON.stringify(newVersion),
   },
   server: {
     host: "::",
