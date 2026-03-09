@@ -57,6 +57,28 @@ const HomePage = () => {
     return saved !== null ? saved === "true" : true;
   });
   const bossNotify = useBossNotifications();
+  const [pendingUsers, setPendingUsers] = useState<any[]>([]);
+
+  const fetchPendingUsers = useCallback(async () => {
+    if (!isAdmin) return;
+    const { data } = await supabase.from("users").select("*").eq("approved", false).order("created_at", { ascending: false });
+    setPendingUsers(data || []);
+  }, [isAdmin]);
+
+  const approveUser = async (userId: string) => {
+    const { error } = await supabase.from("users").update({ approved: true }).eq("id", userId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Usuário aprovado!");
+    fetchPendingUsers();
+  };
+
+  const rejectUser = async (userId: string) => {
+    if (!confirm("Rejeitar este usuário?")) return;
+    const { error } = await supabase.from("users").delete().eq("id", userId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Usuário rejeitado!");
+    fetchPendingUsers();
+  };
 
   const handleClassesToggle = (open: boolean) => {
     setClassesOpen(open);
