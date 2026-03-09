@@ -281,7 +281,7 @@ const HomePage = () => {
                 {/* Clan selector */}
                 <div className="flex items-center gap-2 pl-12">
                   <span className="text-[10px] text-muted-foreground font-bold uppercase">Clã:</span>
-                  {["AZ", "AZ2"].map((clan) => (
+                  {clans.map((clan) => (
                     <button
                       key={clan}
                       onClick={() => setPendingClanMap(prev => ({ ...prev, [user.id]: clan }))}
