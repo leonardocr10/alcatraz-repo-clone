@@ -31,11 +31,12 @@ function speakAlert(bossName?: string) {
   try {
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
-    const text = bossName ? `Olha o Boss! ${bossName}!` : "Olha o Boss!";
+    const name = bossName || "Boss";
+    const text = `Olhaaaaa o Bossssss! ${name}! Correeeeeee!`;
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "pt-BR";
-    utterance.rate = 0.9;
-    utterance.pitch = 0.8;
+    utterance.rate = 1.1;
+    utterance.pitch = 1.4;
     utterance.volume = 1;
     window.speechSynthesis.speak(utterance);
   } catch (e) {
