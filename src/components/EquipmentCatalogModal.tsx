@@ -265,7 +265,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
             )}
 
             {/* Mix selector - always shown */}
-            <div>
+            <div className={hasAging && plusValue > 0 ? 'opacity-40' : ''}>
               <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-widest mb-2">
                 Specialization (Mix)
               </p>
