@@ -198,16 +198,43 @@ export default function CharPage() {
       Array.from(images).map(async (img) => {
         if (img.src.startsWith('data:') || img.src.startsWith('blob:')) return;
         try {
-          const response = await fetch(img.src);
-          const blob = await response.blob();
-          const reader = new FileReader();
-          const base64 = await new Promise<string>((resolve) => {
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(blob);
+          // Use canvas approach to convert image to base64
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return;
+
+          const image = new Image();
+          image.crossOrigin = 'anonymous';
+
+          const base64 = await new Promise<string>((resolve, reject) => {
+            image.onload = () => {
+              canvas.width = image.naturalWidth;
+              canvas.height = image.naturalHeight;
+              ctx.drawImage(image, 0, 0);
+              try {
+                resolve(canvas.toDataURL('image/png'));
+              } catch {
+                reject(new Error('canvas tainted'));
+              }
+            };
+            image.onerror = () => reject(new Error('load failed'));
+            image.src = img.src;
           });
           img.src = base64;
         } catch {
-          // skip images that fail
+          // If canvas approach fails, try fetch as fallback
+          try {
+            const response = await fetch(img.src, { mode: 'cors' });
+            const blob = await response.blob();
+            const reader = new FileReader();
+            const base64 = await new Promise<string>((resolve) => {
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(blob);
+            });
+            img.src = base64;
+          } catch {
+            // Last resort: hide image to prevent toPng failure
+          }
         }
       })
     );
