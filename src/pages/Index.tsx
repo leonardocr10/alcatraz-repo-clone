@@ -10,7 +10,7 @@ interface LandingStats {
   totalClasses: number;
   totalItems: number;
   totalSessions: number;
-  topPlayers: { nickname: string; level: number | null; xp: string | null; game_class: string | null }[];
+  topPlayers: { nickname: string; level: number | null; xp: string | null; game_class: string | null; clan: string | null }[];
   classes: { name: string; image_url: string | null }[];
   recentWinners: { nickname: string; item_name: string }[];
 }
@@ -59,7 +59,7 @@ const Index = () => {
         supabase.from("character_classes").select("name, image_url"),
         supabase.from("roulette_items").select("id", { count: "exact", head: true }),
         supabase.from("roulette_sessions").select("id", { count: "exact", head: true }),
-        supabase.from("player_rankings").select("nickname, level, xp, game_class").order("level", { ascending: false }).order("xp", { ascending: false }).limit(5),
+        supabase.from("player_rankings").select("nickname, level, xp, game_class, clan").order("level", { ascending: false }).order("xp", { ascending: false }).limit(5),
         supabase
           .from("roulette_winners")
           .select("number, users!roulette_winners_user_id_fkey(nickname), roulette_items!roulette_winners_item_id_fkey(name)")
@@ -185,27 +185,71 @@ const Index = () => {
             <h2 className="font-display text-2xl sm:text-3xl font-bold text-center mb-6">
               <span className="text-primary">Top</span> Jogadores
             </h2>
-            <div className="grid sm:grid-cols-5 grid-cols-2 gap-3">
-              {stats.topPlayers.map((player, idx) => (
-                <div key={idx} className="glass-card rounded-2xl p-4 text-center border border-border/30">
-                  <div className="flex justify-center mb-2">
-                    {idx === 0 ? (
-                      <Trophy className="w-6 h-6 text-gold" />
+            <div className="space-y-2">
+              {stats.topPlayers.map((player, idx) => {
+                const classData = stats.classes.find(
+                  (c) => c.name.toLowerCase() === player.game_class?.toLowerCase()
+                );
+                const xpDisplay = player.xp
+                  ? player.xp.endsWith("%") ? player.xp : `${player.xp}%`
+                  : null;
+
+                return (
+                  <div
+                    key={idx}
+                    className="glass-card rounded-xl border border-border/30 p-3 flex items-center gap-3"
+                  >
+                    {/* Rank number */}
+                    <span className="font-display font-black text-lg w-6 text-center text-muted-foreground">
+                      {idx + 1}
+                    </span>
+
+                    {/* Class image */}
+                    {classData?.image_url ? (
+                      <img
+                        src={classData.image_url}
+                        alt={player.game_class || ""}
+                        className="w-12 h-12 rounded-xl object-cover border border-border/40 flex-shrink-0"
+                      />
                     ) : (
-                      <Star className="w-5 h-5 text-muted-foreground" />
+                      <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
+                        <Swords className="w-5 h-5 text-primary" />
+                      </div>
                     )}
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-display font-bold text-sm">{player.nickname}</span>
+                        {player.clan && (
+                          <span className="text-[10px] font-bold bg-primary/20 text-primary px-1.5 py-0.5 rounded font-display">
+                            {player.clan}
+                          </span>
+                        )}
+                      </div>
+                      {player.game_class && (
+                        <span className="text-[10px] font-bold bg-secondary text-primary px-1.5 py-0.5 rounded font-display inline-block mt-1">
+                          🎮 {player.game_class.toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Level & XP */}
+                    <div className="text-right flex-shrink-0">
+                      {player.level && (
+                        <p className="font-display font-black text-primary text-base leading-none">
+                          Lv.{player.level}
+                        </p>
+                      )}
+                      {xpDisplay && (
+                        <p className="text-[11px] text-muted-foreground font-body mt-0.5">
+                          {xpDisplay}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <p className="font-display font-bold text-sm truncate">{player.nickname}</p>
-                  {player.level && (
-                    <p className="text-xs text-primary font-display font-bold">
-                      Lv.{player.level} {player.xp ? `• ${player.xp.endsWith('%') ? player.xp : `${player.xp}%`}` : ""}
-                    </p>
-                  )}
-                  {player.game_class && (
-                    <p className="text-[10px] text-muted-foreground font-body">{player.game_class}</p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
