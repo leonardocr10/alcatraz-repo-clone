@@ -105,6 +105,7 @@ export type Database = {
       }
       bosses: {
         Row: {
+          audio_url: string | null
           created_at: string
           description: string | null
           drops: string | null
@@ -115,6 +116,7 @@ export type Database = {
           name: string
         }
         Insert: {
+          audio_url?: string | null
           created_at?: string
           description?: string | null
           drops?: string | null
@@ -125,6 +127,7 @@ export type Database = {
           name: string
         }
         Update: {
+          audio_url?: string | null
           created_at?: string
           description?: string | null
           drops?: string | null
