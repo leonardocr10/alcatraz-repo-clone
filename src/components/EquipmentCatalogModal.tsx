@@ -153,8 +153,16 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
 
           {/* Right side - Preview & Rarity */}
           <div className="w-44 flex flex-col gap-3">
-            {/* Item preview */}
-            <div className="rounded-xl border border-border/40 bg-secondary/20 aspect-square flex items-center justify-center overflow-hidden">
+          {/* Item preview */}
+            <div className={`rounded-xl border border-border/40 aspect-square flex items-center justify-center overflow-hidden transition-colors ${
+              selectedItem
+                ? selectedRarity === 'normal' ? 'bg-green-500/10'
+                  : selectedRarity === 'raro' ? 'bg-cyan-400/10'
+                  : selectedRarity === 'epico' ? 'bg-purple-400/10'
+                  : selectedRarity === 'lendario' ? 'bg-yellow-500/10'
+                  : 'bg-red-500/10'
+                : 'bg-secondary/20'
+            }`}>
               {selectedItem ? (
                 <div className="flex flex-col items-center gap-2 p-3">
                   <img
@@ -165,20 +173,22 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                   <p className="font-display font-extrabold text-xs text-center uppercase">
                     {selectedItem.name}
                   </p>
-                  <p className={`text-[10px] font-bold uppercase ${
-                    selectedRarity === 'normal' ? 'text-green-500' :
-                    selectedRarity === 'raro' ? 'text-cyan-400' :
-                    selectedRarity === 'epico' ? 'text-purple-400' :
-                    selectedRarity === 'lendario' ? 'text-yellow-500' :
-                    'text-red-500'
-                  }`}>
-                    {RARITY_OPTIONS.find(r => r.key === selectedRarity)?.label}
-                  </p>
-                  {plusValue > 0 && (
-                    <p className="text-sm font-display font-extrabold text-primary">
-                      +{plusValue}
-                    </p>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                      selectedRarity === 'normal' ? 'text-green-500 bg-green-500/20' :
+                      selectedRarity === 'raro' ? 'text-cyan-400 bg-cyan-400/20' :
+                      selectedRarity === 'epico' ? 'text-purple-400 bg-purple-400/20' :
+                      selectedRarity === 'lendario' ? 'text-yellow-500 bg-yellow-500/20' :
+                      'text-red-500 bg-red-500/20'
+                    }`}>
+                      {RARITY_OPTIONS.find(r => r.key === selectedRarity)?.label}
+                    </span>
+                    {plusValue > 0 && (
+                      <span className={`text-[10px] font-display font-extrabold px-2 py-0.5 rounded-full bg-primary/20 text-primary`}>
+                        +{plusValue}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2 text-muted-foreground/30">
@@ -190,7 +200,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
               )}
             </div>
 
-            {/* Rarity selector */}
+            {/* Rarity selector + Aging in one row */}
             <div>
               <p className="text-[10px] font-display font-bold text-muted-foreground mb-2">
                 Selecione Raridade
