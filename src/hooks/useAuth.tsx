@@ -23,20 +23,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = useCallback(async (userId: string) => {
-    console.log("[Auth] Fetching profile for:", userId);
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("auth_id", userId)
-      .maybeSingle();
-    if (error) {
-      console.error("[Auth] Profile fetch error:", error);
-      return;
-    }
-    console.log("[Auth] Profile loaded:", data?.nickname, data?.class);
-    setProfile(data);
-  }, []);
+  const fetchProfile = useCallback(
+    async (userId: string, opts?: { signOutIfMissing?: boolean }) => {
+      console.log("[Auth] Fetching profile for:", userId);
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("auth_id", userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error("[Auth] Profile fetch error:", error);
+        return;
+      }
+
+      if (!data) {
+        console.warn("[Auth] Profile not found (maybe deleted):", userId);
+        setProfile(null);
+        if (opts?.signOutIfMissing) {
+          await supabase.auth.signOut();
+        }
+        return;
+      }
+
+      console.log("[Auth] Profile loaded:", data?.nickname, data?.class);
+      setProfile(data);
+    },
+    []
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -49,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("[Auth] Session restored:", !!session?.user);
       setAuthUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id);
+        fetchProfile(session.user.id, { signOutIfMissing: true });
       }
       setLoading(false);
     });
@@ -66,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthUser(session?.user ?? null);
         if (session?.user) {
           setTimeout(() => {
-            if (mounted) fetchProfile(session.user.id);
+            if (mounted) fetchProfile(session.user.id, { signOutIfMissing: true });
           }, 100);
         } else {
           setProfile(null);
@@ -82,6 +96,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscription.unsubscribe();
     };
   }, [fetchProfile]);
+
+  // If the current user's row is deleted, revoke access immediately
+  useEffect(() => {
+    if (!authUser || !profile?.id) return;
+
+    const channel = supabase
+      .channel(`users-delete-${profile.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "users",
+          filter: `id=eq.${profile.id}`,
+        },
+        async () => {
+          console.warn("[Auth] Current user row deleted; signing out");
+          await supabase.auth.signOut();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [authUser?.id, profile?.id]);
+
+  // Fallback: periodic check in case Realtime is unavailable
+  useEffect(() => {
+    if (!authUser) return;
+    const interval = window.setInterval(() => {
+      fetchProfile(authUser.id, { signOutIfMissing: true });
+    }, 60_000);
+
+    return () => window.clearInterval(interval);
+  }, [authUser?.id, fetchProfile]);
 
   const makeEmail = (phone: string) => {
     const digits = phone.replace(/\D/g, '');
