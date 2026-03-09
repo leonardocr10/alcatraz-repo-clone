@@ -180,7 +180,6 @@ export default function CharPage() {
     toast.success("Todos os equipamentos removidos");
     fetchEquipment();
   };
-  };
 
   const renderSlot = (slotCfg: typeof SLOT_CONFIG[number], isLarge: boolean) => {
     const equip = getEquipForSlot(slotCfg.slot);
