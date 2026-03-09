@@ -161,6 +161,18 @@ export default function ConfigPage() {
     setSavingRules(false);
   };
 
+  const saveDiscordLink = async () => {
+    setSavingDiscord(true);
+    const { error } = await supabase.from("app_config").upsert({
+      id: "main",
+      discord_link: discordLink,
+      updated_at: new Date().toISOString()
+    });
+    if (error) toast.error("Erro ao salvar link do Discord");
+    else toast.success("Link do Discord atualizado!");
+    setSavingDiscord(false);
+  };
+
   const tabs = [
     { key: "manage" as const, label: "Gerenciar", icon: Crown },
     { key: "whatsapp" as const, label: "WhatsApp", icon: MessageCircle },
