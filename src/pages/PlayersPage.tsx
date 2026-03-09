@@ -825,6 +825,15 @@ export default function PlayersPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* View Char Modal */}
+      {charPlayer && (
+        <PlayerCharModal
+          playerId={charPlayer.id}
+          playerName={charPlayer.nickname}
+          onClose={() => setCharPlayer(null)}
+        />
+      )}
     </div>
   );
 }
