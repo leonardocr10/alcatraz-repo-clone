@@ -501,6 +501,13 @@ export default function PlayersPage() {
                             <MessageCircle className="w-3.5 h-3.5 text-green-400" /> WhatsApp
                           </button>
                           <button
+                            onClick={() => syncSinglePlayer(player)}
+                            disabled={syncingPlayer === player.id}
+                            className="w-full px-4 py-2.5 text-left text-sm font-body flex items-center gap-2.5 hover:bg-secondary/50 transition-colors disabled:opacity-50"
+                          >
+                            <RefreshCw className={`w-3.5 h-3.5 text-primary ${syncingPlayer === player.id ? "animate-spin" : ""}`} /> Sincronizar
+                          </button>
+                          <button
                             onClick={() => deletePlayer(player)}
                             className="w-full px-4 py-2.5 text-left text-sm font-body flex items-center gap-2.5 hover:bg-destructive/10 text-destructive transition-colors"
                           >
