@@ -23,6 +23,7 @@ type Player = {
   created_at: string;
   clan_role: string | null;
   clan: string | null;
+  char_visible: boolean;
 };
 
 type ClassIcon = { name: string; image_url: string | null; description: string | null };
