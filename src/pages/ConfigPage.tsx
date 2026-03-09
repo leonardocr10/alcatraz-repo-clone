@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Settings, MessageCircle, Palette, Trash2, Plus, X, Save, RotateCcw, Send, CheckCircle, AlertCircle, Zap, ScrollText, Crown, Link, Shield } from "lucide-react";
+import { Settings, MessageCircle, Palette, Trash2, Plus, X, Save, RotateCcw, Send, CheckCircle, AlertCircle, Zap, ScrollText, Crown, Link, Shield, Package, Download } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { useClans } from "@/hooks/useClans";
 import AdminPage from "@/pages/AdminPage";
@@ -20,7 +20,8 @@ export default function ConfigPage() {
   const { isAdmin } = useAuth();
   const { currentTheme, setTheme, resetTheme, presets } = useTheme();
 
-  const [tab, setTab] = useState<"manage" | "clans" | "whatsapp" | "theme" | "rules" | "discord" | "clear">("manage");
+  const [tab, setTab] = useState<"manage" | "clans" | "whatsapp" | "theme" | "rules" | "discord" | "clear" | "equip">("manage");
+  const [seeding, setSeeding] = useState(false);
   const { clans, loading: clansLoading, refetch: refetchClans } = useClans();
   const [newClanName, setNewClanName] = useState("");
   const [addingClan, setAddingClan] = useState(false);
@@ -184,8 +185,28 @@ export default function ConfigPage() {
     { key: "theme" as const, label: "Tema", icon: Palette },
     { key: "rules" as const, label: "Regras", icon: ScrollText },
     { key: "discord" as const, label: "Discord", icon: Link },
+    { key: "equip" as const, label: "Equip", icon: Package },
     { key: "clear" as const, label: "Limpar", icon: Trash2 },
   ];
+
+  const seedEquipment = async () => {
+    setSeeding(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke("seed-equipment", {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      if (res.error) throw res.error;
+      const result = res.data;
+      toast.success(`Importados: ${result.inserted} itens, ${result.categories} categorias. Ignorados: ${result.skipped}`);
+      if (result.errors?.length) {
+        console.warn("Seed errors:", result.errors);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao importar");
+    }
+    setSeeding(false);
+  };
 
   const addClan = async () => {
     const name = newClanName.trim().toUpperCase();
@@ -548,6 +569,26 @@ export default function ConfigPage() {
           >
             <Trash2 className="w-4 h-4" />
             {clearing ? "Limpando..." : "Limpar Todos os Dados"}
+          </button>
+        </div>
+      )}
+
+      {tab === "equip" && (
+        <div className="glass-card p-5 rounded-2xl border border-border/40 space-y-4">
+          <h3 className="font-display font-bold text-sm uppercase tracking-wider flex items-center gap-2">
+            <Package className="w-4 h-4 text-primary" />
+            Importar Equipamentos
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Importa automaticamente todos os equipamentos de Priston Tale (espadas, escudos, armaduras, botas, luvas, braceletes, anéis, colares) com imagens do Skytale. Itens já existentes serão ignorados.
+          </p>
+          <button
+            onClick={seedEquipment}
+            disabled={seeding}
+            className="w-full py-3 bg-primary/10 text-primary font-bold font-display text-sm uppercase tracking-wider rounded-xl hover:bg-primary/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" />
+            {seeding ? "Importando..." : "Importar Equipamentos do Skytale"}
           </button>
         </div>
       )}
