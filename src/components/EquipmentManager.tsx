@@ -44,6 +44,7 @@ export default function EquipmentManager() {
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [editName, setEditName] = useState("");
   const [editImageUrl, setEditImageUrl] = useState("");
+  const [editCategoryId, setEditCategoryId] = useState("");
   const [editFile, setEditFile] = useState<File | null>(null);
   const [editPreview, setEditPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
