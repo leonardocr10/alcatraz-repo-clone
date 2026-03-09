@@ -238,6 +238,60 @@ export default function ConfigPage() {
       {/* Manage Tab */}
       {tab === "manage" && <AdminPage />}
 
+      {/* Clans Tab */}
+      {tab === "clans" && (
+        <div className="space-y-3">
+          <div className="glass-card p-4 space-y-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Clãs Cadastrados</p>
+            {clansLoading ? (
+              <div className="flex justify-center py-4">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : clans.length === 0 ? (
+              <p className="text-sm text-muted-foreground font-body py-2">Nenhum clã cadastrado.</p>
+            ) : (
+              <div className="space-y-2">
+                {clans.map((clan) => (
+                  <div key={clan.id} className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 border border-border/30">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-primary" />
+                      <span className="font-display font-bold text-sm">{clan.name}</span>
+                    </div>
+                    <button
+                      onClick={() => deleteClan(clan.id, clan.name)}
+                      className="p-1.5 text-destructive/60 hover:text-destructive rounded-lg hover:bg-destructive/10 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="glass-card p-4 space-y-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Criar Novo Clã</p>
+            <div className="flex gap-2">
+              <input
+                value={newClanName}
+                onChange={(e) => setNewClanName(e.target.value)}
+                placeholder="Nome do clã (ex: AZ3)"
+                className="input-modern flex-1 text-sm"
+                onKeyDown={(e) => e.key === "Enter" && addClan()}
+              />
+              <button
+                onClick={addClan}
+                disabled={addingClan || !newClanName.trim()}
+                className="btn-primary px-4 text-sm flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <Plus className="w-4 h-4" />
+                {addingClan ? "..." : "Criar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* WhatsApp Tab */}
       {tab === "whatsapp" && (
         <div className="space-y-3">
