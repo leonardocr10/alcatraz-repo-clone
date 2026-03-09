@@ -167,19 +167,62 @@ const AdminPage = () => {
     try {
       let imageUrl = null;
       let mapImageUrl = null;
+      let audioUrl = null;
       if (newBossFile) imageUrl = await uploadFile(newBossFile, "boss-images");
       if (newBossMapFile) mapImageUrl = await uploadFile(newBossMapFile, "boss-images");
+      if (newBossAudioFile) audioUrl = await uploadAudioFile(newBossAudioFile);
       const { error } = await supabase.from("bosses").insert({
         name: newBossName.trim(),
         map_level: newBossMap.trim() || null,
         description: newBossDesc.trim() || null,
         image_url: imageUrl,
         map_image_url: mapImageUrl,
-      });
+        audio_url: audioUrl,
+      } as any);
       if (error) throw error;
-      toast.success("Boss criado!"); setNewBossName(""); setNewBossMap(""); setNewBossDesc(""); setNewBossFile(null); setNewBossMapFile(null); fetchBosses();
+      toast.success("Boss criado!"); setNewBossName(""); setNewBossMap(""); setNewBossDesc(""); setNewBossFile(null); setNewBossMapFile(null); setNewBossAudioFile(null); fetchBosses();
     } catch (err: any) { toast.error(err.message || "Erro ao criar boss"); }
     finally { setUploading(false); }
+  };
+
+  const openEditBoss = (boss: any) => {
+    setEditBoss(boss);
+    setEditBossName(boss.name);
+    setEditBossMap(boss.map_level || "");
+    setEditBossDesc(boss.description || "");
+    setEditBossFile(null);
+    setEditBossMapFile(null);
+    setEditBossAudioFile(null);
+    setShowEditBossModal(true);
+  };
+
+  const updateBoss = async () => {
+    if (!editBoss || !editBossName.trim()) return;
+    setUploading(true);
+    try {
+      const updates: any = {
+        name: editBossName.trim(),
+        map_level: editBossMap.trim() || null,
+        description: editBossDesc.trim() || null,
+      };
+      if (editBossFile) updates.image_url = await uploadFile(editBossFile, "boss-images");
+      if (editBossMapFile) updates.map_image_url = await uploadFile(editBossMapFile, "boss-images");
+      if (editBossAudioFile) updates.audio_url = await uploadAudioFile(editBossAudioFile);
+      const { error } = await supabase.from("bosses").update(updates).eq("id", editBoss.id);
+      if (error) throw error;
+      toast.success("Boss atualizado!");
+      setShowEditBossModal(false);
+      setEditBoss(null);
+      fetchBosses();
+    } catch (err: any) { toast.error(err.message || "Erro ao atualizar boss"); }
+    finally { setUploading(false); }
+  };
+
+  const removeBossAudio = async (bossId: string) => {
+    const { error } = await supabase.from("bosses").update({ audio_url: null } as any).eq("id", bossId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Áudio removido!");
+    fetchBosses();
   };
 
   const deleteBoss = async (id: string) => { await supabase.from("bosses").delete().eq("id", id); toast.success("Boss removido!"); fetchBosses(); };
