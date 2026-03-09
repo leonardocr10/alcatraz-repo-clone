@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("[Auth] Session restored:", !!session?.user);
       setAuthUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id);
+        fetchProfile(session.user.id, { signOutIfMissing: true });
       }
       setLoading(false);
     });
