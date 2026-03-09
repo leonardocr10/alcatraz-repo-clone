@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 const NOTIFY_KEY = "boss-notify-enabled";
+const SOUND_KEY = "boss-notify-sound";
 
 interface Boss {
   id: string;
@@ -26,120 +27,43 @@ function stopAlertSound() {
   }
 }
 
-function playSingleAlert() {
+function speakAlert(bossName?: string) {
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const now = ctx.currentTime;
-
-    const playDrum = (time: number, freq: number, vol: number, decay = 0.35) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, now + time);
-      osc.frequency.exponentialRampToValueAtTime(35, now + time + decay);
-      g.gain.setValueAtTime(vol, now + time);
-      g.gain.exponentialRampToValueAtTime(0.001, now + time + decay + 0.05);
-      osc.connect(g);
-      g.connect(ctx.destination);
-      osc.start(now + time);
-      osc.stop(now + time + decay + 0.1);
-    };
-
-    const playHorn = (time: number, freq: number, duration: number, vol: number) => {
-      const osc = ctx.createOscillator();
-      const osc2 = ctx.createOscillator();
-      const osc3 = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = "sawtooth";
-      osc.frequency.value = freq;
-      osc2.type = "sawtooth";
-      osc2.frequency.value = freq * 1.005;
-      osc3.type = "square";
-      osc3.frequency.value = freq * 0.5;
-      osc3.connect(g);
-      g.gain.setValueAtTime(0.001, now + time);
-      g.gain.linearRampToValueAtTime(vol, now + time + 0.12);
-      g.gain.setValueAtTime(vol, now + time + duration - 0.15);
-      g.gain.exponentialRampToValueAtTime(0.001, now + time + duration);
-      osc.connect(g);
-      osc2.connect(g);
-      g.connect(ctx.destination);
-      osc.start(now + time);
-      osc.stop(now + time + duration);
-      osc2.start(now + time);
-      osc2.stop(now + time + duration);
-      osc3.start(now + time);
-      osc3.stop(now + time + duration);
-    };
-
-    const playString = (time: number, freq: number, duration: number, vol: number) => {
-      const osc = ctx.createOscillator();
-      const osc2 = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = "triangle";
-      osc.frequency.value = freq;
-      osc2.type = "sawtooth";
-      osc2.frequency.value = freq * 2.01;
-      g.gain.setValueAtTime(0.001, now + time);
-      g.gain.linearRampToValueAtTime(vol, now + time + 0.05);
-      g.gain.setValueAtTime(vol * 0.8, now + time + duration * 0.6);
-      g.gain.exponentialRampToValueAtTime(0.001, now + time + duration);
-      osc.connect(g);
-      osc2.connect(g);
-      g.connect(ctx.destination);
-      osc.start(now + time);
-      osc.stop(now + time + duration);
-      osc2.start(now + time);
-      osc2.stop(now + time + duration);
-    };
-
-    playDrum(0, 80, 0.6, 0.5);
-    playDrum(0.55, 60, 0.5, 0.5);
-    playDrum(1.0, 80, 0.55, 0.4);
-    playString(1.2, 146.83, 0.5, 0.12);
-    playString(1.7, 174.61, 0.5, 0.13);
-    playString(2.2, 220.00, 0.5, 0.14);
-    playString(2.7, 293.66, 0.7, 0.15);
-    playDrum(3.4, 100, 0.55, 0.3);
-    playDrum(3.6, 80, 0.5, 0.3);
-    playDrum(3.8, 120, 0.6, 0.3);
-    playDrum(4.0, 90, 0.5, 0.25);
-    playDrum(4.15, 110, 0.55, 0.25);
-    playDrum(4.3, 130, 0.6, 0.3);
-    playHorn(4.5, 146.83, 0.8, 0.14);
-    playHorn(5.3, 174.61, 0.6, 0.15);
-    playHorn(5.9, 220.00, 1.0, 0.18);
-    playString(6.5, 293.66, 1.0, 0.16);
-    playString(6.5, 146.83, 1.0, 0.12);
-    playDrum(6.5, 60, 0.7, 0.6);
+    if (!("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const text = bossName ? `Olha o Boss! ${bossName}!` : "Olha o Boss!";
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "pt-BR";
+    utterance.rate = 0.9;
+    utterance.pitch = 0.8;
+    utterance.volume = 1;
+    window.speechSynthesis.speak(utterance);
   } catch (e) {
-    console.log("[Notify] Could not play alert sound", e);
+    console.log("[Notify] Could not speak alert", e);
   }
 }
 
-function startAlertSoundLoop() {
+function startAlertSoundLoop(bossName?: string) {
   stopAlertSound();
-  playSingleAlert();
-  activeAlertInterval = setInterval(() => playSingleAlert(), 8500);
+  speakAlert(bossName);
+  activeAlertInterval = setInterval(() => speakAlert(bossName), 5000);
 }
 
-async function showNotification(title: string, options: NotificationOptions) {
-  // Start looping alert sound
-  startAlertSoundLoop();
+async function showNotification(title: string, options: NotificationOptions, soundEnabled: boolean, bossName?: string) {
+  if (soundEnabled) {
+    startAlertSoundLoop(bossName);
+  }
 
-  // Try Service Worker first (works better in installed PWAs)
   if ("serviceWorker" in navigator) {
     try {
       const reg = await navigator.serviceWorker.ready;
       await reg.showNotification(title, options);
-      // SW notifications don't fire onclose easily, stop after 60s max
-      setTimeout(stopAlertSound, 60000);
+      if (soundEnabled) setTimeout(stopAlertSound, 60000);
       return;
     } catch (e) {
       console.log("[Notify] SW fallback to basic Notification", e);
     }
   }
-  // Fallback to basic Notification API
   const notif = new Notification(title, options);
   notif.onclose = () => stopAlertSound();
   notif.onclick = () => {
@@ -147,18 +71,23 @@ async function showNotification(title: string, options: NotificationOptions) {
     window.focus();
     notif.close();
   };
-  // Safety: stop after 60 seconds max
-  setTimeout(stopAlertSound, 60000);
+  if (soundEnabled) setTimeout(stopAlertSound, 60000);
 }
 
 export function useBossNotifications() {
   const [enabled, setEnabled] = useState(() => localStorage.getItem(NOTIFY_KEY) === "true");
+  const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem(SOUND_KEY) !== "false");
   const [permission, setPermission] = useState<NotificationPermission>(
     typeof Notification !== "undefined" ? Notification.permission : "denied"
   );
 
   const notifiedRef = useRef<Set<string>>(new Set());
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const soundEnabledRef = useRef(soundEnabled);
+
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
+  }, [soundEnabled]);
 
   const requestPermission = useCallback(async () => {
     if (typeof Notification === "undefined") return false;
@@ -187,6 +116,12 @@ export function useBossNotifications() {
     }
   }, [enabled, permission, requestPermission]);
 
+  const toggleSound = useCallback(() => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    localStorage.setItem(SOUND_KEY, String(next));
+    if (!next) stopAlertSound();
+  }, [soundEnabled]);
 
   const sendTestNotification = useCallback(async () => {
     if (typeof Notification === "undefined" || Notification.permission !== "granted") {
@@ -198,7 +133,7 @@ export function useBossNotifications() {
       badge: "/pwa-icon-192.png",
       tag: "test-" + Date.now(),
       requireInteraction: true,
-    });
+    }, soundEnabledRef.current, "Boss Teste");
     return true;
   }, []);
 
@@ -253,7 +188,7 @@ export function useBossNotifications() {
             badge: "/pwa-icon-192.png",
             tag: key,
             requireInteraction: true,
-          });
+          }, soundEnabledRef.current, boss.name);
         }
       }
 
@@ -276,8 +211,10 @@ export function useBossNotifications() {
   return {
     enabled,
     permission,
+    soundEnabled,
     supported: typeof Notification !== "undefined" && !isMobile,
     toggle,
+    toggleSound,
     sendTestNotification,
   };
 }
