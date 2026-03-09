@@ -179,20 +179,7 @@ const AdminPage = () => {
 
   if (loading) return null;
 
-  const approveUser = async (userId: string) => {
-    const { error } = await supabase.from("users").update({ approved: true }).eq("id", userId);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Usuário aprovado!"); fetchPendingUsers();
-  };
-
-  const rejectUser = async (userId: string) => {
-    const { error } = await supabase.from("users").delete().eq("id", userId);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Usuário rejeitado!"); fetchPendingUsers();
-  };
-
   const tabs = [
-    { key: "approvals" as const, label: `Aprovações${pendingUsers.length > 0 ? ` (${pendingUsers.length})` : ""}`, icon: UserCheck },
     { key: "boss" as const, label: "Boss", icon: Skull },
     { key: "items" as const, label: "Itens", icon: Package },
     { key: "sessions" as const, label: "Sessões", icon: Layers },
