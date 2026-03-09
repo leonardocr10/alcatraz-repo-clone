@@ -182,6 +182,11 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                   }`}>
                     {RARITY_OPTIONS.find(r => r.key === selectedRarity)?.label}
                   </p>
+                  {plusValue > 0 && (
+                    <p className="text-sm font-display font-extrabold text-primary">
+                      +{plusValue}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2 text-muted-foreground/30">
