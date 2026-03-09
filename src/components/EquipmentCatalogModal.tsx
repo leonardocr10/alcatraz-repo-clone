@@ -240,7 +240,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
 
             {/* Aging Enhancement - only for weapon/armor slots */}
             {hasAging && (
-              <div>
+              <div className={selectedMix ? 'opacity-40' : ''}>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-widest">
                     Aging Enhancement
@@ -254,8 +254,8 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                   min={0}
                   max={maxAging}
                   value={plusValue}
-                  onChange={e => setPlusValue(Number(e.target.value))}
-                  className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-secondary/50 accent-primary"
+                  onChange={e => { setPlusValue(Number(e.target.value)); if (Number(e.target.value) > 0) setSelectedMix(null); }}
+                  className={`w-full h-1.5 rounded-full appearance-none cursor-pointer bg-secondary/50 accent-primary ${selectedMix ? 'opacity-30 pointer-events-none' : ''}`}
                 />
                 <div className="flex justify-between mt-1">
                   <span className="text-[8px] text-muted-foreground">+0</span>
@@ -265,7 +265,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
             )}
 
             {/* Mix selector - always shown */}
-            <div>
+            <div className={hasAging && plusValue > 0 ? 'opacity-40' : ''}>
               <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-widest mb-2">
                 Specialization (Mix)
               </p>
@@ -275,7 +275,14 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                   return (
                     <button
                       key={mix}
-                      onClick={() => setSelectedMix(selectedMix === mix ? null : mix)}
+                      onClick={() => {
+                        if (selectedMix === mix) {
+                          setSelectedMix(null);
+                        } else {
+                          setSelectedMix(mix);
+                          if (hasAging) setPlusValue(0);
+                        }
+                      }}
                       className={`flex-1 py-1.5 rounded-xl text-[10px] font-display font-bold uppercase tracking-wider transition-all ${
                         selectedMix === mix
                           ? mixColorActive
