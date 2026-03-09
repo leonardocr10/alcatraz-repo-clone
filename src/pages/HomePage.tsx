@@ -646,7 +646,7 @@ const HomePage = () => {
       </Dialog>
 
       <DiscordFloatingButton />
-      <p className="text-center text-[10px] text-muted-foreground/40 mt-6 font-body select-none">v1.0.0</p>
+      
     </div>
   );
 };
