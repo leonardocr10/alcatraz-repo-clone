@@ -20,22 +20,53 @@ interface BossSchedule {
 function playAlertSound() {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const playTone = (freq: number, start: number, duration: number, gain: number) => {
+    const now = ctx.currentTime;
+
+    // War drum hits
+    const playDrum = (time: number, freq: number, vol: number) => {
       const osc = ctx.createOscillator();
-      const vol = ctx.createGain();
-      osc.type = "square";
-      osc.frequency.value = freq;
-      vol.gain.setValueAtTime(gain, ctx.currentTime + start);
-      vol.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + duration);
-      osc.connect(vol);
-      vol.connect(ctx.destination);
-      osc.start(ctx.currentTime + start);
-      osc.stop(ctx.currentTime + start + duration);
+      const g = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, now + time);
+      osc.frequency.exponentialRampToValueAtTime(40, now + time + 0.3);
+      g.gain.setValueAtTime(vol, now + time);
+      g.gain.exponentialRampToValueAtTime(0.001, now + time + 0.35);
+      osc.connect(g);
+      g.connect(ctx.destination);
+      osc.start(now + time);
+      osc.stop(now + time + 0.4);
     };
-    // Epic 3-tone alert
-    playTone(880, 0, 0.15, 0.3);
-    playTone(1100, 0.15, 0.15, 0.3);
-    playTone(1320, 0.3, 0.3, 0.35);
+
+    // War horn (brass-like)
+    const playHorn = (time: number, freq: number, duration: number, vol: number) => {
+      const osc = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.value = freq;
+      osc2.type = "sawtooth";
+      osc2.frequency.value = freq * 1.005; // slight detune for thickness
+      g.gain.setValueAtTime(0.001, now + time);
+      g.gain.linearRampToValueAtTime(vol, now + time + 0.08);
+      g.gain.setValueAtTime(vol, now + time + duration - 0.1);
+      g.gain.exponentialRampToValueAtTime(0.001, now + time + duration);
+      osc.connect(g);
+      osc2.connect(g);
+      g.connect(ctx.destination);
+      osc.start(now + time);
+      osc.stop(now + time + duration);
+      osc2.start(now + time);
+      osc2.stop(now + time + duration);
+    };
+
+    // Sequence: DRUM DRUM - HORN - DRUM DRUM DRUM - HORN (epic)
+    playDrum(0, 120, 0.5);
+    playDrum(0.2, 100, 0.45);
+    playHorn(0.45, 220, 0.5, 0.15);
+    playDrum(1.0, 130, 0.5);
+    playDrum(1.15, 110, 0.45);
+    playDrum(1.3, 100, 0.4);
+    playHorn(1.5, 293, 0.7, 0.18); // higher horn - battle cry!
   } catch (e) {
     console.log("[Notify] Could not play alert sound", e);
   }
