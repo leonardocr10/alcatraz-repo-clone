@@ -1,12 +1,20 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export function DiscordFloatingButton() {
   const [hidden, setHidden] = useState(false);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
+  const [discordLink, setDiscordLink] = useState("https://discord.gg/pSuaEUQN");
   const dragRef = useRef({ startX: 0, startY: 0, origX: 0, origY: 0, moved: false });
   const btnRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    supabase.from("app_config").select("discord_link").eq("id", "main").maybeSingle().then(({ data }) => {
+      if (data?.discord_link) setDiscordLink(data.discord_link);
+    });
+  }, []);
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y, moved: false };
