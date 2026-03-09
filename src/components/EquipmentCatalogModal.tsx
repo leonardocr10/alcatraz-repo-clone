@@ -47,27 +47,18 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      // Fetch categories for this slot
-      const { data: cats } = await supabase
-        .from("equipment_categories")
-        .select("id, name, slot")
-        .eq("slot", slot)
-        .order("sort_order");
+      // Fetch categories, items, and max aging config in parallel
+      const [catsRes, itemsRes, configRes] = await Promise.all([
+        supabase.from("equipment_categories").select("id, name, slot").eq("slot", slot).order("sort_order"),
+        supabase.from("equipment_items").select("id, name, image_url, category_id").eq("slot", slot),
+        supabase.from("app_config").select("max_aging").eq("id", "main").maybeSingle(),
+      ]);
 
-      const catList = (cats as Category[]) || [];
+      const catList = (catsRes.data as Category[]) || [];
       setCategories(catList);
-
-      if (catList.length > 0) {
-        setSelectedCategory(catList[0].id);
-      }
-
-      // Fetch all items for this slot
-      const { data: itemsData } = await supabase
-        .from("equipment_items")
-        .select("id, name, image_url, category_id")
-        .eq("slot", slot);
-
-      setItems((itemsData as Item[]) || []);
+      if (catList.length > 0) setSelectedCategory(catList[0].id);
+      setItems((itemsRes.data as Item[]) || []);
+      if (configRes.data?.max_aging != null) setMaxAging(configRes.data.max_aging);
       setLoading(false);
     };
     fetchData();
