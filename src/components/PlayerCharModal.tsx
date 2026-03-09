@@ -107,6 +107,11 @@ export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
           </div>
         ) : (
           <div className="space-y-3">
+            {avatarUrl && (
+              <div className="flex justify-center">
+                <img src={avatarUrl} alt={playerName} className="w-20 h-20 rounded-2xl object-cover border-2 border-primary/30 shadow-lg" />
+              </div>
+            )}
             <div className="flex gap-3">
               {SLOT_CONFIG.filter(s => s.size === 'large').map(slotCfg => {
                 const equip = getEquip(slotCfg.slot);
