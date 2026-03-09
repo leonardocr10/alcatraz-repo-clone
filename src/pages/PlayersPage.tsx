@@ -4,9 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useClans } from "@/hooks/useClans";
 import { toast } from "sonner";
-import { Users, Search, Pencil, MessageCircle, Trash2, X, Save, KeyRound, MoreVertical, RefreshCw, Trophy, Send, CheckSquare, Square } from "lucide-react";
+import { Users, Search, Pencil, MessageCircle, Trash2, X, Save, KeyRound, MoreVertical, RefreshCw, Trophy, Send, CheckSquare, Square, Shield } from "lucide-react";
 import { getClanRoleEmoji, getClanRoleLabel, CLAN_ROLES } from "@/data/staffMembers";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PlayerCharModal } from "@/components/PlayerCharModal";
 import type { Database } from "@/integrations/supabase/types";
 
 type CharacterClass = Database["public"]["Enums"]["character_class"];
