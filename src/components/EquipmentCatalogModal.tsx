@@ -271,19 +271,23 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                   Specialization (Mix)
                 </p>
                 <div className="flex gap-1.5">
-                  {MIX_OPTIONS.map(mix => (
-                    <button
-                      key={mix}
-                      onClick={() => setSelectedMix(selectedMix === mix ? null : mix)}
-                      className={`flex-1 py-2 rounded-xl text-xs font-display font-bold uppercase tracking-wider transition-all ${
-                        selectedMix === mix
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-secondary/50 text-muted-foreground hover:bg-secondary/80'
-                      }`}
-                    >
-                      {mix}
-                    </button>
-                  ))}
+                  {MIX_OPTIONS.map(mix => {
+                    const mixColor = mix === 'Raident' ? 'bg-blue-500' : mix === 'Celesto' ? 'bg-yellow-500' : 'bg-gray-500';
+                    const mixColorActive = mix === 'Raident' ? 'bg-blue-500 text-white' : mix === 'Celesto' ? 'bg-yellow-500 text-black' : 'bg-gray-500 text-white';
+                    return (
+                      <button
+                        key={mix}
+                        onClick={() => setSelectedMix(selectedMix === mix ? null : mix)}
+                        className={`flex-1 py-2 rounded-xl text-xs font-display font-bold uppercase tracking-wider transition-all ${
+                          selectedMix === mix
+                            ? mixColorActive
+                            : 'bg-secondary/50 text-muted-foreground hover:bg-secondary/80'
+                        }`}
+                      >
+                        {mix}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
