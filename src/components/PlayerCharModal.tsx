@@ -116,8 +116,22 @@ export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
         ) : (
           <div className="space-y-3">
             {avatarUrl && (
-              <div className="flex justify-center">
-                <img src={avatarUrl} alt={playerName} className="w-20 h-20 rounded-2xl object-cover border-2 border-primary/30 shadow-lg" />
+              <div className="flex flex-col items-center gap-1">
+                <button onClick={() => setAvatarExpanded(true)} className="focus:outline-none">
+                  <img src={avatarUrl} alt={playerName} className="w-20 h-20 rounded-2xl object-cover border-2 border-primary/30 shadow-lg hover:scale-105 transition-transform cursor-pointer" />
+                </button>
+                <div className="flex items-center gap-2">
+                  {level != null && (
+                    <span className="text-[10px] font-display font-extrabold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                      Lv. {level}
+                    </span>
+                  )}
+                  {xp && (
+                    <span className="text-[10px] font-display font-bold text-muted-foreground">
+                      {xp} XP
+                    </span>
+                  )}
+                </div>
               </div>
             )}
             <div className="flex gap-3">
