@@ -179,12 +179,35 @@ export default function ConfigPage() {
 
   const tabs = [
     { key: "manage" as const, label: "Gerenciar", icon: Crown },
+    { key: "clans" as const, label: "Clãs", icon: Shield },
     { key: "whatsapp" as const, label: "WhatsApp", icon: MessageCircle },
     { key: "theme" as const, label: "Tema", icon: Palette },
     { key: "rules" as const, label: "Regras", icon: ScrollText },
     { key: "discord" as const, label: "Discord", icon: Link },
     { key: "clear" as const, label: "Limpar", icon: Trash2 },
   ];
+
+  const addClan = async () => {
+    const name = newClanName.trim().toUpperCase();
+    if (!name) return;
+    setAddingClan(true);
+    const { error } = await supabase.from("clans").insert({ name } as any);
+    if (error) {
+      toast.error(error.message?.includes("duplicate") ? "Esse clã já existe" : error.message || "Erro ao criar clã");
+    } else {
+      toast.success(`Clã ${name} criado!`);
+      setNewClanName("");
+      await refetchClans();
+    }
+    setAddingClan(false);
+  };
+
+  const deleteClan = async (id: string, name: string) => {
+    if (!confirm(`Tem certeza que deseja remover o clã ${name}? Jogadores desse clã não serão removidos.`)) return;
+    const { error } = await supabase.from("clans").delete().eq("id", id);
+    if (error) toast.error("Erro ao remover clã");
+    else { toast.success(`Clã ${name} removido!`); await refetchClans(); }
+  };
 
   return (
     <div className="space-y-4">
