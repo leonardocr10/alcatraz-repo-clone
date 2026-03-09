@@ -59,6 +59,7 @@ const HomePage = () => {
   });
   const bossNotify = useBossNotifications();
   const [confirmSendAll, setConfirmSendAll] = useState(false);
+  const [pendingUsers, setPendingUsers] = useState<any[]>([]);
 
   const fetchPendingUsers = useCallback(async () => {
     if (!isAdmin) return;
