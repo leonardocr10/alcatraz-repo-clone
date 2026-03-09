@@ -216,10 +216,11 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -227,21 +228,26 @@ Deno.serve(async (req) => {
     }
 
     const token = authHeader.replace("Bearer ", "");
-    const supabase = createClient(supabaseUrl, serviceKey);
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !user) {
-      console.error("Auth error:", userError?.message);
+    // Validate token using getClaims
+    const anonClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      console.error("Auth error:", claimsError?.message);
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Check admin role
+    const userId = claimsData.claims.sub;
+    const supabase = createClient(supabaseUrl, serviceKey);
 
+    // Check admin role
     const { data: hasAdmin } = await supabase.rpc("has_role", {
-      _user_id: user.id,
+      _user_id: userId,
       _role: "admin",
     });
     if (!hasAdmin) {
