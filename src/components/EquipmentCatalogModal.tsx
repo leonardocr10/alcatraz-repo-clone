@@ -188,8 +188,13 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                       {RARITY_OPTIONS.find(r => r.key === selectedRarity)?.label}
                     </span>
                     {plusValue > 0 && (
-                      <span className={`text-[10px] font-display font-extrabold px-2 py-0.5 rounded-full bg-primary/20 text-primary`}>
+                      <span className="text-[10px] font-display font-extrabold px-2 py-0.5 rounded-full bg-primary/20 text-primary">
                         +{plusValue}
+                      </span>
+                    )}
+                    {selectedMix && (
+                      <span className="text-[10px] font-display font-extrabold px-2 py-0.5 rounded-full bg-primary/20 text-primary uppercase">
+                        Mix{selectedMix}
                       </span>
                     )}
                   </div>
