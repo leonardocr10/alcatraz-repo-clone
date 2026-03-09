@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Swords, Clock, MapPin, ChevronDown, Send, MessageCircle, BellOff, BellRing, RefreshCw, Users, Shield } from "lucide-react";
+import { Swords, Clock, MapPin, ChevronDown, Send, MessageCircle, BellOff, BellRing, RefreshCw, Users, Shield, UserCheck, UserX, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useBossNotifications } from "@/hooks/useBossNotifications";
@@ -57,6 +57,28 @@ const HomePage = () => {
     return saved !== null ? saved === "true" : true;
   });
   const bossNotify = useBossNotifications();
+  const [pendingUsers, setPendingUsers] = useState<any[]>([]);
+
+  const fetchPendingUsers = useCallback(async () => {
+    if (!isAdmin) return;
+    const { data } = await supabase.from("users").select("*").eq("approved", false).order("created_at", { ascending: false });
+    setPendingUsers(data || []);
+  }, [isAdmin]);
+
+  const approveUser = async (userId: string) => {
+    const { error } = await supabase.from("users").update({ approved: true }).eq("id", userId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Usuário aprovado!");
+    fetchPendingUsers();
+  };
+
+  const rejectUser = async (userId: string) => {
+    if (!confirm("Rejeitar este usuário?")) return;
+    const { error } = await supabase.from("users").delete().eq("id", userId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Usuário rejeitado!");
+    fetchPendingUsers();
+  };
 
   const handleClassesToggle = (open: boolean) => {
     setClassesOpen(open);
@@ -104,7 +126,8 @@ const HomePage = () => {
   useEffect(() => {
     fetchBosses();
     fetchClassCounts();
-  }, [fetchBosses, fetchClassCounts]);
+    fetchPendingUsers();
+  }, [fetchBosses, fetchClassCounts, fetchPendingUsers]);
 
   useEffect(() => {
     const ch = supabase
@@ -216,6 +239,38 @@ const HomePage = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Pending Approvals - Admin Only */}
+      {isAdmin && pendingUsers.length > 0 && (
+        <div className="glass-card overflow-hidden">
+          <div className="px-4 py-3 border-b border-border/40 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-gold" />
+            <span className="font-display text-sm font-extrabold uppercase tracking-wider">Aprovações Pendentes</span>
+            <span className="ml-auto text-xs font-display font-bold text-gold bg-gold/15 px-2 py-0.5 rounded-lg">{pendingUsers.length}</span>
+          </div>
+          <div className="divide-y divide-border/20">
+            {pendingUsers.map((user) => (
+              <div key={user.id} className="px-4 py-3 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gold/15 flex items-center justify-center shrink-0">
+                  <Clock className="w-4 h-4 text-gold" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-display font-bold truncate">{user.nickname}</p>
+                  <p className="text-[11px] text-muted-foreground font-body">{user.class || "Sem classe"} · {user.phone}</p>
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  <button onClick={() => approveUser(user.id)} className="p-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                    <UserCheck className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => rejectUser(user.id)} className="p-2 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors">
+                    <UserX className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Clock + BRT + Refresh */}
       <div className="glass-card p-2.5 flex items-center justify-between">
