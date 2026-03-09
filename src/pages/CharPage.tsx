@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Shield, X, Eye, EyeOff, Trash2 } from "lucide-react";
+import { Shield, X, Eye, EyeOff, Trash2, Share2 } from "lucide-react";
 import { EquipmentCatalogModal } from "@/components/EquipmentCatalogModal";
+import { toPng } from "html-to-image";
 import slotSword from "@/assets/slot-sword.png";
 import slotShield from "@/assets/slot-shield.png";
 import slotArmor from "@/assets/slot-armor.png";
@@ -22,6 +23,7 @@ interface PlayerEquip {
   item_id: string;
   rarity: Rarity;
   plus_value: number | null;
+  mix: string | null;
   item?: { name: string; image_url: string };
 }
 
@@ -62,6 +64,12 @@ const RARITY_LEGEND: { key: Rarity; label: string; color: string }[] = [
   { key: 'boss', label: 'Boss', color: 'bg-red-500' },
 ];
 
+const MIX_COLORS: Record<string, { text: string; bg: string }> = {
+  Raident: { text: 'text-blue-400', bg: 'bg-blue-400/20' },
+  Celesto: { text: 'text-yellow-400', bg: 'bg-yellow-400/20' },
+  Enigma: { text: 'text-gray-400', bg: 'bg-gray-400/20' },
+};
+
 export default function CharPage() {
   const { profile } = useAuth();
   const [equipment, setEquipment] = useState<PlayerEquip[]>([]);
@@ -71,12 +79,14 @@ export default function CharPage() {
   const [togglingVisibility, setTogglingVisibility] = useState(false);
   const [avatarExpanded, setAvatarExpanded] = useState(false);
   const [playerRanking, setPlayerRanking] = useState<{ level: number | null; xp: string | null } | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const shareRef = useRef<HTMLDivElement>(null);
 
   const fetchEquipment = async () => {
     if (!profile?.id) return;
     const { data } = await supabase
       .from("player_equipment")
-      .select("id, slot, item_id, rarity, plus_value")
+      .select("id, slot, item_id, rarity, plus_value, mix")
       .eq("user_id", profile.id);
 
     if (data && data.length > 0) {
@@ -91,6 +101,7 @@ export default function CharPage() {
         ...d,
         slot: d.slot as EquipmentSlot,
         rarity: d.rarity as Rarity,
+        mix: d.mix || null,
         item: itemMap.get(d.item_id) as any,
       })));
     } else {
@@ -181,6 +192,41 @@ export default function CharPage() {
     fetchEquipment();
   };
 
+  const handleShare = async () => {
+    if (!shareRef.current) return;
+    setSharing(true);
+    try {
+      const dataUrl = await toPng(shareRef.current, {
+        backgroundColor: '#1a1a2e',
+        pixelRatio: 2,
+        cacheBust: true,
+      });
+
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], `char-${profile?.nickname || 'player'}.png`, { type: 'image/png' });
+
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: `Char de ${profile?.nickname}`,
+          text: `Confira o char de ${profile?.nickname}!`,
+          files: [file],
+        });
+      } else {
+        // Fallback: download the image
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = `char-${profile?.nickname || 'player'}.png`;
+        link.click();
+        toast.success("Imagem salva! Envie pelo WhatsApp.");
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        toast.error("Erro ao compartilhar");
+      }
+    }
+    setSharing(false);
+  };
+
   const renderSlot = (slotCfg: typeof SLOT_CONFIG[number], isLarge: boolean) => {
     const equip = getEquipForSlot(slotCfg.slot);
     const sizeClass = isLarge ? 'aspect-[3/4]' : 'aspect-square';
@@ -190,6 +236,8 @@ export default function CharPage() {
     const removeSize = isLarge ? 'w-4 h-4 top-1 right-1' : 'w-3.5 h-3.5 top-0.5 right-0.5';
     const removeIcon = isLarge ? 'w-2.5 h-2.5' : 'w-2 h-2';
     const labelSize = isLarge ? 'text-[9px]' : 'text-[8px]';
+
+    const mixColors = equip?.mix ? MIX_COLORS[equip.mix] : null;
 
     return (
       <div key={slotCfg.slot} className={`flex flex-col items-center gap-1 ${isLarge ? 'flex-1' : ''}`}>
@@ -205,6 +253,11 @@ export default function CharPage() {
               {equip.plus_value != null && equip.plus_value > 0 && (
                 <span className={`absolute ${plusSize} font-display font-bold text-foreground bg-background/80 rounded`}>
                   +{equip.plus_value}
+                </span>
+              )}
+              {equip.mix && mixColors && (
+                <span className={`absolute top-0.5 left-0.5 text-[7px] font-display font-extrabold px-1 rounded ${mixColors.text} ${mixColors.bg}`}>
+                  Mix {equip.mix}
                 </span>
               )}
               <button
@@ -238,6 +291,14 @@ export default function CharPage() {
           </h2>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleShare}
+            disabled={sharing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-display font-bold text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            {sharing ? 'Gerando...' : 'Compartilhar'}
+          </button>
           {equipment.length > 0 && (
             <button
               onClick={handleClearAll}
@@ -247,61 +308,86 @@ export default function CharPage() {
               Limpar
             </button>
           )}
-          <div className="flex items-center gap-2 text-[10px] font-bold">
-            {RARITY_LEGEND.map(r => (
-              <span key={r.key} className="flex items-center gap-1">
-                <span className={`w-2 h-2 rounded-full ${r.color}`} />
-                {r.label}
-              </span>
-            ))}
-          </div>
         </div>
       </div>
 
-      {/* Avatar display */}
-      {profile?.avatar_url && (
-        <>
-          <button onClick={() => setAvatarExpanded(true)} className="flex justify-center w-full">
-            <img
-              src={profile.avatar_url}
-              alt={profile.nickname}
-              className="w-40 h-40 rounded-2xl object-cover border-2 border-primary/30 shadow-lg hover:scale-105 transition-transform cursor-pointer"
-            />
-          </button>
-
-          {/* Expanded avatar modal */}
-          {avatarExpanded && (
-            <div
-              className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6"
-              onClick={() => setAvatarExpanded(false)}
-            >
-              <div className="flex flex-col items-center gap-4 animate-fade-in" onClick={e => e.stopPropagation()}>
-                <img
-                  src={profile.avatar_url}
-                  alt={profile.nickname}
-                  className="max-w-[80vw] max-h-[60vh] rounded-2xl object-contain border-2 border-primary/40 shadow-2xl"
-                />
-                <div className="text-center">
-                  <p className="font-display font-extrabold text-xl text-white uppercase tracking-wider">
-                    {profile.nickname}
+      {/* Shareable card area */}
+      <div ref={shareRef} className="space-y-4 p-1">
+        {/* Avatar display */}
+        {profile?.avatar_url && (
+          <>
+            <button onClick={() => setAvatarExpanded(true)} className="flex flex-col items-center w-full gap-2">
+              <img
+                src={profile.avatar_url}
+                alt={profile.nickname}
+                className="w-40 h-40 rounded-2xl object-cover border-2 border-primary/30 shadow-lg hover:scale-105 transition-transform cursor-pointer"
+              />
+              <div className="text-center">
+                <p className="font-display font-extrabold text-base uppercase tracking-wider">
+                  {profile.nickname}
+                </p>
+                {playerRanking && (
+                  <p className="font-display font-bold text-primary text-sm">
+                    Lv.{playerRanking.level} • {playerRanking.xp?.endsWith('%') ? playerRanking.xp : `${playerRanking.xp}%`}
                   </p>
-                  {playerRanking && (
-                    <p className="font-display font-bold text-gold text-sm mt-1">
-                      Lv.{playerRanking.level} • {playerRanking.xp?.endsWith('%') ? playerRanking.xp : `${playerRanking.xp}%`}
-                    </p>
-                  )}
-                </div>
-                <button
-                  onClick={() => setAvatarExpanded(false)}
-                  className="mt-2 text-xs text-muted-foreground hover:text-white transition-colors font-display uppercase tracking-wider"
-                >
-                  Fechar
-                </button>
+                )}
               </div>
-            </div>
-          )}
-        </>
-      )}
+            </button>
+
+            {/* Expanded avatar modal */}
+            {avatarExpanded && (
+              <div
+                className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6"
+                onClick={() => setAvatarExpanded(false)}
+              >
+                <div className="flex flex-col items-center gap-4 animate-fade-in" onClick={e => e.stopPropagation()}>
+                  <img
+                    src={profile.avatar_url}
+                    alt={profile.nickname}
+                    className="max-w-[80vw] max-h-[60vh] rounded-2xl object-contain border-2 border-primary/40 shadow-2xl"
+                  />
+                  <div className="text-center">
+                    <p className="font-display font-extrabold text-xl text-white uppercase tracking-wider">
+                      {profile.nickname}
+                    </p>
+                    {playerRanking && (
+                      <p className="font-display font-bold text-primary text-sm mt-1">
+                        Lv.{playerRanking.level} • {playerRanking.xp?.endsWith('%') ? playerRanking.xp : `${playerRanking.xp}%`}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setAvatarExpanded(false)}
+                    className="mt-2 text-xs text-muted-foreground hover:text-white transition-colors font-display uppercase tracking-wider"
+                  >
+                    Fechar
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Rarity legend */}
+        <div className="flex items-center justify-center gap-2 text-[10px] font-bold">
+          {RARITY_LEGEND.map(r => (
+            <span key={r.key} className="flex items-center gap-1">
+              <span className={`w-2 h-2 rounded-full ${r.color}`} />
+              {r.label}
+            </span>
+          ))}
+        </div>
+
+        {/* Equipment Grid */}
+        <div className="glass-card p-4 rounded-2xl border border-border/40">
+          <div className="flex gap-3 mb-4">
+            {SLOT_CONFIG.filter(s => s.size === 'large').map(s => renderSlot(s, true))}
+          </div>
+          <div className="grid grid-cols-6 gap-2">
+            {SLOT_CONFIG.filter(s => s.size === 'small').map(s => renderSlot(s, false))}
+          </div>
+        </div>
+      </div>
 
       {/* Visibility toggle */}
       <button
@@ -323,16 +409,6 @@ export default function CharPage() {
           <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${charVisible ? 'translate-x-5' : 'translate-x-0.5'}`} />
         </div>
       </button>
-
-      {/* Equipment Grid */}
-      <div className="glass-card p-4 rounded-2xl border border-border/40">
-        <div className="flex gap-3 mb-4">
-          {SLOT_CONFIG.filter(s => s.size === 'large').map(s => renderSlot(s, true))}
-        </div>
-        <div className="grid grid-cols-6 gap-2">
-          {SLOT_CONFIG.filter(s => s.size === 'small').map(s => renderSlot(s, false))}
-        </div>
-      </div>
 
       {catalogSlot && (
         <EquipmentCatalogModal
