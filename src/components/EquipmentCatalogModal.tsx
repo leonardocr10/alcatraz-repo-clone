@@ -238,8 +238,8 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
               </div>
             </div>
 
-            {/* Aging Enhancement - only for non-accessory slots */}
-            {!showMix && (
+            {/* Aging Enhancement - only for weapon/armor slots */}
+            {hasAging && (
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-widest">
@@ -264,33 +264,30 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
               </div>
             )}
 
-            {/* Mix selector for rings and necklace */}
-            {showMix && (
-              <div>
-                <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-widest mb-2">
-                  Specialization (Mix)
-                </p>
-                <div className="flex gap-1.5">
-                  {MIX_OPTIONS.map(mix => {
-                    const mixColor = mix === 'Raident' ? 'bg-blue-500' : mix === 'Celesto' ? 'bg-yellow-500' : 'bg-gray-500';
-                    const mixColorActive = mix === 'Raident' ? 'bg-blue-500 text-white' : mix === 'Celesto' ? 'bg-yellow-500 text-black' : 'bg-gray-500 text-white';
-                    return (
-                      <button
-                        key={mix}
-                        onClick={() => setSelectedMix(selectedMix === mix ? null : mix)}
-                        className={`flex-1 py-2 rounded-xl text-xs font-display font-bold uppercase tracking-wider transition-all ${
-                          selectedMix === mix
-                            ? mixColorActive
-                            : 'bg-secondary/50 text-muted-foreground hover:bg-secondary/80'
-                        }`}
-                      >
-                        {mix}
-                      </button>
-                    );
-                  })}
-                </div>
+            {/* Mix selector - always shown */}
+            <div>
+              <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-widest mb-2">
+                Specialization (Mix)
+              </p>
+              <div className="flex gap-1.5">
+                {MIX_OPTIONS.map(mix => {
+                  const mixColorActive = mix === 'Raident' ? 'bg-blue-500 text-white' : mix === 'Celesto' ? 'bg-yellow-500 text-black' : 'bg-gray-500 text-white';
+                  return (
+                    <button
+                      key={mix}
+                      onClick={() => setSelectedMix(selectedMix === mix ? null : mix)}
+                      className={`flex-1 py-1.5 rounded-xl text-[10px] font-display font-bold uppercase tracking-wider transition-all ${
+                        selectedMix === mix
+                          ? mixColorActive
+                          : 'bg-secondary/50 text-muted-foreground hover:bg-secondary/80'
+                      }`}
+                    >
+                      {mix}
+                    </button>
+                  );
+                })}
               </div>
-            )}
+            </div>
           </div>
         </div>
 
