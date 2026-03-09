@@ -67,11 +67,16 @@ export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
   useEffect(() => {
     const fetchData = async () => {
       // Fetch avatar and equipment in parallel
-      const [userRes, equipRes] = await Promise.all([
+      const [userRes, equipRes, rankRes] = await Promise.all([
         supabase.from("users").select("avatar_url").eq("id", playerId).single(),
         supabase.from("player_equipment").select("slot, rarity, plus_value, item_id").eq("user_id", playerId),
+        supabase.from("player_rankings").select("level, xp").eq("user_id", playerId).maybeSingle(),
       ]);
       if (userRes.data?.avatar_url) setAvatarUrl(userRes.data.avatar_url);
+      if (rankRes.data) {
+        setLevel(rankRes.data.level);
+        setXp(rankRes.data.xp);
+      }
       const data = equipRes.data;
 
       if (data && data.length > 0) {
