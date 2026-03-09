@@ -16,6 +16,7 @@ import ClassesPage from "@/pages/ClassesPage";
 import ConfigPage from "@/pages/ConfigPage";
 import RulesPage from "@/pages/RulesPage";
 import HistoryPage from "@/pages/HistoryPage";
+import CharPage from "@/pages/CharPage";
 import NotFound from "@/pages/NotFound";
 
 
