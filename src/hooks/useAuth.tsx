@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuthUser(session?.user ?? null);
         if (session?.user) {
           setTimeout(() => {
-            if (mounted) fetchProfile(session.user.id);
+            if (mounted) fetchProfile(session.user.id, { signOutIfMissing: true });
           }, 100);
         } else {
           setProfile(null);
