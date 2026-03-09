@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.scrape-history]
 verify_jwt = false
+
+[functions.seed-equipment]
+verify_jwt = false
