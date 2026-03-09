@@ -77,7 +77,9 @@ export default function PlayersPage() {
   const [msgSelected, setMsgSelected] = useState<Set<string>>(new Set());
   const [msgSending, setMsgSending] = useState(false);
 
-  // Class detail modal
+  // View char modal
+  const [charPlayer, setCharPlayer] = useState<Player | null>(null);
+
   const [viewClass, setViewClass] = useState<ClassIcon | null>(null);
 
   const fetchData = async () => {
