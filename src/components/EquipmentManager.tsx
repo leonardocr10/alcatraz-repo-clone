@@ -45,6 +45,7 @@ export default function EquipmentManager() {
   const [editName, setEditName] = useState("");
   const [editImageUrl, setEditImageUrl] = useState("");
   const [editCategoryId, setEditCategoryId] = useState("");
+  const [editSlot, setEditSlot] = useState<EquipmentSlot>("arma_1m");
   const [editFile, setEditFile] = useState<File | null>(null);
   const [editPreview, setEditPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
