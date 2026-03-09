@@ -17,7 +17,34 @@ interface BossSchedule {
   notify_minutes_before: number;
 }
 
+function playAlertSound() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const playTone = (freq: number, start: number, duration: number, gain: number) => {
+      const osc = ctx.createOscillator();
+      const vol = ctx.createGain();
+      osc.type = "square";
+      osc.frequency.value = freq;
+      vol.gain.setValueAtTime(gain, ctx.currentTime + start);
+      vol.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + duration);
+      osc.connect(vol);
+      vol.connect(ctx.destination);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + duration);
+    };
+    // Epic 3-tone alert
+    playTone(880, 0, 0.15, 0.3);
+    playTone(1100, 0.15, 0.15, 0.3);
+    playTone(1320, 0.3, 0.3, 0.35);
+  } catch (e) {
+    console.log("[Notify] Could not play alert sound", e);
+  }
+}
+
 async function showNotification(title: string, options: NotificationOptions) {
+  // Play alert sound
+  playAlertSound();
+
   // Try Service Worker first (works better in installed PWAs)
   if ("serviceWorker" in navigator) {
     try {
