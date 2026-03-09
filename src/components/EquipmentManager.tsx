@@ -17,6 +17,8 @@ interface Item {
   image_url: string;
   category_id: string;
   slot: EquipmentSlot;
+  level: string | null;
+  level_sort: number;
 }
 
 const SLOT_LABELS: Record<EquipmentSlot, string> = {
@@ -32,6 +34,26 @@ const SLOT_LABELS: Record<EquipmentSlot, string> = {
   anel_2: "Anel 2",
 };
 
+const LEVEL_OPTIONS = [
+  { label: "Nenhum", value: "", sort: 0 },
+  { label: "80A", value: "80A", sort: 8001 },
+  { label: "80B", value: "80B", sort: 8002 },
+  { label: "80C", value: "80C", sort: 8003 },
+  { label: "80D", value: "80D", sort: 8004 },
+  { label: "100A", value: "100A", sort: 10001 },
+  { label: "100B", value: "100B", sort: 10002 },
+  { label: "100C", value: "100C", sort: 10003 },
+  { label: "100D", value: "100D", sort: 10004 },
+  { label: "120A", value: "120A", sort: 12001 },
+  { label: "120B", value: "120B", sort: 12002 },
+  { label: "120C", value: "120C", sort: 12003 },
+  { label: "120D", value: "120D", sort: 12004 },
+];
+
+function getLevelSort(level: string): number {
+  return LEVEL_OPTIONS.find(l => l.value === level)?.sort ?? 0;
+}
+
 export default function EquipmentManager() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -46,6 +68,7 @@ export default function EquipmentManager() {
   const [editImageUrl, setEditImageUrl] = useState("");
   const [editCategoryId, setEditCategoryId] = useState("");
   const [editSlot, setEditSlot] = useState<EquipmentSlot>("arma_1m");
+  const [editLevel, setEditLevel] = useState("");
   const [editFile, setEditFile] = useState<File | null>(null);
   const [editPreview, setEditPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -58,13 +81,14 @@ export default function EquipmentManager() {
   const [addPreview, setAddPreview] = useState<string | null>(null);
   const [addSlot, setAddSlot] = useState<EquipmentSlot>("arma_1m");
   const [addCategoryId, setAddCategoryId] = useState("");
+  const [addLevel, setAddLevel] = useState("");
   const [adding, setAdding] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     const [catsRes, itemsRes] = await Promise.all([
       supabase.from("equipment_categories").select("id, name, slot").order("sort_order"),
-      supabase.from("equipment_items").select("id, name, image_url, category_id, slot").order("name"),
+      supabase.from("equipment_items").select("id, name, image_url, category_id, slot, level, level_sort").order("level_sort").order("name"),
     ]);
     setCategories((catsRes.data as Category[]) || []);
     setItems((itemsRes.data as Item[]) || []);
@@ -91,6 +115,7 @@ export default function EquipmentManager() {
     setEditImageUrl(item.image_url);
     setEditCategoryId(item.category_id);
     setEditSlot(item.slot);
+    setEditLevel(item.level || "");
     setEditFile(null);
     setEditPreview(null);
   };
@@ -101,6 +126,7 @@ export default function EquipmentManager() {
     setEditImageUrl("");
     setEditCategoryId("");
     setEditSlot("arma_1m");
+    setEditLevel("");
     setEditFile(null);
     setEditPreview(null);
   };
@@ -127,15 +153,23 @@ export default function EquipmentManager() {
         const { data: urlData } = supabase.storage.from("equipment-images").getPublicUrl(path);
         finalUrl = urlData.publicUrl;
       }
+      const levelSort = getLevelSort(editLevel);
       const { error } = await supabase
         .from("equipment_items")
-        .update({ name: editName, image_url: finalUrl, category_id: editCategoryId, slot: editSlot })
+        .update({
+          name: editName,
+          image_url: finalUrl,
+          category_id: editCategoryId,
+          slot: editSlot,
+          level: editLevel || null,
+          level_sort: levelSort,
+        })
         .eq("id", editingItem.id);
       if (error) throw error;
       toast.success("Item atualizado!");
       setItems(prev => prev.map(i =>
-        i.id === editingItem.id ? { ...i, name: editName, image_url: finalUrl, category_id: editCategoryId, slot: editSlot } : i
-      ));
+        i.id === editingItem.id ? { ...i, name: editName, image_url: finalUrl, category_id: editCategoryId, slot: editSlot, level: editLevel || null, level_sort: levelSort } : i
+      ).sort((a, b) => a.level_sort - b.level_sort || a.name.localeCompare(b.name)));
       cancelEdit();
     } catch (err: any) {
       toast.error(err.message || "Erro ao salvar");
@@ -166,6 +200,7 @@ export default function EquipmentManager() {
     setAddImageUrl("");
     setAddFile(null);
     setAddPreview(null);
+    setAddLevel("");
     setShowAddModal(true);
   };
 
@@ -175,6 +210,7 @@ export default function EquipmentManager() {
     setAddImageUrl("");
     setAddFile(null);
     setAddPreview(null);
+    setAddLevel("");
   };
 
   const handleAddFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -192,7 +228,6 @@ export default function EquipmentManager() {
     try {
       let finalUrl = addImageUrl.trim();
 
-      // If no URL, upload file
       if (!finalUrl && addFile) {
         const tempId = crypto.randomUUID();
         const ext = addFile.name.split(".").pop() || "png";
@@ -211,6 +246,7 @@ export default function EquipmentManager() {
         return;
       }
 
+      const levelSort = getLevelSort(addLevel);
       const { data, error } = await supabase
         .from("equipment_items")
         .insert({
@@ -218,13 +254,15 @@ export default function EquipmentManager() {
           image_url: finalUrl,
           slot: addSlot,
           category_id: addCategoryId,
+          level: addLevel || null,
+          level_sort: levelSort,
         })
-        .select("id, name, image_url, category_id, slot")
+        .select("id, name, image_url, category_id, slot, level, level_sort")
         .single();
 
       if (error) throw error;
       toast.success("Item criado!");
-      setItems(prev => [...prev, data as Item]);
+      setItems(prev => [...prev, data as Item].sort((a, b) => a.level_sort - b.level_sort || a.name.localeCompare(b.name)));
       cancelAdd();
     } catch (err: any) {
       toast.error(err.message || "Erro ao criar item");
@@ -340,6 +378,7 @@ export default function EquipmentManager() {
               <p className="font-display font-bold text-sm truncate">{item.name}</p>
               <p className="text-[10px] text-muted-foreground truncate">
                 {getCategoryName(item.category_id)} · {SLOT_LABELS[item.slot]}
+                {item.level && <span className="ml-1 text-primary font-bold">· Lv {item.level}</span>}
               </p>
             </div>
             <button
@@ -390,6 +429,20 @@ export default function EquipmentManager() {
             <label className="block space-y-1">
               <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Nome</span>
               <input value={editName} onChange={e => setEditName(e.target.value)} className="input-modern text-sm" />
+            </label>
+
+            {/* Level selector */}
+            <label className="block space-y-1">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Nível</span>
+              <select
+                value={editLevel}
+                onChange={e => setEditLevel(e.target.value)}
+                className="input-modern text-sm"
+              >
+                {LEVEL_OPTIONS.map(l => (
+                  <option key={l.value} value={l.value}>{l.label}</option>
+                ))}
+              </select>
             </label>
 
             {/* Slot selector */}
@@ -486,6 +539,20 @@ export default function EquipmentManager() {
             <label className="block space-y-1">
               <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Nome</span>
               <input value={addName} onChange={e => setAddName(e.target.value)} className="input-modern text-sm" placeholder="Nome do item" />
+            </label>
+
+            {/* Level */}
+            <label className="block space-y-1">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Nível</span>
+              <select
+                value={addLevel}
+                onChange={e => setAddLevel(e.target.value)}
+                className="input-modern text-sm"
+              >
+                {LEVEL_OPTIONS.map(l => (
+                  <option key={l.value} value={l.value}>{l.label}</option>
+                ))}
+              </select>
             </label>
 
             {/* Slot */}
