@@ -30,7 +30,7 @@ const RARITY_OPTIONS: { key: Rarity; label: string; borderColor: string; dotColo
 interface Props {
   slot: EquipmentSlot;
   slotLabel: string;
-  onEquip: (slot: EquipmentSlot, itemId: string, rarity: Rarity) => void;
+  onEquip: (slot: EquipmentSlot, itemId: string, rarity: Rarity, plusValue: number) => void;
   onClose: () => void;
 }
 
@@ -40,6 +40,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [selectedRarity, setSelectedRarity] = useState<Rarity>('normal');
+  const [plusValue, setPlusValue] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -181,6 +182,11 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                   }`}>
                     {RARITY_OPTIONS.find(r => r.key === selectedRarity)?.label}
                   </p>
+                  {plusValue > 0 && (
+                    <p className="text-sm font-display font-extrabold text-primary">
+                      +{plusValue}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2 text-muted-foreground/30">
@@ -216,13 +222,37 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                 ))}
               </div>
             </div>
+
+            {/* Aging Enhancement */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-widest">
+                  Aging Enhancement
+                </p>
+                <span className="text-sm font-display font-extrabold text-primary">
+                  +{plusValue}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={12}
+                value={plusValue}
+                onChange={e => setPlusValue(Number(e.target.value))}
+                className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-secondary/50 accent-primary"
+              />
+              <div className="flex justify-between mt-1">
+                <span className="text-[8px] text-muted-foreground">+0</span>
+                <span className="text-[8px] text-muted-foreground">+12</span>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Confirm button */}
         <button
           disabled={!selectedItem}
-          onClick={() => selectedItem && onEquip(slot, selectedItem.id, selectedRarity)}
+          onClick={() => selectedItem && onEquip(slot, selectedItem.id, selectedRarity, plusValue)}
           className="w-full mt-3 py-3 rounded-xl bg-primary/80 hover:bg-primary text-primary-foreground font-display font-extrabold text-sm uppercase tracking-widest transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           Confirmar Equipamento →

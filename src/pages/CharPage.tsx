@@ -94,20 +94,20 @@ export default function CharPage() {
 
   const getEquipForSlot = (slot: EquipmentSlot) => equipment.find(e => e.slot === slot);
 
-  const handleEquip = async (slot: EquipmentSlot, itemId: string, rarity: Rarity) => {
+  const handleEquip = async (slot: EquipmentSlot, itemId: string, rarity: Rarity, plusValue: number) => {
     if (!profile?.id) return;
     const existing = getEquipForSlot(slot);
 
     if (existing) {
       const { error } = await supabase
         .from("player_equipment")
-        .update({ item_id: itemId, rarity, updated_at: new Date().toISOString() })
+        .update({ item_id: itemId, rarity, plus_value: plusValue, updated_at: new Date().toISOString() })
         .eq("id", existing.id);
       if (error) { toast.error("Erro ao equipar"); return; }
     } else {
       const { error } = await supabase
         .from("player_equipment")
-        .insert({ user_id: profile.id, slot, item_id: itemId, rarity });
+        .insert({ user_id: profile.id, slot, item_id: itemId, rarity, plus_value: plusValue });
       if (error) { toast.error("Erro ao equipar"); return; }
     }
     toast.success("Equipamento atualizado!");
@@ -201,6 +201,11 @@ export default function CharPage() {
                   {equip?.item ? (
                     <>
                       <img src={equip.item.image_url} alt={equip.item.name} className="w-4/5 h-4/5 object-contain" />
+                      {equip.plus_value != null && equip.plus_value > 0 && (
+                        <span className="absolute bottom-0.5 right-0.5 text-[8px] font-display font-bold text-foreground bg-background/80 px-1 rounded">
+                          +{equip.plus_value}
+                        </span>
+                      )}
                       <button
                         onClick={(e) => { e.stopPropagation(); handleUnequip(slotCfg.slot); }}
                         className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-destructive/80 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
