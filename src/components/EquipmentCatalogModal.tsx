@@ -45,7 +45,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
   const [selectedMix, setSelectedMix] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const showMix = ['anel_1', 'anel_2', 'colar'].includes(slot);
+  const showMix = ['anel_1', 'anel_2', 'colar', 'luva', 'bota', 'bracelete'].includes(slot);
   const MIX_OPTIONS = ['Raident', 'Celesto', 'Enigma'];
 
   useEffect(() => {
