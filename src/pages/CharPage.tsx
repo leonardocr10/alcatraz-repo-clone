@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Shield, X, Eye, EyeOff } from "lucide-react";
+import { Shield, X, Eye, EyeOff, Trash2 } from "lucide-react";
 import { EquipmentCatalogModal } from "@/components/EquipmentCatalogModal";
 import slotSword from "@/assets/slot-sword.png";
 import slotShield from "@/assets/slot-shield.png";
@@ -172,6 +172,15 @@ export default function CharPage() {
     fetchEquipment();
   };
 
+  const handleClearAll = async () => {
+    if (!profile?.id || equipment.length === 0) return;
+    if (!confirm("Remover todos os equipamentos?")) return;
+    const ids = equipment.map(e => e.id);
+    await supabase.from("player_equipment").delete().in("id", ids);
+    toast.success("Todos os equipamentos removidos");
+    fetchEquipment();
+  };
+
   const renderSlot = (slotCfg: typeof SLOT_CONFIG[number], isLarge: boolean) => {
     const equip = getEquipForSlot(slotCfg.slot);
     const sizeClass = isLarge ? 'aspect-[3/4]' : 'aspect-square';
@@ -219,22 +228,33 @@ export default function CharPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="p-2 rounded-xl bg-primary/15">
             <Shield className="w-5 h-5 text-primary" />
           </div>
           <h2 className="font-display text-lg font-extrabold tracking-wide uppercase">
-            Inventário de Equipamentos
+            Inventário
           </h2>
         </div>
-        <div className="flex items-center gap-2 text-[10px] font-bold">
-          {RARITY_LEGEND.map(r => (
-            <span key={r.key} className="flex items-center gap-1">
-              <span className={`w-2 h-2 rounded-full ${r.color}`} />
-              {r.label}
-            </span>
-          ))}
+        <div className="flex items-center gap-3">
+          {equipment.length > 0 && (
+            <button
+              onClick={handleClearAll}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-display font-bold text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Limpar
+            </button>
+          )}
+          <div className="flex items-center gap-2 text-[10px] font-bold">
+            {RARITY_LEGEND.map(r => (
+              <span key={r.key} className="flex items-center gap-1">
+                <span className={`w-2 h-2 rounded-full ${r.color}`} />
+                {r.label}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -245,7 +265,7 @@ export default function CharPage() {
             <img
               src={profile.avatar_url}
               alt={profile.nickname}
-              className="w-32 h-32 rounded-2xl object-cover border-2 border-primary/30 shadow-lg hover:scale-105 transition-transform cursor-pointer"
+              className="w-40 h-40 rounded-2xl object-cover border-2 border-primary/30 shadow-lg hover:scale-105 transition-transform cursor-pointer"
             />
           </button>
 
@@ -259,7 +279,7 @@ export default function CharPage() {
                 <img
                   src={profile.avatar_url}
                   alt={profile.nickname}
-                  className="w-64 h-64 rounded-2xl object-cover border-2 border-primary/40 shadow-2xl"
+                  className="max-w-[80vw] max-h-[60vh] rounded-2xl object-contain border-2 border-primary/40 shadow-2xl"
                 />
                 <div className="text-center">
                   <p className="font-display font-extrabold text-xl text-white uppercase tracking-wider">
