@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
   require('fs').writeFileSync('./package.json', JSON.stringify({ ...pkg, version: newVersion }, null, 2) + '\n');
   return ({
   define: {
-    __APP_VERSION__: JSON.stringify(buildVersion),
+    __APP_VERSION__: JSON.stringify(newVersion),
   },
   server: {
     host: "::",
