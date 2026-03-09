@@ -282,7 +282,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
         {/* Confirm button */}
         <button
           disabled={!selectedItem}
-          onClick={() => selectedItem && onEquip(slot, selectedItem.id, selectedRarity, plusValue)}
+          onClick={() => selectedItem && onEquip(slot, selectedItem.id, selectedRarity, plusValue, selectedMix)}
           className="w-full mt-3 py-3 rounded-xl bg-primary/80 hover:bg-primary text-primary-foreground font-display font-extrabold text-sm uppercase tracking-widest transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           Confirmar Equipamento →
