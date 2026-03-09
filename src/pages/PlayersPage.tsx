@@ -364,6 +364,26 @@ export default function PlayersPage() {
         <p className="text-[10px] text-muted-foreground font-body text-right -mt-2">Última sync: {lastSync}</p>
       )}
 
+      {/* Clan Filter */}
+      <div className="flex gap-1.5">
+        {[null, "AZ", "AZ2"].map((clan) => (
+          <button
+            key={clan ?? "all"}
+            onClick={() => setClanFilter(clan)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-display font-bold transition-colors ${
+              clanFilter === clan
+                ? "bg-primary/20 text-primary border border-primary/30"
+                : "bg-secondary/50 text-muted-foreground hover:bg-secondary/80"
+            }`}
+          >
+            {clan ?? "Todos"}
+          </button>
+        ))}
+        <span className="ml-auto text-xs font-display font-bold text-muted-foreground self-center">
+          {filtered.length} jogadores
+        </span>
+      </div>
+
       {/* Class Filter Chips */}
       <div className="flex flex-wrap gap-1.5">
         <button
