@@ -39,7 +39,7 @@ interface ClassIcon {
 }
 
 const HomePage = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, profile } = useAuth();
   const navigate = useNavigate();
   const { clans } = useClans();
   const [bosses, setBosses] = useState<Boss[]>([]);
@@ -49,8 +49,9 @@ const HomePage = () => {
   const [imageModal, setImageModal] = useState<{ url: string; title: string; description?: string; mapLevel?: string } | null>(null);
   const [sendingBoss, setSendingBoss] = useState<string | null>(null);
   const [sendingAll, setSendingAll] = useState(false);
-  const [classCounts, setClassCounts] = useState<ClassCount[]>([]);
+  const [classCounts, setClassCounts] = useState<(ClassCount & { clan: string })[]>([]);
   const [classIcons, setClassIcons] = useState<ClassIcon[]>([]);
+  const [classClanFilter, setClassClanFilter] = useState<string | null>(null);
   const [classesOpen, setClassesOpen] = useState(() => {
     const saved = localStorage.getItem("home-classes-open");
     return saved !== null ? saved === "true" : true;
@@ -115,18 +116,24 @@ const HomePage = () => {
 
   const fetchClassCounts = useCallback(async () => {
     const [usersRes, iconsRes] = await Promise.all([
-      supabase.from("users").select("class").eq("approved", true).not("class", "is", null),
+      supabase.from("users").select("class, clan").eq("approved", true).not("class", "is", null),
       supabase.from("character_classes").select("name, image_url"),
     ]);
 
     if (usersRes.data) {
-      const counts: Record<string, number> = {};
+      // Group by class AND clan
+      const counts: Record<string, { count: number; clan: string }> = {};
       usersRes.data.forEach((u: any) => {
-        if (u.class) counts[u.class] = (counts[u.class] || 0) + 1;
+        if (u.class) {
+          const clan = u.clan || "AZ";
+          const key = `${u.class}|${clan}`;
+          if (!counts[key]) counts[key] = { count: 0, clan };
+          counts[key].count++;
+        }
       });
       setClassCounts(
         Object.entries(counts)
-          .map(([cls, count]) => ({ class: cls, count }))
+          .map(([key, { count, clan }]) => ({ class: key.split("|")[0], count, clan }))
           .sort((a, b) => b.count - a.count)
       );
     }
@@ -226,7 +233,26 @@ const HomePage = () => {
   };
 
   const groupedBosses = getGroupedBosses();
-  const totalPlayers = classCounts.reduce((sum, c) => sum + c.count, 0);
+  
+  // Filter class counts by clan
+  const effectiveClassClanFilter = isAdmin ? classClanFilter : (profile?.clan || "AZ");
+  const filteredClassCounts = useMemo(() => {
+    if (!effectiveClassClanFilter) return classCounts;
+    return classCounts.filter(c => c.clan === effectiveClassClanFilter);
+  }, [classCounts, effectiveClassClanFilter]);
+  
+  // Aggregate same class across different clans when no filter
+  const aggregatedClassCounts = useMemo(() => {
+    const agg: Record<string, number> = {};
+    filteredClassCounts.forEach(c => {
+      agg[c.class] = (agg[c.class] || 0) + c.count;
+    });
+    return Object.entries(agg)
+      .map(([cls, count]) => ({ class: cls, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [filteredClassCounts]);
+  
+  const totalPlayers = aggregatedClassCounts.reduce((sum, c) => sum + c.count, 0);
 
   return (
     <div className="space-y-4">
@@ -373,7 +399,9 @@ const HomePage = () => {
               <button className="w-full px-4 py-3 border-b border-border/40 flex items-center justify-between hover:bg-secondary/20 transition-colors">
                 <div className="flex items-center gap-2">
                   <Shield className="w-4 h-4 text-primary" />
-                  <span className="font-display text-sm font-extrabold uppercase tracking-wider">Classes do Clã</span>
+                  <span className="font-display text-sm font-extrabold uppercase tracking-wider">
+                    Classes do Clã{!isAdmin && profile?.clan ? ` ${profile.clan}` : ""}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1.5">
@@ -385,8 +413,26 @@ const HomePage = () => {
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
+              {/* Clan filter buttons — admin only */}
+              {isAdmin && clans.length > 0 && (
+                <div className="flex gap-1.5 px-3 pt-3 flex-wrap">
+                  {[null, ...clans.map(c => c.name)].map((clan) => (
+                    <button
+                      key={clan ?? "all"}
+                      onClick={() => setClassClanFilter(clan)}
+                      className={`px-3 py-1 rounded-xl text-xs font-display font-bold transition-colors ${
+                        classClanFilter === clan
+                          ? "bg-primary/20 text-primary border border-primary/30"
+                          : "bg-secondary/50 text-muted-foreground hover:bg-secondary/80"
+                      }`}
+                    >
+                      {clan ?? "Todos"}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="p-3 grid grid-cols-2 gap-2">
-                {classCounts.map(({ class: cls, count }) => {
+                {aggregatedClassCounts.map(({ class: cls, count }) => {
                   const icon = iconMap.get(cls);
                   return (
                     <button
