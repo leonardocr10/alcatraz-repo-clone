@@ -178,6 +178,24 @@ export type Database = {
         }
         Relationships: []
       }
+      clans: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       history_cache: {
         Row: {
           data: Json

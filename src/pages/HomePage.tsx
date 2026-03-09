@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { useClans } from "@/hooks/useClans";
 import { toast } from "sonner";
 import { Swords, Clock, MapPin, ChevronDown, Send, MessageCircle, BellOff, BellRing, RefreshCw, Users, Shield, UserCheck, UserX, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -40,6 +41,7 @@ interface ClassIcon {
 const HomePage = () => {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
+  const { clans } = useClans();
   const [bosses, setBosses] = useState<Boss[]>([]);
   const [bossSchedules, setBossSchedules] = useState<BossSchedule[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -279,17 +281,17 @@ const HomePage = () => {
                 {/* Clan selector */}
                 <div className="flex items-center gap-2 pl-12">
                   <span className="text-[10px] text-muted-foreground font-bold uppercase">Clã:</span>
-                  {["AZ", "AZ2"].map((clan) => (
+                  {clans.map((clan) => (
                     <button
-                      key={clan}
-                      onClick={() => setPendingClanMap(prev => ({ ...prev, [user.id]: clan }))}
+                      key={clan.name}
+                      onClick={() => setPendingClanMap(prev => ({ ...prev, [user.id]: clan.name }))}
                       className={`px-2.5 py-1 rounded-lg text-[11px] font-display font-bold transition-all border ${
-                        (pendingClanMap[user.id] || "AZ") === clan
+                        (pendingClanMap[user.id] || clans[0]?.name || "AZ") === clan.name
                           ? "border-primary bg-primary/15 text-primary"
                           : "border-border/40 text-muted-foreground hover:border-muted-foreground/30"
                       }`}
                     >
-                      {clan}
+                      {clan.name}
                     </button>
                   ))}
                 </div>

@@ -2,8 +2,9 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Settings, MessageCircle, Palette, Trash2, Plus, X, Save, RotateCcw, Send, CheckCircle, AlertCircle, Zap, ScrollText, Crown, Link } from "lucide-react";
+import { Settings, MessageCircle, Palette, Trash2, Plus, X, Save, RotateCcw, Send, CheckCircle, AlertCircle, Zap, ScrollText, Crown, Link, Shield } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
+import { useClans } from "@/hooks/useClans";
 import AdminPage from "@/pages/AdminPage";
 
 type WhatsConfig = {
@@ -19,7 +20,10 @@ export default function ConfigPage() {
   const { isAdmin } = useAuth();
   const { currentTheme, setTheme, resetTheme, presets } = useTheme();
 
-  const [tab, setTab] = useState<"manage" | "whatsapp" | "theme" | "rules" | "discord" | "clear">("manage");
+  const [tab, setTab] = useState<"manage" | "clans" | "whatsapp" | "theme" | "rules" | "discord" | "clear">("manage");
+  const { clans, loading: clansLoading, refetch: refetchClans } = useClans();
+  const [newClanName, setNewClanName] = useState("");
+  const [addingClan, setAddingClan] = useState(false);
 
   // WhatsApp state
   const [config, setConfig] = useState<WhatsConfig | null>(null);
@@ -175,12 +179,35 @@ export default function ConfigPage() {
 
   const tabs = [
     { key: "manage" as const, label: "Gerenciar", icon: Crown },
+    { key: "clans" as const, label: "Clãs", icon: Shield },
     { key: "whatsapp" as const, label: "WhatsApp", icon: MessageCircle },
     { key: "theme" as const, label: "Tema", icon: Palette },
     { key: "rules" as const, label: "Regras", icon: ScrollText },
     { key: "discord" as const, label: "Discord", icon: Link },
     { key: "clear" as const, label: "Limpar", icon: Trash2 },
   ];
+
+  const addClan = async () => {
+    const name = newClanName.trim().toUpperCase();
+    if (!name) return;
+    setAddingClan(true);
+    const { error } = await supabase.from("clans").insert({ name } as any);
+    if (error) {
+      toast.error(error.message?.includes("duplicate") ? "Esse clã já existe" : error.message || "Erro ao criar clã");
+    } else {
+      toast.success(`Clã ${name} criado!`);
+      setNewClanName("");
+      await refetchClans();
+    }
+    setAddingClan(false);
+  };
+
+  const deleteClan = async (id: string, name: string) => {
+    if (!confirm(`Tem certeza que deseja remover o clã ${name}? Jogadores desse clã não serão removidos.`)) return;
+    const { error } = await supabase.from("clans").delete().eq("id", id);
+    if (error) toast.error("Erro ao remover clã");
+    else { toast.success(`Clã ${name} removido!`); await refetchClans(); }
+  };
 
   return (
     <div className="space-y-4">
@@ -210,6 +237,60 @@ export default function ConfigPage() {
 
       {/* Manage Tab */}
       {tab === "manage" && <AdminPage />}
+
+      {/* Clans Tab */}
+      {tab === "clans" && (
+        <div className="space-y-3">
+          <div className="glass-card p-4 space-y-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Clãs Cadastrados</p>
+            {clansLoading ? (
+              <div className="flex justify-center py-4">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : clans.length === 0 ? (
+              <p className="text-sm text-muted-foreground font-body py-2">Nenhum clã cadastrado.</p>
+            ) : (
+              <div className="space-y-2">
+                {clans.map((clan) => (
+                  <div key={clan.id} className="flex items-center justify-between p-3 rounded-xl bg-secondary/30 border border-border/30">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-primary" />
+                      <span className="font-display font-bold text-sm">{clan.name}</span>
+                    </div>
+                    <button
+                      onClick={() => deleteClan(clan.id, clan.name)}
+                      className="p-1.5 text-destructive/60 hover:text-destructive rounded-lg hover:bg-destructive/10 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="glass-card p-4 space-y-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Criar Novo Clã</p>
+            <div className="flex gap-2">
+              <input
+                value={newClanName}
+                onChange={(e) => setNewClanName(e.target.value)}
+                placeholder="Nome do clã (ex: AZ3)"
+                className="input-modern flex-1 text-sm"
+                onKeyDown={(e) => e.key === "Enter" && addClan()}
+              />
+              <button
+                onClick={addClan}
+                disabled={addingClan || !newClanName.trim()}
+                className="btn-primary px-4 text-sm flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <Plus className="w-4 h-4" />
+                {addingClan ? "..." : "Criar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* WhatsApp Tab */}
       {tab === "whatsapp" && (
