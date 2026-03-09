@@ -20,6 +20,7 @@ type Player = {
   auth_id: string | null;
   created_at: string;
   clan_role: string | null;
+  clan: string | null;
 };
 
 type ClassIcon = { name: string; image_url: string | null; description: string | null };
@@ -44,6 +45,7 @@ export default function PlayersPage() {
   });
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState<string | null>(searchParams.get("class"));
+  const [clanFilter, setClanFilter] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
   // Edit modal state
@@ -53,6 +55,7 @@ export default function PlayersPage() {
   const [editRole, setEditRole] = useState<AppRole>("user");
   const [editPhone, setEditPhone] = useState("");
   const [editClanRole, setEditClanRole] = useState("membro");
+  const [editClan, setEditClan] = useState("AZ");
   const [saving, setSaving] = useState(false);
 
   // Reset password modal
@@ -72,7 +75,7 @@ export default function PlayersPage() {
   const fetchData = async () => {
     setLoading(true);
     const [playersRes, iconsRes, rankingsRes] = await Promise.all([
-      supabase.from("users").select("id, nickname, class, phone, role, auth_id, created_at, clan_role").order("created_at", { ascending: false }),
+      supabase.from("users").select("id, nickname, class, phone, role, auth_id, created_at, clan_role, clan").order("created_at", { ascending: false }),
       supabase.from("character_classes").select("name, image_url, description"),
       supabase.from("player_rankings").select("user_id, level, xp, rank_position"),
     ]);
@@ -152,6 +155,9 @@ export default function PlayersPage() {
 
   const filtered = useMemo(() => {
     let list = players;
+    if (clanFilter) {
+      list = list.filter((p) => (p.clan || "AZ") === clanFilter);
+    }
     if (classFilter) {
       list = list.filter((p) => p.class === classFilter);
     }
@@ -172,7 +178,7 @@ export default function PlayersPage() {
       const xpB = parseFloat((rb?.xp ?? "0").replace(",", ".")) || 0;
       return xpB - xpA;
     });
-  }, [players, search, classFilter, rankingMap]);
+  }, [players, search, classFilter, clanFilter, rankingMap]);
 
   const clearClassFilter = () => {
     setClassFilter(null);
@@ -194,6 +200,7 @@ export default function PlayersPage() {
     setEditRole(player.role);
     setEditPhone(player.phone || "");
     setEditClanRole(player.clan_role || "membro");
+    setEditClan(player.clan || "AZ");
     setMenuOpen(null);
   };
 
@@ -206,6 +213,7 @@ export default function PlayersPage() {
       role: editRole,
       phone: editPhone.replace(/\D/g, "") || null,
       clan_role: editClanRole,
+      clan: editClan,
     };
     const { error } = await supabase.from("users").update(payload).eq("id", editPlayer.id);
     if (error) {
@@ -356,6 +364,26 @@ export default function PlayersPage() {
         <p className="text-[10px] text-muted-foreground font-body text-right -mt-2">Última sync: {lastSync}</p>
       )}
 
+      {/* Clan Filter */}
+      <div className="flex gap-1.5">
+        {[null, "AZ", "AZ2"].map((clan) => (
+          <button
+            key={clan ?? "all"}
+            onClick={() => setClanFilter(clan)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-display font-bold transition-colors ${
+              clanFilter === clan
+                ? "bg-primary/20 text-primary border border-primary/30"
+                : "bg-secondary/50 text-muted-foreground hover:bg-secondary/80"
+            }`}
+          >
+            {clan ?? "Todos"}
+          </button>
+        ))}
+        <span className="ml-auto text-xs font-display font-bold text-muted-foreground self-center">
+          {filtered.length} jogadores
+        </span>
+      </div>
+
       {/* Class Filter Chips */}
       <div className="flex flex-wrap gap-1.5">
         <button
@@ -438,6 +466,7 @@ export default function PlayersPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="font-display font-bold text-sm truncate">{player.nickname}</span>
+                    <span className="text-[9px] font-display font-bold px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{player.clan || "AZ"}</span>
                     {(() => {
                       const label = getClanRoleLabel(player.clan_role);
                       const emoji = getClanRoleEmoji(player.clan_role);
@@ -579,6 +608,25 @@ export default function PlayersPage() {
                     }`}
                   >
                     {r === "admin" ? "👑 Admin" : "🎮 User"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Clã</span>
+              <div className="flex gap-2">
+                {["AZ", "AZ2"].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setEditClan(c)}
+                    className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-display font-bold uppercase tracking-wider transition-all border ${
+                      editClan === c
+                        ? "border-primary bg-primary/15 text-primary"
+                        : "border-border/40 text-muted-foreground hover:border-muted-foreground/30"
+                    }`}
+                  >
+                    {c}
                   </button>
                 ))}
               </div>
