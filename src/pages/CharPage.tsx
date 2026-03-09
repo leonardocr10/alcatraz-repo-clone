@@ -144,19 +144,19 @@ export default function CharPage() {
 
   const getEquipForSlot = (slot: EquipmentSlot) => equipment.find(e => e.slot === slot);
 
-  const handleEquip = async (slot: EquipmentSlot, itemId: string, rarity: Rarity, plusValue: number) => {
+  const handleEquip = async (slot: EquipmentSlot, itemId: string, rarity: Rarity, plusValue: number, mix?: string | null) => {
     if (!profile?.id) return;
     const existing = getEquipForSlot(slot);
     if (existing) {
       const { error } = await supabase
         .from("player_equipment")
-        .update({ item_id: itemId, rarity, plus_value: plusValue, updated_at: new Date().toISOString() })
+        .update({ item_id: itemId, rarity, plus_value: plusValue, mix: mix || null, updated_at: new Date().toISOString() })
         .eq("id", existing.id);
       if (error) { toast.error("Erro ao equipar"); return; }
     } else {
       const { error } = await supabase
         .from("player_equipment")
-        .insert({ user_id: profile.id, slot, item_id: itemId, rarity, plus_value: plusValue });
+        .insert({ user_id: profile.id, slot, item_id: itemId, rarity, plus_value: plusValue, mix: mix || null });
       if (error) { toast.error("Erro ao equipar"); return; }
     }
     toast.success("Equipamento atualizado!");

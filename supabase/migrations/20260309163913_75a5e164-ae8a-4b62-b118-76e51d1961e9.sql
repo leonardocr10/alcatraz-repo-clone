@@ -1,0 +1,1 @@
+ALTER TABLE public.player_equipment ADD COLUMN mix text DEFAULT NULL;

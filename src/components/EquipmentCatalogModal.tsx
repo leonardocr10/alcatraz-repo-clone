@@ -30,7 +30,7 @@ const RARITY_OPTIONS: { key: Rarity; label: string; borderColor: string; dotColo
 interface Props {
   slot: EquipmentSlot;
   slotLabel: string;
-  onEquip: (slot: EquipmentSlot, itemId: string, rarity: Rarity, plusValue: number) => void;
+  onEquip: (slot: EquipmentSlot, itemId: string, rarity: Rarity, plusValue: number, mix?: string | null) => void;
   onClose: () => void;
 }
 
@@ -42,7 +42,11 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
   const [selectedRarity, setSelectedRarity] = useState<Rarity>('normal');
   const [plusValue, setPlusValue] = useState(0);
   const [maxAging, setMaxAging] = useState(12);
+  const [selectedMix, setSelectedMix] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const showMix = ['anel_1', 'anel_2', 'colar'].includes(slot);
+  const MIX_OPTIONS = ['Raident', 'Celesto', 'Enigma'];
 
   useEffect(() => {
     const fetchData = async () => {
@@ -184,8 +188,13 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                       {RARITY_OPTIONS.find(r => r.key === selectedRarity)?.label}
                     </span>
                     {plusValue > 0 && (
-                      <span className={`text-[10px] font-display font-extrabold px-2 py-0.5 rounded-full bg-primary/20 text-primary`}>
+                      <span className="text-[10px] font-display font-extrabold px-2 py-0.5 rounded-full bg-primary/20 text-primary">
                         +{plusValue}
+                      </span>
+                    )}
+                    {selectedMix && (
+                      <span className="text-[10px] font-display font-extrabold px-2 py-0.5 rounded-full bg-primary/20 text-primary uppercase">
+                        Mix{selectedMix}
                       </span>
                     )}
                   </div>
@@ -249,12 +258,36 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
               </div>
             </div>
           </div>
-        </div>
+
+            {/* Mix selector for rings and necklace */}
+            {showMix && (
+              <div>
+                <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-widest mb-2">
+                  Specialization (Mix)
+                </p>
+                <div className="flex gap-1.5">
+                  {MIX_OPTIONS.map(mix => (
+                    <button
+                      key={mix}
+                      onClick={() => setSelectedMix(selectedMix === mix ? null : mix)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-display font-bold uppercase tracking-wider transition-all ${
+                        selectedMix === mix
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-secondary/50 text-muted-foreground hover:bg-secondary/80'
+                      }`}
+                    >
+                      {mix}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
         {/* Confirm button */}
         <button
           disabled={!selectedItem}
-          onClick={() => selectedItem && onEquip(slot, selectedItem.id, selectedRarity, plusValue)}
+          onClick={() => selectedItem && onEquip(slot, selectedItem.id, selectedRarity, plusValue, selectedMix)}
           className="w-full mt-3 py-3 rounded-xl bg-primary/80 hover:bg-primary text-primary-foreground font-display font-extrabold text-sm uppercase tracking-widest transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           Confirmar Equipamento →
