@@ -254,8 +254,8 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                   min={0}
                   max={maxAging}
                   value={plusValue}
-                  onChange={e => setPlusValue(Number(e.target.value))}
-                  className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-secondary/50 accent-primary"
+                  onChange={e => { setPlusValue(Number(e.target.value)); if (Number(e.target.value) > 0) setSelectedMix(null); }}
+                  className={`w-full h-1.5 rounded-full appearance-none cursor-pointer bg-secondary/50 accent-primary ${selectedMix ? 'opacity-30 pointer-events-none' : ''}`}
                 />
                 <div className="flex justify-between mt-1">
                   <span className="text-[8px] text-muted-foreground">+0</span>
