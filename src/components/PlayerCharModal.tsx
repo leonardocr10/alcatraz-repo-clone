@@ -58,6 +58,7 @@ interface Props {
 
 export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
   const [equipment, setEquipment] = useState<PlayerEquip[]>([]);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
