@@ -5,7 +5,15 @@ import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const buildVersion = `${now.getFullYear()}.${pad(now.getMonth() + 1)}.${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+
+  return ({
+  define: {
+    __APP_VERSION__: JSON.stringify(buildVersion),
+  },
   server: {
     host: "::",
     port: 8080,
