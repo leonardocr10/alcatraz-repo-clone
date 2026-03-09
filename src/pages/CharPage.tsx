@@ -172,6 +172,16 @@ export default function CharPage() {
     fetchEquipment();
   };
 
+  const handleClearAll = async () => {
+    if (!profile?.id || equipment.length === 0) return;
+    if (!confirm("Remover todos os equipamentos?")) return;
+    const ids = equipment.map(e => e.id);
+    await supabase.from("player_equipment").delete().in("id", ids);
+    toast.success("Todos os equipamentos removidos");
+    fetchEquipment();
+  };
+  };
+
   const renderSlot = (slotCfg: typeof SLOT_CONFIG[number], isLarge: boolean) => {
     const equip = getEquipForSlot(slotCfg.slot);
     const sizeClass = isLarge ? 'aspect-[3/4]' : 'aspect-square';
