@@ -66,36 +66,30 @@ interface Props {
 }
 
 const convertImageToBase64 = async (url: string): Promise<string> => {
+  if (url.startsWith('data:') || url.startsWith('blob:')) return url;
+  
   try {
-    const response = await fetch(url, { mode: 'cors' });
-    if (!response.ok) throw new Error('fetch failed');
-    const blob = await response.blob();
-    return await new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = () => resolve(url);
-      reader.readAsDataURL(blob);
+    const { data, error } = await supabase.functions.invoke('image-proxy', {
+      body: { url },
     });
+    if (error) throw error;
+    if (data?.base64) return data.base64;
+    throw new Error('No base64 returned');
   } catch (e) {
-    // Fallback: use Image + Canvas
-    return new Promise<string>((resolve) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.naturalWidth;
-          canvas.height = img.naturalHeight;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0);
-          resolve(canvas.toDataURL('image/png'));
-        } catch {
-          resolve(url);
-        }
-      };
-      img.onerror = () => resolve(url);
-      img.src = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
-    });
+    console.error('Image proxy error for:', url, e);
+    try {
+      const response = await fetch(url, { mode: 'cors' });
+      if (!response.ok) throw new Error('fetch failed');
+      const blob = await response.blob();
+      return await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = () => resolve(url);
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return url;
+    }
   }
 };
 
