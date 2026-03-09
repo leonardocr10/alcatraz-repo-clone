@@ -69,6 +69,8 @@ export default function CharPage() {
   const [catalogSlot, setCatalogSlot] = useState<EquipmentSlot | null>(null);
   const [charVisible, setCharVisible] = useState(false);
   const [togglingVisibility, setTogglingVisibility] = useState(false);
+  const [avatarExpanded, setAvatarExpanded] = useState(false);
+  const [playerRanking, setPlayerRanking] = useState<{ level: number | null; xp: string | null } | null>(null);
 
   const fetchEquipment = async () => {
     if (!profile?.id) return;
