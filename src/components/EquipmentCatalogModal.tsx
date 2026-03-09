@@ -253,7 +253,31 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
               </div>
             </div>
           </div>
-        </div>
+
+            {/* Mix selector for rings and necklace */}
+            {showMix && (
+              <div>
+                <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-widest mb-2">
+                  Specialization (Mix)
+                </p>
+                <div className="flex gap-1.5">
+                  {MIX_OPTIONS.map(mix => (
+                    <button
+                      key={mix}
+                      onClick={() => setSelectedMix(selectedMix === mix ? null : mix)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-display font-bold uppercase tracking-wider transition-all ${
+                        selectedMix === mix
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-secondary/50 text-muted-foreground hover:bg-secondary/80'
+                      }`}
+                    >
+                      {mix}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
         {/* Confirm button */}
         <button
