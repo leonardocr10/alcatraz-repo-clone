@@ -55,6 +55,7 @@ export default function PlayersPage() {
   const [editRole, setEditRole] = useState<AppRole>("user");
   const [editPhone, setEditPhone] = useState("");
   const [editClanRole, setEditClanRole] = useState("membro");
+  const [editClan, setEditClan] = useState("AZ");
   const [saving, setSaving] = useState(false);
 
   // Reset password modal
