@@ -34,6 +34,7 @@ const ALL_CLASSES: CharacterClass[] = [
 
 export default function PlayersPage() {
   const { isAdmin, profile } = useAuth();
+  const { clans } = useClans();
   const [searchParams, setSearchParams] = useSearchParams();
   const [players, setPlayers] = useState<Player[]>([]);
   const [icons, setIcons] = useState<ClassIcon[]>([]);
