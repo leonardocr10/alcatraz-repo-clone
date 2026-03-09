@@ -1,7 +1,19 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Dices, Users, Shield, Swords, History, ScrollText, ChevronRight } from "lucide-react";
+import { Dices, Users, Shield, Swords, History, ScrollText, ChevronRight, Trophy, Star } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import logoAz from "@/assets/logo-az.jpeg";
 import bgClasses from "@/assets/bg-classes.jpg";
+
+interface LandingStats {
+  totalMembers: number;
+  totalClasses: number;
+  totalItems: number;
+  totalSessions: number;
+  topPlayers: { nickname: string; level: number | null; game_class: string | null }[];
+  classes: { name: string; image_url: string | null }[];
+  recentWinners: { nickname: string; item_name: string }[];
+}
 
 const features = [
   {
@@ -16,8 +28,8 @@ const features = [
   },
   {
     icon: Swords,
-    title: "8 Classes de Personagens",
-    description: "Fighter, Mechanician, Archer, Pikeman, Knight, Atalanta, Priestess e Magician.",
+    title: "Classes de Personagens",
+    description: "Diversas classes com habilidades únicas para cada estilo de jogo.",
   },
   {
     icon: History,
@@ -38,6 +50,40 @@ const features = [
 
 const Index = () => {
   const navigate = useNavigate();
+  const [stats, setStats] = useState<LandingStats | null>(null);
+
+  useEffect(() => {
+    async function loadStats() {
+      const [usersRes, classesRes, itemsRes, sessionsRes, rankingsRes, winnersRes] = await Promise.all([
+        supabase.from("users").select("id", { count: "exact", head: true }).eq("approved", true),
+        supabase.from("character_classes").select("name, image_url"),
+        supabase.from("roulette_items").select("id", { count: "exact", head: true }),
+        supabase.from("roulette_sessions").select("id", { count: "exact", head: true }),
+        supabase.from("player_rankings").select("nickname, level, game_class").order("level", { ascending: false }).limit(5),
+        supabase
+          .from("roulette_winners")
+          .select("number, users!roulette_winners_user_id_fkey(nickname), roulette_items!roulette_winners_item_id_fkey(name)")
+          .order("created_at", { ascending: false })
+          .limit(5),
+      ]);
+
+      const recentWinners = (winnersRes.data || []).map((w: any) => ({
+        nickname: w.users?.nickname || "?",
+        item_name: w.roulette_items?.name || "?",
+      }));
+
+      setStats({
+        totalMembers: usersRes.count || 0,
+        totalClasses: classesRes.data?.length || 0,
+        totalItems: itemsRes.count || 0,
+        totalSessions: sessionsRes.count || 0,
+        topPlayers: rankingsRes.data || [],
+        classes: classesRes.data || [],
+        recentWinners,
+      });
+    }
+    loadStats();
+  }, []);
 
   return (
     <div className="min-h-screen text-foreground relative overflow-hidden">
@@ -86,10 +132,10 @@ const Index = () => {
         <div className="mx-auto max-w-4xl px-6">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
-              { value: "8", label: "Classes" },
-              { value: "100+", label: "Membros" },
-              { value: "24/7", label: "Online" },
-              { value: "∞", label: "Prêmios" },
+              { value: stats?.totalMembers ?? "—", label: "Membros" },
+              { value: stats?.totalClasses ?? "—", label: "Classes" },
+              { value: stats?.totalItems ?? "—", label: "Itens na Roleta" },
+              { value: stats?.totalSessions ?? "—", label: "Sessões Realizadas" },
             ].map((stat, idx) => (
               <div
                 key={idx}
@@ -106,6 +152,81 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Classes Section */}
+      {stats && stats.classes.length > 0 && (
+        <section className="py-10">
+          <div className="mx-auto max-w-4xl px-6">
+            <h2 className="font-display text-2xl sm:text-3xl font-bold text-center mb-6">
+              <span className="text-primary">Classes</span> Disponíveis
+            </h2>
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
+              {stats.classes.map((cls, idx) => (
+                <div key={idx} className="flex flex-col items-center gap-1.5">
+                  {cls.image_url ? (
+                    <img src={cls.image_url} alt={cls.name} className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover border border-border/40" />
+                  ) : (
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-primary/15 flex items-center justify-center">
+                      <Swords className="w-6 h-6 text-primary" />
+                    </div>
+                  )}
+                  <span className="text-[10px] sm:text-xs font-display font-bold text-center leading-tight">{cls.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Top Players */}
+      {stats && stats.topPlayers.length > 0 && (
+        <section className="py-10">
+          <div className="mx-auto max-w-4xl px-6">
+            <h2 className="font-display text-2xl sm:text-3xl font-bold text-center mb-6">
+              <span className="text-primary">Top</span> Jogadores
+            </h2>
+            <div className="grid sm:grid-cols-5 grid-cols-2 gap-3">
+              {stats.topPlayers.map((player, idx) => (
+                <div key={idx} className="glass-card rounded-2xl p-4 text-center border border-border/30">
+                  <div className="flex justify-center mb-2">
+                    {idx === 0 ? (
+                      <Trophy className="w-6 h-6 text-yellow-400" />
+                    ) : (
+                      <Star className="w-5 h-5 text-muted-foreground" />
+                    )}
+                  </div>
+                  <p className="font-display font-bold text-sm truncate">{player.nickname}</p>
+                  {player.level && (
+                    <p className="text-xs text-primary font-display font-bold">Lv.{player.level}</p>
+                  )}
+                  {player.game_class && (
+                    <p className="text-[10px] text-muted-foreground font-body">{player.game_class}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Recent Winners */}
+      {stats && stats.recentWinners.length > 0 && (
+        <section className="py-10">
+          <div className="mx-auto max-w-4xl px-6">
+            <h2 className="font-display text-2xl sm:text-3xl font-bold text-center mb-6">
+              Últimos <span className="text-primary">Ganhadores</span>
+            </h2>
+            <div className="space-y-2">
+              {stats.recentWinners.map((w, idx) => (
+                <div key={idx} className="glass-card rounded-xl p-3 border border-border/30 flex items-center justify-between">
+                  <span className="font-display font-bold text-sm">{w.nickname}</span>
+                  <span className="text-xs text-primary font-body">{w.item_name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Features Section */}
       <section className="py-12">
