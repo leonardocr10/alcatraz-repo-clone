@@ -292,6 +292,11 @@ const AdminPage = () => {
                   <span className="text-muted-foreground truncate">{newBossMapFile ? newBossMapFile.name : "Imagem do mapa"}</span>
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setNewBossMapFile(e.target.files[0]); }} />
                 </label>
+                <label className="flex items-center gap-2 input-modern cursor-pointer hover:border-primary/50">
+                  <Volume2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground truncate">{newBossAudioFile ? newBossAudioFile.name : "Áudio de alerta (.wav)"}</span>
+                  <input type="file" accept="audio/wav,audio/wave,.wav" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setNewBossAudioFile(e.target.files[0]); }} />
+                </label>
                 <button onClick={async () => { await createBoss(); setShowBossModal(false); }} disabled={uploading} className="w-full btn-primary text-sm flex items-center justify-center gap-2">
                   {uploading ? <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
                   {uploading ? "Enviando..." : "Cadastrar Boss"}
