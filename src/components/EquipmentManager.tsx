@@ -45,6 +45,7 @@ export default function EquipmentManager() {
   const [editName, setEditName] = useState("");
   const [editImageUrl, setEditImageUrl] = useState("");
   const [editCategoryId, setEditCategoryId] = useState("");
+  const [editSlot, setEditSlot] = useState<EquipmentSlot>("arma_1m");
   const [editFile, setEditFile] = useState<File | null>(null);
   const [editPreview, setEditPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -89,6 +90,7 @@ export default function EquipmentManager() {
     setEditName(item.name);
     setEditImageUrl(item.image_url);
     setEditCategoryId(item.category_id);
+    setEditSlot(item.slot);
     setEditFile(null);
     setEditPreview(null);
   };
@@ -98,6 +100,7 @@ export default function EquipmentManager() {
     setEditName("");
     setEditImageUrl("");
     setEditCategoryId("");
+    setEditSlot("arma_1m");
     setEditFile(null);
     setEditPreview(null);
   };
@@ -126,12 +129,12 @@ export default function EquipmentManager() {
       }
       const { error } = await supabase
         .from("equipment_items")
-        .update({ name: editName, image_url: finalUrl, category_id: editCategoryId })
+        .update({ name: editName, image_url: finalUrl, category_id: editCategoryId, slot: editSlot })
         .eq("id", editingItem.id);
       if (error) throw error;
       toast.success("Item atualizado!");
       setItems(prev => prev.map(i =>
-        i.id === editingItem.id ? { ...i, name: editName, image_url: finalUrl, category_id: editCategoryId } : i
+        i.id === editingItem.id ? { ...i, name: editName, image_url: finalUrl, category_id: editCategoryId, slot: editSlot } : i
       ));
       cancelEdit();
     } catch (err: any) {
@@ -389,21 +392,40 @@ export default function EquipmentManager() {
               <input value={editName} onChange={e => setEditName(e.target.value)} className="input-modern text-sm" />
             </label>
 
+            {/* Slot selector */}
+            <label className="block space-y-1">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Slot</span>
+              <select
+                value={editSlot}
+                onChange={e => {
+                  const newSlot = e.target.value as EquipmentSlot;
+                  setEditSlot(newSlot);
+                  const catsForSlot = categories.filter(c => c.slot === newSlot);
+                  if (catsForSlot.length > 0 && !catsForSlot.find(c => c.id === editCategoryId)) {
+                    setEditCategoryId(catsForSlot[0].id);
+                  }
+                }}
+                className="input-modern text-sm"
+              >
+                {(Object.keys(SLOT_LABELS) as EquipmentSlot[]).map(s => (
+                  <option key={s} value={s}>{SLOT_LABELS[s]}</option>
+                ))}
+              </select>
+            </label>
+
             {/* Category selector */}
-            {editingItem && (
-              <label className="block space-y-1">
-                <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Categoria</span>
-                <select
-                  value={editCategoryId}
-                  onChange={e => setEditCategoryId(e.target.value)}
-                  className="input-modern text-sm"
-                >
-                  {categories.filter(c => c.slot === editingItem.slot).map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
-              </label>
-            )}
+            <label className="block space-y-1">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Categoria</span>
+              <select
+                value={editCategoryId}
+                onChange={e => setEditCategoryId(e.target.value)}
+                className="input-modern text-sm"
+              >
+                {categories.filter(c => c.slot === editSlot).map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </label>
 
             <label className="block space-y-1">
               <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">URL da Imagem (prioritário)</span>
