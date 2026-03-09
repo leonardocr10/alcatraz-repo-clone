@@ -224,7 +224,7 @@ export function useBossNotifications() {
             badge: "/pwa-icon-192.png",
             tag: key,
             requireInteraction: true,
-          }, soundEnabledRef.current, boss.name);
+          }, soundEnabledRef.current, boss.name, boss.audio_url);
         }
       }
 
