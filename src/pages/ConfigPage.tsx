@@ -178,6 +178,7 @@ export default function ConfigPage() {
     { key: "whatsapp" as const, label: "WhatsApp", icon: MessageCircle },
     { key: "theme" as const, label: "Tema", icon: Palette },
     { key: "rules" as const, label: "Regras", icon: ScrollText },
+    { key: "discord" as const, label: "Discord", icon: Link },
     { key: "clear" as const, label: "Limpar", icon: Trash2 },
   ];
 
