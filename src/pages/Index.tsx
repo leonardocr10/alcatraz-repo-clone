@@ -10,7 +10,7 @@ interface LandingStats {
   totalClasses: number;
   totalItems: number;
   totalSessions: number;
-  topPlayers: { nickname: string; level: number | null; game_class: string | null }[];
+  topPlayers: { nickname: string; level: number | null; xp: string | null; game_class: string | null }[];
   classes: { name: string; image_url: string | null }[];
   recentWinners: { nickname: string; item_name: string }[];
 }
