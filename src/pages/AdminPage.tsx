@@ -72,12 +72,7 @@ const AdminPage = () => {
     }
   }, []);
 
-  const fetchPendingUsers = useCallback(async () => {
-    const { data } = await supabase.from("users").select("*").eq("approved", false).order("created_at", { ascending: false });
-    setPendingUsers(data || []);
-  }, []);
-
-  useEffect(() => { fetchItems(); fetchSessions(); fetchWinners(); fetchBosses(); fetchPendingUsers(); }, [fetchItems, fetchSessions, fetchWinners, fetchBosses, fetchPendingUsers]);
+  useEffect(() => { fetchItems(); fetchSessions(); fetchWinners(); fetchBosses(); }, [fetchItems, fetchSessions, fetchWinners, fetchBosses]);
 
   // Upload helper
   const uploadFile = async (file: File, bucket: string) => {
