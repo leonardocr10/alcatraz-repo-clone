@@ -240,7 +240,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
 
             {/* Aging Enhancement - only for weapon/armor slots */}
             {hasAging && (
-              <div>
+              <div className={selectedMix ? 'opacity-40' : ''}>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-widest">
                     Aging Enhancement
