@@ -60,17 +60,23 @@ const HomePage = () => {
   const bossNotify = useBossNotifications();
   const [confirmSendAll, setConfirmSendAll] = useState(false);
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
+  const [pendingClanMap, setPendingClanMap] = useState<Record<string, string>>({});
 
   const fetchPendingUsers = useCallback(async () => {
     if (!isAdmin) return;
     const { data } = await supabase.from("users").select("*").eq("approved", false).order("created_at", { ascending: false });
     setPendingUsers(data || []);
+    // Initialize clan map for pending users
+    const map: Record<string, string> = {};
+    (data || []).forEach((u: any) => { map[u.id] = u.clan || "AZ"; });
+    setPendingClanMap(map);
   }, [isAdmin]);
 
   const approveUser = async (userId: string) => {
-    const { error } = await supabase.from("users").update({ approved: true }).eq("id", userId);
+    const clan = pendingClanMap[userId] || "AZ";
+    const { error } = await supabase.from("users").update({ approved: true, clan }).eq("id", userId);
     if (error) { toast.error(error.message); return; }
-    toast.success("Usuário aprovado!");
+    toast.success(`Usuário aprovado no ${clan}!`);
     fetchPendingUsers();
   };
 
