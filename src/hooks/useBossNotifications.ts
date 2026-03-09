@@ -9,6 +9,7 @@ interface Boss {
   name: string;
   map_level: string | null;
   image_url: string | null;
+  audio_url: string | null;
 }
 
 interface BossSchedule {
@@ -20,6 +21,7 @@ interface BossSchedule {
 
 let activeAlertInterval: ReturnType<typeof setInterval> | null = null;
 let isSpeaking = false;
+let activeAudio: HTMLAudioElement | null = null;
 
 function stopAlertSound() {
   if (activeAlertInterval) {
@@ -29,6 +31,25 @@ function stopAlertSound() {
   isSpeaking = false;
   if ("speechSynthesis" in window) {
     window.speechSynthesis.cancel();
+  }
+  if (activeAudio) {
+    activeAudio.pause();
+    activeAudio.currentTime = 0;
+    activeAudio = null;
+  }
+}
+
+function playBossAudio(audioUrl: string) {
+  stopAlertSound();
+  try {
+    const audio = new Audio(audioUrl);
+    audio.volume = 1;
+    activeAudio = audio;
+    audio.onended = () => { activeAudio = null; };
+    audio.onerror = () => { activeAudio = null; };
+    audio.play().catch(() => { activeAudio = null; });
+  } catch (e) {
+    console.log("[Notify] Could not play boss audio", e);
   }
 }
 
@@ -44,7 +65,6 @@ function speakAlert(bossName?: string) {
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
     utterance.volume = 1;
-    // Try to pick a more natural voice
     const voices = window.speechSynthesis.getVoices();
     const ptVoice = voices.find(v => v.lang.startsWith("pt") && v.name.toLowerCase().includes("google"))
       || voices.find(v => v.lang.startsWith("pt-BR"))
@@ -60,22 +80,22 @@ function speakAlert(bossName?: string) {
   }
 }
 
-function startAlertSoundLoop(bossName?: string) {
-  stopAlertSound();
-  speakAlert(bossName);
-  activeAlertInterval = setInterval(() => speakAlert(bossName), 6000);
-}
-
-async function showNotification(title: string, options: NotificationOptions, soundEnabled: boolean, bossName?: string) {
+async function showNotification(title: string, options: NotificationOptions, soundEnabled: boolean, bossName?: string, audioUrl?: string | null) {
   if (soundEnabled) {
-    startAlertSoundLoop(bossName);
+    if (audioUrl) {
+      // Play custom audio once, no loop
+      playBossAudio(audioUrl);
+    } else {
+      // Fallback: speak once (no loop)
+      stopAlertSound();
+      speakAlert(bossName);
+    }
   }
 
   if ("serviceWorker" in navigator) {
     try {
       const reg = await navigator.serviceWorker.ready;
       await reg.showNotification(title, options);
-      if (soundEnabled) setTimeout(stopAlertSound, 60000);
       return;
     } catch (e) {
       console.log("[Notify] SW fallback to basic Notification", e);
@@ -88,7 +108,6 @@ async function showNotification(title: string, options: NotificationOptions, sou
     window.focus();
     notif.close();
   };
-  if (soundEnabled) setTimeout(stopAlertSound, 60000);
 }
 
 export function useBossNotifications() {
@@ -162,7 +181,7 @@ export function useBossNotifications() {
 
     const checkBosses = async () => {
       const [bossRes, schedRes] = await Promise.all([
-        supabase.from("bosses").select("id, name, map_level, image_url"),
+        supabase.from("bosses").select("id, name, map_level, image_url, audio_url") as any,
         supabase.from("boss_schedules").select("id, boss_id, spawn_time, notify_minutes_before"),
       ]);
 
@@ -205,7 +224,7 @@ export function useBossNotifications() {
             badge: "/pwa-icon-192.png",
             tag: key,
             requireInteraction: true,
-          }, soundEnabledRef.current, boss.name);
+          }, soundEnabledRef.current, boss.name, boss.audio_url);
         }
       }
 

@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, Trash2, Play, Square, Trophy, Check, GripVertical, Users, Upload, Skull, Clock, MapPin, Image, Crown, Package, Layers, X, UserCheck, UserX, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Play, Square, Trophy, Check, GripVertical, Users, Upload, Skull, Clock, MapPin, Image, Crown, Package, Layers, X, UserCheck, UserX, ChevronDown, Pencil, Volume2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -35,14 +35,25 @@ const AdminPage = () => {
   const [newBossDesc, setNewBossDesc] = useState("");
   const [newBossFile, setNewBossFile] = useState<File | null>(null);
   const [newBossMapFile, setNewBossMapFile] = useState<File | null>(null);
+  const [newBossAudioFile, setNewBossAudioFile] = useState<File | null>(null);
   const [bossSchedules, setBossSchedules] = useState<Record<string, any[]>>({});
   const [newScheduleTime, setNewScheduleTime] = useState<Record<string, string>>({});
   const [newScheduleMinutes, setNewScheduleMinutes] = useState<Record<string, number>>({});
   const [bossOpenState, setBossOpenState] = useState<Record<string, boolean>>({});
 
+  // Edit boss state
+  const [editBoss, setEditBoss] = useState<any | null>(null);
+  const [editBossName, setEditBossName] = useState("");
+  const [editBossMap, setEditBossMap] = useState("");
+  const [editBossDesc, setEditBossDesc] = useState("");
+  const [editBossFile, setEditBossFile] = useState<File | null>(null);
+  const [editBossMapFile, setEditBossMapFile] = useState<File | null>(null);
+  const [editBossAudioFile, setEditBossAudioFile] = useState<File | null>(null);
+
   // Tab
   const [tab, setTab] = useState<"boss" | "items" | "sessions" | "winners">("boss");
   const [showBossModal, setShowBossModal] = useState(false);
+  const [showEditBossModal, setShowEditBossModal] = useState(false);
 
 
   // Fetch functions
@@ -84,6 +95,10 @@ const AdminPage = () => {
     if (error) throw error;
     const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
     return urlData.publicUrl;
+  };
+
+  const uploadAudioFile = async (file: File) => {
+    return uploadFile(file, "boss-audio");
   };
 
   // Item functions
@@ -152,19 +167,62 @@ const AdminPage = () => {
     try {
       let imageUrl = null;
       let mapImageUrl = null;
+      let audioUrl = null;
       if (newBossFile) imageUrl = await uploadFile(newBossFile, "boss-images");
       if (newBossMapFile) mapImageUrl = await uploadFile(newBossMapFile, "boss-images");
+      if (newBossAudioFile) audioUrl = await uploadAudioFile(newBossAudioFile);
       const { error } = await supabase.from("bosses").insert({
         name: newBossName.trim(),
         map_level: newBossMap.trim() || null,
         description: newBossDesc.trim() || null,
         image_url: imageUrl,
         map_image_url: mapImageUrl,
-      });
+        audio_url: audioUrl,
+      } as any);
       if (error) throw error;
-      toast.success("Boss criado!"); setNewBossName(""); setNewBossMap(""); setNewBossDesc(""); setNewBossFile(null); setNewBossMapFile(null); fetchBosses();
+      toast.success("Boss criado!"); setNewBossName(""); setNewBossMap(""); setNewBossDesc(""); setNewBossFile(null); setNewBossMapFile(null); setNewBossAudioFile(null); fetchBosses();
     } catch (err: any) { toast.error(err.message || "Erro ao criar boss"); }
     finally { setUploading(false); }
+  };
+
+  const openEditBoss = (boss: any) => {
+    setEditBoss(boss);
+    setEditBossName(boss.name);
+    setEditBossMap(boss.map_level || "");
+    setEditBossDesc(boss.description || "");
+    setEditBossFile(null);
+    setEditBossMapFile(null);
+    setEditBossAudioFile(null);
+    setShowEditBossModal(true);
+  };
+
+  const updateBoss = async () => {
+    if (!editBoss || !editBossName.trim()) return;
+    setUploading(true);
+    try {
+      const updates: any = {
+        name: editBossName.trim(),
+        map_level: editBossMap.trim() || null,
+        description: editBossDesc.trim() || null,
+      };
+      if (editBossFile) updates.image_url = await uploadFile(editBossFile, "boss-images");
+      if (editBossMapFile) updates.map_image_url = await uploadFile(editBossMapFile, "boss-images");
+      if (editBossAudioFile) updates.audio_url = await uploadAudioFile(editBossAudioFile);
+      const { error } = await supabase.from("bosses").update(updates).eq("id", editBoss.id);
+      if (error) throw error;
+      toast.success("Boss atualizado!");
+      setShowEditBossModal(false);
+      setEditBoss(null);
+      fetchBosses();
+    } catch (err: any) { toast.error(err.message || "Erro ao atualizar boss"); }
+    finally { setUploading(false); }
+  };
+
+  const removeBossAudio = async (bossId: string) => {
+    const { error } = await supabase.from("bosses").update({ audio_url: null } as any).eq("id", bossId);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Áudio removido!");
+    fetchBosses();
   };
 
   const deleteBoss = async (id: string) => { await supabase.from("bosses").delete().eq("id", id); toast.success("Boss removido!"); fetchBosses(); };
@@ -234,9 +292,58 @@ const AdminPage = () => {
                   <span className="text-muted-foreground truncate">{newBossMapFile ? newBossMapFile.name : "Imagem do mapa"}</span>
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setNewBossMapFile(e.target.files[0]); }} />
                 </label>
+                <label className="flex items-center gap-2 input-modern cursor-pointer hover:border-primary/50">
+                  <Volume2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground truncate">{newBossAudioFile ? newBossAudioFile.name : "Áudio de alerta (.wav)"}</span>
+                  <input type="file" accept="audio/wav,audio/wave,.wav" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setNewBossAudioFile(e.target.files[0]); }} />
+                </label>
                 <button onClick={async () => { await createBoss(); setShowBossModal(false); }} disabled={uploading} className="w-full btn-primary text-sm flex items-center justify-center gap-2">
                   {uploading ? <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
                   {uploading ? "Enviando..." : "Cadastrar Boss"}
+                </button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Edit Boss Modal */}
+          <Dialog open={showEditBossModal} onOpenChange={setShowEditBossModal}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="font-display text-sm font-extrabold uppercase tracking-wider flex items-center gap-2">
+                  <Pencil className="w-4 h-4 text-primary" /> Editar Boss
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <input value={editBossName} onChange={(e) => setEditBossName(e.target.value)} placeholder="Nome do boss" className="input-modern" />
+                <input value={editBossMap} onChange={(e) => setEditBossMap(e.target.value)} placeholder="Nome do mapa" className="input-modern" />
+                <textarea value={editBossDesc} onChange={(e) => setEditBossDesc(e.target.value)} placeholder="Descrição..." rows={2} className="input-modern" />
+                <label className="flex items-center gap-2 input-modern cursor-pointer hover:border-primary/50">
+                  <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground truncate">{editBossFile ? editBossFile.name : editBoss?.image_url ? "Trocar imagem do boss" : "Imagem do boss"}</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setEditBossFile(e.target.files[0]); }} />
+                </label>
+                <label className="flex items-center gap-2 input-modern cursor-pointer hover:border-primary/50">
+                  <Image className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground truncate">{editBossMapFile ? editBossMapFile.name : editBoss?.map_image_url ? "Trocar imagem do mapa" : "Imagem do mapa"}</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setEditBossMapFile(e.target.files[0]); }} />
+                </label>
+                <div className="space-y-1">
+                  <label className="flex items-center gap-2 input-modern cursor-pointer hover:border-primary/50">
+                    <Volume2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground truncate">{editBossAudioFile ? editBossAudioFile.name : editBoss?.audio_url ? "Trocar áudio (.wav)" : "Áudio de alerta (.wav)"}</span>
+                    <input type="file" accept="audio/wav,audio/wave,.wav" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setEditBossAudioFile(e.target.files[0]); }} />
+                  </label>
+                  {editBoss?.audio_url && !editBossAudioFile && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Volume2 className="w-3 h-3" />
+                      <span className="truncate flex-1">Áudio atual definido</span>
+                      <button onClick={() => { removeBossAudio(editBoss.id); setEditBoss({ ...editBoss, audio_url: null }); }} className="text-destructive/70 hover:text-destructive text-[10px] font-bold">Remover</button>
+                    </div>
+                  )}
+                </div>
+                <button onClick={async () => { await updateBoss(); }} disabled={uploading} className="w-full btn-primary text-sm flex items-center justify-center gap-2">
+                  {uploading ? <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <Check className="w-4 h-4" />}
+                  {uploading ? "Salvando..." : "Salvar Alterações"}
                 </button>
               </div>
             </DialogContent>
@@ -269,9 +376,14 @@ const AdminPage = () => {
                       </div>
                     </button>
                   </CollapsibleTrigger>
-                  <button onClick={() => deleteBoss(boss.id)} className="text-destructive/60 hover:text-destructive p-2 rounded-xl hover:bg-destructive/10 shrink-0 ml-2">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1 shrink-0 ml-2">
+                    <button onClick={() => openEditBoss(boss)} className="text-muted-foreground hover:text-primary p-2 rounded-xl hover:bg-primary/10">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => deleteBoss(boss.id)} className="text-destructive/60 hover:text-destructive p-2 rounded-xl hover:bg-destructive/10">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 <CollapsibleContent>
