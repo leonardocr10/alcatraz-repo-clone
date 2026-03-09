@@ -365,7 +365,20 @@ const HomePage = () => {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
+            {bossNotify.enabled && (
+              <button
+                onClick={bossNotify.toggleSound}
+                className={`text-[10px] font-display font-bold p-1.5 rounded-xl transition-colors ${
+                  bossNotify.soundEnabled
+                    ? "bg-primary/15 text-primary hover:bg-primary/25"
+                    : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                }`}
+                title={bossNotify.soundEnabled ? "Som ativado" : "Som desativado"}
+              >
+                {bossNotify.soundEnabled ? "🔊" : "🔇"}
+              </button>
+            )}
             {bossNotify.enabled && isAdmin && (
               <button
                 onClick={() => {
