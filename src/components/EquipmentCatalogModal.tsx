@@ -284,6 +284,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
               </div>
             )}
           </div>
+        </div>
 
         {/* Confirm button */}
         <button
