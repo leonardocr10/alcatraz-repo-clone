@@ -155,6 +155,9 @@ export default function PlayersPage() {
 
   const filtered = useMemo(() => {
     let list = players;
+    if (clanFilter) {
+      list = list.filter((p) => (p.clan || "AZ") === clanFilter);
+    }
     if (classFilter) {
       list = list.filter((p) => p.class === classFilter);
     }
