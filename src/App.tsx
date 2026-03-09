@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/AppLayout";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { PWAUpdateBanner } from "@/components/PWAUpdateBanner";
+import Index from "@/pages/Index";
 import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/HomePage";
 import RouletteGamePage from "@/pages/RouletteGamePage";
@@ -58,7 +59,7 @@ const App = () => {
         <BrowserRouter>
           <AuthProvider>
             <Routes>
-            <Route path="/" element={<Navigate to="/inicio" replace />} />
+            <Route path="/" element={<Index />} />
             <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
             <Route path="/inicio" element={<ProtectedRoute><AppLayout><HomePage /></AppLayout></ProtectedRoute>} />
             <Route path="/roleta" element={<ProtectedRoute><AppLayout><RouletteGamePage /></AppLayout></ProtectedRoute>} />

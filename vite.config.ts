@@ -3,13 +3,14 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
+import fs from "fs";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  const pkg = JSON.parse(require('fs').readFileSync('./package.json', 'utf-8'));
+  const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
   const [major, minor, patch] = (pkg.version || '0.0.0').split('.').map(Number);
   const newVersion = `${major}.${minor}.${patch + 1}`;
-  require('fs').writeFileSync('./package.json', JSON.stringify({ ...pkg, version: newVersion }, null, 2) + '\n');
+  fs.writeFileSync('./package.json', JSON.stringify({ ...pkg, version: newVersion }, null, 2) + '\n');
   return ({
   define: {
     __APP_VERSION__: JSON.stringify(newVersion),
