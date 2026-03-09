@@ -126,7 +126,8 @@ const HomePage = () => {
   useEffect(() => {
     fetchBosses();
     fetchClassCounts();
-  }, [fetchBosses, fetchClassCounts]);
+    fetchPendingUsers();
+  }, [fetchBosses, fetchClassCounts, fetchPendingUsers]);
 
   useEffect(() => {
     const ch = supabase
