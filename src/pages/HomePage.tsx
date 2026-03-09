@@ -399,7 +399,9 @@ const HomePage = () => {
               <button className="w-full px-4 py-3 border-b border-border/40 flex items-center justify-between hover:bg-secondary/20 transition-colors">
                 <div className="flex items-center gap-2">
                   <Shield className="w-4 h-4 text-primary" />
-                  <span className="font-display text-sm font-extrabold uppercase tracking-wider">Classes do Clã</span>
+                  <span className="font-display text-sm font-extrabold uppercase tracking-wider">
+                    Classes do Clã{!isAdmin && profile?.clan ? ` ${profile.clan}` : ""}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1.5">
@@ -411,8 +413,26 @@ const HomePage = () => {
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
+              {/* Clan filter buttons — admin only */}
+              {isAdmin && clans.length > 0 && (
+                <div className="flex gap-1.5 px-3 pt-3 flex-wrap">
+                  {[null, ...clans.map(c => c.name)].map((clan) => (
+                    <button
+                      key={clan ?? "all"}
+                      onClick={() => setClassClanFilter(clan)}
+                      className={`px-3 py-1 rounded-xl text-xs font-display font-bold transition-colors ${
+                        classClanFilter === clan
+                          ? "bg-primary/20 text-primary border border-primary/30"
+                          : "bg-secondary/50 text-muted-foreground hover:bg-secondary/80"
+                      }`}
+                    >
+                      {clan ?? "Todos"}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="p-3 grid grid-cols-2 gap-2">
-                {classCounts.map(({ class: cls, count }) => {
+                {aggregatedClassCounts.map(({ class: cls, count }) => {
                   const icon = iconMap.get(cls);
                   return (
                     <button
