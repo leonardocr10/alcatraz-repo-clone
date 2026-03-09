@@ -266,7 +266,7 @@ export default function CharPage() {
             <img
               src={profile.avatar_url}
               alt={profile.nickname}
-              className="w-32 h-32 rounded-2xl object-cover border-2 border-primary/30 shadow-lg hover:scale-105 transition-transform cursor-pointer"
+              className="w-40 h-40 rounded-2xl object-cover border-2 border-primary/30 shadow-lg hover:scale-105 transition-transform cursor-pointer"
             />
           </button>
 
