@@ -228,13 +228,56 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              {classIcon ? (
-                <img src={classIcon} alt="" className="w-16 h-16 rounded-2xl object-cover border-2 border-primary/30" />
-              ) : (
-                <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center text-2xl font-bold text-primary">
-                  {profile?.nickname?.charAt(0).toUpperCase()}
-                </div>
-              )}
+              <div className="relative group">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="" className="w-16 h-16 rounded-2xl object-cover border-2 border-primary/30" />
+                ) : classIcon ? (
+                  <img src={classIcon} alt="" className="w-16 h-16 rounded-2xl object-cover border-2 border-primary/30" />
+                ) : (
+                  <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center text-2xl font-bold text-primary">
+                    {profile?.nickname?.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <label className="absolute inset-0 rounded-2xl bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                  {uploadingAvatar ? (
+                    <Loader2 className="w-5 h-5 text-white animate-spin" />
+                  ) : (
+                    <Camera className="w-5 h-5 text-white" />
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploadingAvatar}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file || !profile?.id) return;
+                      setUploadingAvatar(true);
+                      try {
+                        const ext = file.name.split('.').pop();
+                        const path = `${profile.id}/avatar.${ext}`;
+                        const { error: uploadErr } = await supabase.storage
+                          .from("avatars")
+                          .upload(path, file, { upsert: true });
+                        if (uploadErr) throw uploadErr;
+                        const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+                        const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+                        const { error: updateErr } = await supabase
+                          .from("users")
+                          .update({ avatar_url: avatarUrl })
+                          .eq("id", profile.id);
+                        if (updateErr) throw updateErr;
+                        toast.success("Foto atualizada!");
+                        // Refresh profile
+                        window.location.reload();
+                      } catch (err: any) {
+                        toast.error(err.message || "Erro ao enviar foto");
+                      }
+                      setUploadingAvatar(false);
+                    }}
+                  />
+                </label>
+              </div>
               <div>
                 <p className="font-display font-bold text-lg">{profile?.nickname}</p>
                 <p className="text-xs text-muted-foreground font-body">
