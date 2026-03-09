@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Settings, MessageCircle, Palette, Trash2, Plus, X, Save, RotateCcw, Send, CheckCircle, AlertCircle, Zap, ScrollText, Crown } from "lucide-react";
+import { Settings, MessageCircle, Palette, Trash2, Plus, X, Save, RotateCcw, Send, CheckCircle, AlertCircle, Zap, ScrollText, Crown, Link } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import AdminPage from "@/pages/AdminPage";
 
@@ -19,7 +19,7 @@ export default function ConfigPage() {
   const { isAdmin } = useAuth();
   const { currentTheme, setTheme, resetTheme, presets } = useTheme();
 
-  const [tab, setTab] = useState<"manage" | "whatsapp" | "theme" | "rules" | "clear">("manage");
+  const [tab, setTab] = useState<"manage" | "whatsapp" | "theme" | "rules" | "discord" | "clear">("manage");
 
   // WhatsApp state
   const [config, setConfig] = useState<WhatsConfig | null>(null);
@@ -39,6 +39,10 @@ export default function ConfigPage() {
   const [rulesContent, setRulesContent] = useState("");
   const [rulesId, setRulesId] = useState<string | null>(null);
   const [savingRules, setSavingRules] = useState(false);
+
+  // Discord state
+  const [discordLink, setDiscordLink] = useState("");
+  const [savingDiscord, setSavingDiscord] = useState(false);
 
   const fetchConfig = useCallback(async () => {
     const { data } = await supabase.from("whatsapp_config").select("*").limit(1).maybeSingle();
@@ -62,6 +66,9 @@ export default function ConfigPage() {
       fetchConfig();
       supabase.from("clan_rules").select("id, content").limit(1).maybeSingle().then(({ data }) => {
         if (data) { setRulesContent(data.content); setRulesId(data.id); }
+      });
+      supabase.from("app_config").select("discord_link").eq("id", "main").maybeSingle().then(({ data }) => {
+        if (data?.discord_link) setDiscordLink(data.discord_link);
       });
     }
   }, [isAdmin, fetchConfig]);
@@ -154,11 +161,24 @@ export default function ConfigPage() {
     setSavingRules(false);
   };
 
+  const saveDiscordLink = async () => {
+    setSavingDiscord(true);
+    const { error } = await supabase.from("app_config").upsert({
+      id: "main",
+      discord_link: discordLink,
+      updated_at: new Date().toISOString()
+    });
+    if (error) toast.error("Erro ao salvar link do Discord");
+    else toast.success("Link do Discord atualizado!");
+    setSavingDiscord(false);
+  };
+
   const tabs = [
     { key: "manage" as const, label: "Gerenciar", icon: Crown },
     { key: "whatsapp" as const, label: "WhatsApp", icon: MessageCircle },
     { key: "theme" as const, label: "Tema", icon: Palette },
     { key: "rules" as const, label: "Regras", icon: ScrollText },
+    { key: "discord" as const, label: "Discord", icon: Link },
     { key: "clear" as const, label: "Limpar", icon: Trash2 },
   ];
 
@@ -400,6 +420,32 @@ export default function ConfigPage() {
           >
             <Save className="w-4 h-4" />
             {savingRules ? "Salvando..." : "Salvar Regras"}
+          </button>
+        </div>
+      )}
+
+      {/* Discord Tab */}
+      {tab === "discord" && (
+        <div className="glass-card p-5 space-y-4">
+          <label className="block space-y-2">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Link de Convite do Discord</span>
+            <p className="text-[10px] text-muted-foreground/60 font-body">
+              Configure o link de convite permanente do Discord que será usado no botão flutuante
+            </p>
+            <input
+              value={discordLink}
+              onChange={(e) => setDiscordLink(e.target.value)}
+              className="input-modern text-sm"
+              placeholder="https://discord.gg/seu-codigo"
+            />
+          </label>
+          <button
+            onClick={saveDiscordLink}
+            disabled={savingDiscord}
+            className="w-full btn-primary text-sm flex items-center justify-center gap-2 py-3"
+          >
+            <Save className="w-4 h-4" />
+            {savingDiscord ? "Salvando..." : "Salvar Link"}
           </button>
         </div>
       )}
