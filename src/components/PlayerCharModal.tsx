@@ -67,7 +67,7 @@ interface Props {
 
 const convertImageToBase64 = async (url: string): Promise<string> => {
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { mode: 'cors' });
     if (!response.ok) throw new Error('fetch failed');
     const blob = await response.blob();
     return await new Promise<string>((resolve) => {
@@ -77,8 +77,25 @@ const convertImageToBase64 = async (url: string): Promise<string> => {
       reader.readAsDataURL(blob);
     });
   } catch (e) {
-    console.error('Image convert error for:', url, e);
-    return url;
+    // Fallback: use Image + Canvas
+    return new Promise<string>((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        } catch {
+          resolve(url);
+        }
+      };
+      img.onerror = () => resolve(url);
+      img.src = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
+    });
   }
 };
 
