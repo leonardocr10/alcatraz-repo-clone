@@ -509,7 +509,18 @@ export default function PlayersPage() {
                   </div>
                 )}
 
-                {/* Actions */}
+                {/* Actions - Ver Char for everyone if visible */}
+                {!isAdmin && player.char_visible && (
+                  <button
+                    onClick={() => setCharPlayer(player)}
+                    className="p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors shrink-0"
+                    title="Ver Char"
+                  >
+                    <Shield className="w-4 h-4" />
+                  </button>
+                )}
+
+                {/* Admin Actions */}
                 {isAdmin && (
                   <div className="relative shrink-0">
                     <button
@@ -523,6 +534,14 @@ export default function PlayersPage() {
                       <>
                         <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(null)} />
                         <div className="absolute right-0 bottom-full mb-1 z-50 w-44 glass-card border border-border/60 rounded-xl shadow-xl overflow-hidden animate-fade-in">
+                          {player.char_visible && (
+                            <button
+                              onClick={() => { setCharPlayer(player); setMenuOpen(null); }}
+                              className="w-full px-4 py-2.5 text-left text-sm font-body flex items-center gap-2.5 hover:bg-secondary/50 transition-colors"
+                            >
+                              <Shield className="w-3.5 h-3.5 text-primary" /> Ver Char
+                            </button>
+                          )}
                           <button
                             onClick={() => openEdit(player)}
                             className="w-full px-4 py-2.5 text-left text-sm font-body flex items-center gap-2.5 hover:bg-secondary/50 transition-colors"
