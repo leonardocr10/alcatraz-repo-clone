@@ -65,31 +65,21 @@ interface Props {
   onClose: () => void;
 }
 
-const convertImageToBase64 = (url: string): Promise<string> => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = 'Anonymous';
-    img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0);
-          resolve(canvas.toDataURL('image/png'));
-          return;
-        }
-      } catch (e) {
-        console.error('Canvas tainted for:', url);
-      }
-      resolve(url);
-    };
-    img.onerror = () => resolve(url);
-    const separator = url.includes('?') ? '&' : '?';
-    img.src = `${url}${separator}_cb=${Date.now()}`;
-    setTimeout(() => resolve(url), 5000);
-  });
+const convertImageToBase64 = async (url: string): Promise<string> => {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('fetch failed');
+    const blob = await response.blob();
+    return await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(url);
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.error('Image convert error for:', url, e);
+    return url;
+  }
 };
 
 export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
