@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Plus, Trash2, Play, Square, Trophy, Check, GripVertical, Users, Upload, Skull, Clock, MapPin, Image, Crown, Package, Layers, X, UserCheck, UserX } from "lucide-react";
+import { Plus, Trash2, Play, Square, Trophy, Check, GripVertical, Users, Upload, Skull, Clock, MapPin, Image, Crown, Package, Layers, X, UserCheck, UserX, ChevronDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const AdminPage = () => {
   const { isAdmin, loading } = useAuth();
@@ -37,6 +38,7 @@ const AdminPage = () => {
   const [bossSchedules, setBossSchedules] = useState<Record<string, any[]>>({});
   const [newScheduleTime, setNewScheduleTime] = useState<Record<string, string>>({});
   const [newScheduleMinutes, setNewScheduleMinutes] = useState<Record<string, number>>({});
+  const [bossOpenState, setBossOpenState] = useState<Record<string, boolean>>({});
 
   // Tab
   const [tab, setTab] = useState<"boss" | "items" | "sessions" | "winners">("boss");
@@ -241,58 +243,74 @@ const AdminPage = () => {
           </Dialog>
 
           {bosses.map((boss) => (
-            <div key={boss.id} className="glass-card overflow-hidden">
-              <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between">
-                <div className="flex items-center gap-3 min-w-0">
-                  {boss.image_url ? (
-                    <img src={boss.image_url} alt={boss.name} className="w-10 h-10 rounded-xl object-cover border border-border/40 shrink-0" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center shrink-0"><Skull className="w-5 h-5 text-muted-foreground" /></div>
-                  )}
-                  <div className="min-w-0">
-                    <h3 className="font-display text-sm font-extrabold truncate">{boss.name}</h3>
-                    {boss.map_level && <p className="text-[11px] text-muted-foreground font-body">{boss.map_level}</p>}
-                  </div>
-                </div>
-                <button onClick={() => deleteBoss(boss.id)} className="text-destructive/60 hover:text-destructive p-2 rounded-xl hover:bg-destructive/10 shrink-0">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="p-4 space-y-2">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Horários de Spawn</p>
-                {(bossSchedules[boss.id] || []).length === 0 && (
-                  <p className="text-xs text-muted-foreground/50 font-body italic">Nenhum horário</p>
-                )}
-                {(bossSchedules[boss.id] || []).map((sched) => {
-                  const spawnTime = sched.spawn_time.substring(0, 5);
-                  const [h, m] = spawnTime.split(":").map(Number);
-                  let totalMins = h * 60 + m - sched.notify_minutes_before;
-                  if (totalMins < 0) totalMins += 24 * 60;
-                  const notifH = Math.floor(totalMins / 60) % 24;
-                  const notifM = totalMins % 60;
-                  const notifTime = `${notifH.toString().padStart(2, "0")}:${notifM.toString().padStart(2, "0")}`;
-                  return (
-                    <div key={sched.id} className="flex items-center gap-2 bg-secondary/40 px-3 py-2.5 rounded-xl border border-border/30">
-                      <Clock className="w-3.5 h-3.5 text-gold shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-display font-extrabold">{spawnTime}</span>
-                        <span className="text-[10px] text-muted-foreground font-body ml-1.5">→ {notifTime} ({sched.notify_minutes_before}min)</span>
+            <Collapsible
+              key={boss.id}
+              open={bossOpenState[boss.id] ?? false}
+              onOpenChange={(open) => setBossOpenState((prev) => ({ ...prev, [boss.id]: open }))}
+            >
+              <div className="glass-card overflow-hidden">
+                <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between">
+                  <CollapsibleTrigger asChild>
+                    <button className="flex items-center gap-3 min-w-0 flex-1 text-left">
+                      {boss.image_url ? (
+                        <img src={boss.image_url} alt={boss.name} className="w-10 h-10 rounded-xl object-cover border border-border/40 shrink-0" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center shrink-0"><Skull className="w-5 h-5 text-muted-foreground" /></div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-display text-sm font-extrabold truncate">{boss.name}</h3>
+                        {boss.map_level && <p className="text-[11px] text-muted-foreground font-body">{boss.map_level}</p>}
                       </div>
-                      <button onClick={() => deleteSchedule(sched.id)} className="text-destructive/60 hover:text-destructive p-1 rounded-lg shrink-0">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  );
-                })}
-                <div className="flex items-center gap-2 pt-1">
-                  <input type="time" value={newScheduleTime[boss.id] || ""} onChange={(e) => setNewScheduleTime({ ...newScheduleTime, [boss.id]: e.target.value })} className="input-modern w-28 text-center" />
-                  <input type="number" value={newScheduleMinutes[boss.id] || 10} onChange={(e) => setNewScheduleMinutes({ ...newScheduleMinutes, [boss.id]: parseInt(e.target.value) || 10 })} className="input-modern w-14 text-center" min={1} max={60} />
-                  <span className="text-[10px] text-muted-foreground shrink-0">min</span>
-                  <button onClick={() => addSchedule(boss.id)} className="btn-primary py-2.5 px-3 shrink-0"><Plus className="w-3.5 h-3.5" /></button>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-muted-foreground font-bold">
+                          {(bossSchedules[boss.id] || []).length} horários
+                        </span>
+                        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${bossOpenState[boss.id] ? "rotate-180" : ""}`} />
+                      </div>
+                    </button>
+                  </CollapsibleTrigger>
+                  <button onClick={() => deleteBoss(boss.id)} className="text-destructive/60 hover:text-destructive p-2 rounded-xl hover:bg-destructive/10 shrink-0 ml-2">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
+
+                <CollapsibleContent>
+                  <div className="p-4 space-y-2">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Horários de Spawn</p>
+                    {(bossSchedules[boss.id] || []).length === 0 && (
+                      <p className="text-xs text-muted-foreground/50 font-body italic">Nenhum horário</p>
+                    )}
+                    {(bossSchedules[boss.id] || []).map((sched) => {
+                      const spawnTime = sched.spawn_time.substring(0, 5);
+                      const [h, m] = spawnTime.split(":").map(Number);
+                      let totalMins = h * 60 + m - sched.notify_minutes_before;
+                      if (totalMins < 0) totalMins += 24 * 60;
+                      const notifH = Math.floor(totalMins / 60) % 24;
+                      const notifM = totalMins % 60;
+                      const notifTime = `${notifH.toString().padStart(2, "0")}:${notifM.toString().padStart(2, "0")}`;
+                      return (
+                        <div key={sched.id} className="flex items-center gap-2 bg-secondary/40 px-3 py-2.5 rounded-xl border border-border/30">
+                          <Clock className="w-3.5 h-3.5 text-gold shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-display font-extrabold">{spawnTime}</span>
+                            <span className="text-[10px] text-muted-foreground font-body ml-1.5">→ {notifTime} ({sched.notify_minutes_before}min)</span>
+                          </div>
+                          <button onClick={() => deleteSchedule(sched.id)} className="text-destructive/60 hover:text-destructive p-1 rounded-lg shrink-0">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    <div className="flex items-center gap-2 pt-1">
+                      <input type="time" value={newScheduleTime[boss.id] || ""} onChange={(e) => setNewScheduleTime({ ...newScheduleTime, [boss.id]: e.target.value })} className="input-modern w-28 text-center" />
+                      <input type="number" value={newScheduleMinutes[boss.id] || 10} onChange={(e) => setNewScheduleMinutes({ ...newScheduleMinutes, [boss.id]: parseInt(e.target.value) || 10 })} className="input-modern w-14 text-center" min={1} max={60} />
+                      <span className="text-[10px] text-muted-foreground shrink-0">min</span>
+                      <button onClick={() => addSchedule(boss.id)} className="btn-primary py-2.5 px-3 shrink-0"><Plus className="w-3.5 h-3.5" /></button>
+                    </div>
+                  </div>
+                </CollapsibleContent>
               </div>
-            </div>
+            </Collapsible>
           ))}
 
           {bosses.length === 0 && (
