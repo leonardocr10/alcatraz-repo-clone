@@ -575,22 +575,25 @@ export default function ConfigPage() {
       )}
 
       {tab === "equip" && (
-        <div className="glass-card p-5 rounded-2xl border border-border/40 space-y-4">
-          <h3 className="font-display font-bold text-sm uppercase tracking-wider flex items-center gap-2">
-            <Package className="w-4 h-4 text-primary" />
-            Importar Equipamentos
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Importa automaticamente todos os equipamentos de Priston Tale (espadas, escudos, armaduras, botas, luvas, braceletes, anéis, colares) com imagens do Skytale. Itens já existentes serão ignorados.
-          </p>
-          <button
-            onClick={seedEquipment}
-            disabled={seeding}
-            className="w-full py-3 bg-primary/10 text-primary font-bold font-display text-sm uppercase tracking-wider rounded-xl hover:bg-primary/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            <Download className="w-4 h-4" />
-            {seeding ? "Importando..." : "Importar Equipamentos do Skytale"}
-          </button>
+        <div className="space-y-4">
+          <div className="glass-card p-5 rounded-2xl border border-border/40 space-y-4">
+            <h3 className="font-display font-bold text-sm uppercase tracking-wider flex items-center gap-2">
+              <Package className="w-4 h-4 text-primary" />
+              Importar Equipamentos
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Importa automaticamente todos os equipamentos de Priston Tale com imagens do Skytale. Itens já existentes serão ignorados.
+            </p>
+            <button
+              onClick={seedEquipment}
+              disabled={seeding}
+              className="w-full py-3 bg-primary/10 text-primary font-bold font-display text-sm uppercase tracking-wider rounded-xl hover:bg-primary/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <Download className="w-4 h-4" />
+              {seeding ? "Importando..." : "Importar Equipamentos do Skytale"}
+            </button>
+          </div>
+          <EquipmentManager />
         </div>
       )}
     </div>
