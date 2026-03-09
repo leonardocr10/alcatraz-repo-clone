@@ -33,9 +33,9 @@ export function DiscordFloatingButton() {
   const onPointerUp = useCallback((e: React.PointerEvent) => {
     setDragging(false);
     if (!dragRef.current.moved) {
-      window.open("https://discord.gg/pSuaEUQN", "_blank", "noopener,noreferrer");
+      window.open(discordLink, "_blank", "noopener,noreferrer");
     }
-  }, []);
+  }, [discordLink]);
 
   if (hidden) return null;
 

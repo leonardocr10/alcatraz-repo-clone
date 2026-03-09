@@ -424,6 +424,32 @@ export default function ConfigPage() {
         </div>
       )}
 
+      {/* Discord Tab */}
+      {tab === "discord" && (
+        <div className="glass-card p-5 space-y-4">
+          <label className="block space-y-2">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Link de Convite do Discord</span>
+            <p className="text-[10px] text-muted-foreground/60 font-body">
+              Configure o link de convite permanente do Discord que será usado no botão flutuante
+            </p>
+            <input
+              value={discordLink}
+              onChange={(e) => setDiscordLink(e.target.value)}
+              className="input-modern text-sm"
+              placeholder="https://discord.gg/seu-codigo"
+            />
+          </label>
+          <button
+            onClick={saveDiscordLink}
+            disabled={savingDiscord}
+            className="w-full btn-primary text-sm flex items-center justify-center gap-2 py-3"
+          >
+            <Save className="w-4 h-4" />
+            {savingDiscord ? "Salvando..." : "Salvar Link"}
+          </button>
+        </div>
+      )}
+
       {/* Clear Tab */}
       {tab === "clear" && (
         <div className="glass-card p-5 space-y-4">

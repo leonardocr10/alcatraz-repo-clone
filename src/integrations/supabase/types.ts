@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_config: {
+        Row: {
+          discord_link: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          discord_link?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          discord_link?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       boss_notification_log: {
         Row: {
           boss_id: string
