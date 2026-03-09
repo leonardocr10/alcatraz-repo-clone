@@ -146,10 +146,12 @@ export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
       const images = shareRef.current.querySelectorAll('img');
       const originalSrcs: { img: HTMLImageElement; src: string }[] = [];
 
-      // Convert images sequentially to avoid overloading the proxy
+      // Convert external images sequentially via proxy
       for (const img of Array.from(images)) {
         if (img.src.startsWith('data:') || img.src.startsWith('blob:')) continue;
-        if (!img.src.includes('supabase.co')) continue;
+        // Skip local bundled assets (Vite imports) - they render fine in html-to-image
+        const isLocal = img.src.includes(window.location.origin) || img.src.startsWith('/');
+        if (isLocal) continue;
         originalSrcs.push({ img, src: img.src });
         try {
           const base64 = await convertImageToBase64(img.src);
