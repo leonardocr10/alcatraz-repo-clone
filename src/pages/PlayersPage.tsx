@@ -85,7 +85,7 @@ export default function PlayersPage() {
   const fetchData = async () => {
     setLoading(true);
     const [playersRes, iconsRes, rankingsRes] = await Promise.all([
-      supabase.from("users").select("id, nickname, class, phone, role, auth_id, created_at, clan_role, clan").order("created_at", { ascending: false }),
+      supabase.from("users").select("id, nickname, class, phone, role, auth_id, created_at, clan_role, clan, char_visible").order("created_at", { ascending: false }),
       supabase.from("character_classes").select("name, image_url, description"),
       supabase.from("player_rankings").select("user_id, level, xp, rank_position"),
     ]);
