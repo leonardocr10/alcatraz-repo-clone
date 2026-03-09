@@ -32,7 +32,7 @@ const ALL_CLASSES: CharacterClass[] = [
 ];
 
 export default function PlayersPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, profile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [players, setPlayers] = useState<Player[]>([]);
   const [icons, setIcons] = useState<ClassIcon[]>([]);
@@ -45,7 +45,11 @@ export default function PlayersPage() {
   });
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState<string | null>(searchParams.get("class"));
+  
+  // Auto-filter by user's clan; admins can switch freely
+  const userClan = profile?.clan || "AZ";
   const [clanFilter, setClanFilter] = useState<string | null>(null);
+  const effectiveClanFilter = isAdmin ? clanFilter : userClan;
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
   // Edit modal state
@@ -155,8 +159,8 @@ export default function PlayersPage() {
 
   const filtered = useMemo(() => {
     let list = players;
-    if (clanFilter) {
-      list = list.filter((p) => (p.clan || "AZ") === clanFilter);
+    if (effectiveClanFilter) {
+      list = list.filter((p) => (p.clan || "AZ") === effectiveClanFilter);
     }
     if (classFilter) {
       list = list.filter((p) => p.class === classFilter);
@@ -178,7 +182,7 @@ export default function PlayersPage() {
       const xpB = parseFloat((rb?.xp ?? "0").replace(",", ".")) || 0;
       return xpB - xpA;
     });
-  }, [players, search, classFilter, clanFilter, rankingMap]);
+  }, [players, search, classFilter, effectiveClanFilter, rankingMap]);
 
   const clearClassFilter = () => {
     setClassFilter(null);
@@ -364,25 +368,36 @@ export default function PlayersPage() {
         <p className="text-[10px] text-muted-foreground font-body text-right -mt-2">Última sync: {lastSync}</p>
       )}
 
-      {/* Clan Filter */}
-      <div className="flex gap-1.5">
-        {[null, "AZ", "AZ2"].map((clan) => (
-          <button
-            key={clan ?? "all"}
-            onClick={() => setClanFilter(clan)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-display font-bold transition-colors ${
-              clanFilter === clan
-                ? "bg-primary/20 text-primary border border-primary/30"
-                : "bg-secondary/50 text-muted-foreground hover:bg-secondary/80"
-            }`}
-          >
-            {clan ?? "Todos"}
-          </button>
-        ))}
-        <span className="ml-auto text-xs font-display font-bold text-muted-foreground self-center">
-          {filtered.length} jogadores
-        </span>
-      </div>
+      {/* Clan Filter - only for admins */}
+      {isAdmin ? (
+        <div className="flex gap-1.5">
+          {[null, "AZ", "AZ2"].map((clan) => (
+            <button
+              key={clan ?? "all"}
+              onClick={() => setClanFilter(clan)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-display font-bold transition-colors ${
+                clanFilter === clan
+                  ? "bg-primary/20 text-primary border border-primary/30"
+                  : "bg-secondary/50 text-muted-foreground hover:bg-secondary/80"
+              }`}
+            >
+              {clan ?? "Todos"}
+            </button>
+          ))}
+          <span className="ml-auto text-xs font-display font-bold text-muted-foreground self-center">
+            {filtered.length} jogadores
+          </span>
+        </div>
+      ) : (
+        <div className="flex gap-1.5">
+          <span className="px-3 py-1.5 rounded-xl text-xs font-display font-bold bg-primary/20 text-primary border border-primary/30">
+            {userClan}
+          </span>
+          <span className="ml-auto text-xs font-display font-bold text-muted-foreground self-center">
+            {filtered.length} jogadores
+          </span>
+        </div>
+      )}
 
       {/* Class Filter Chips */}
       <div className="flex flex-wrap gap-1.5">
