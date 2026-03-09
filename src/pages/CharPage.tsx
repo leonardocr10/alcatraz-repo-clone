@@ -280,7 +280,7 @@ export default function CharPage() {
                 <img
                   src={profile.avatar_url}
                   alt={profile.nickname}
-                  className="w-64 h-64 rounded-2xl object-cover border-2 border-primary/40 shadow-2xl"
+                  className="max-w-[80vw] max-h-[60vh] rounded-2xl object-contain border-2 border-primary/40 shadow-2xl"
                 />
                 <div className="text-center">
                   <p className="font-display font-extrabold text-xl text-white uppercase tracking-wider">
