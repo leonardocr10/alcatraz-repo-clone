@@ -1,0 +1,1 @@
+ALTER TABLE public.app_config ADD COLUMN max_aging integer NOT NULL DEFAULT 12;

@@ -18,16 +18,19 @@ export type Database = {
         Row: {
           discord_link: string
           id: string
+          max_aging: number
           updated_at: string
         }
         Insert: {
           discord_link?: string
           id?: string
+          max_aging?: number
           updated_at?: string
         }
         Update: {
           discord_link?: string
           id?: string
+          max_aging?: number
           updated_at?: string
         }
         Relationships: []
