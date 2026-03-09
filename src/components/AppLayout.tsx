@@ -38,6 +38,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [newPassword, setNewPassword] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [changingPw, setChangingPw] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   // Class icon
   const [classIcon, setClassIcon] = useState<string | null>(null);
