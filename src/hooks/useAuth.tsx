@@ -23,20 +23,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = useCallback(async (userId: string) => {
-    console.log("[Auth] Fetching profile for:", userId);
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("auth_id", userId)
-      .maybeSingle();
-    if (error) {
-      console.error("[Auth] Profile fetch error:", error);
-      return;
-    }
-    console.log("[Auth] Profile loaded:", data?.nickname, data?.class);
-    setProfile(data);
-  }, []);
+  const fetchProfile = useCallback(
+    async (userId: string, opts?: { signOutIfMissing?: boolean }) => {
+      console.log("[Auth] Fetching profile for:", userId);
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("auth_id", userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error("[Auth] Profile fetch error:", error);
+        return;
+      }
+
+      if (!data) {
+        console.warn("[Auth] Profile not found (maybe deleted):", userId);
+        setProfile(null);
+        if (opts?.signOutIfMissing) {
+          await supabase.auth.signOut();
+        }
+        return;
+      }
+
+      console.log("[Auth] Profile loaded:", data?.nickname, data?.class);
+      setProfile(data);
+    },
+    []
+  );
 
   useEffect(() => {
     let mounted = true;
