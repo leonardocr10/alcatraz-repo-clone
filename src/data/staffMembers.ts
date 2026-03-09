@@ -3,7 +3,6 @@ export const CLAN_ROLES = [
   { value: "vice-lider", label: "Vice-Líder", emoji: "⚔️" },
   { value: "conselho", label: "Conselho", emoji: "🛡" },
   { value: "recrutador", label: "Recrutador", emoji: "📢" },
-  { value: "vip", label: "VIP", emoji: "💎" },
   { value: "veterano", label: "Veterano", emoji: "⭐" },
   { value: "membro", label: "Membro", emoji: "" },
 ] as const;
