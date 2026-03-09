@@ -116,18 +116,24 @@ const HomePage = () => {
 
   const fetchClassCounts = useCallback(async () => {
     const [usersRes, iconsRes] = await Promise.all([
-      supabase.from("users").select("class").eq("approved", true).not("class", "is", null),
+      supabase.from("users").select("class, clan").eq("approved", true).not("class", "is", null),
       supabase.from("character_classes").select("name, image_url"),
     ]);
 
     if (usersRes.data) {
-      const counts: Record<string, number> = {};
+      // Group by class AND clan
+      const counts: Record<string, { count: number; clan: string }> = {};
       usersRes.data.forEach((u: any) => {
-        if (u.class) counts[u.class] = (counts[u.class] || 0) + 1;
+        if (u.class) {
+          const clan = u.clan || "AZ";
+          const key = `${u.class}|${clan}`;
+          if (!counts[key]) counts[key] = { count: 0, clan };
+          counts[key].count++;
+        }
       });
       setClassCounts(
         Object.entries(counts)
-          .map(([cls, count]) => ({ class: cls, count }))
+          .map(([key, { count, clan }]) => ({ class: key.split("|")[0], count, clan }))
           .sort((a, b) => b.count - a.count)
       );
     }
