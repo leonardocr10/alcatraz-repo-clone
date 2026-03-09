@@ -373,7 +373,7 @@ export default function PlayersPage() {
       {/* Clan Filter - only for admins */}
       {isAdmin && (
         <div className="flex gap-1.5">
-          {[null, "AZ", "AZ2"].map((clan) => (
+          {[null, ...clans.map(c => c.name)].map((clan) => (
             <button
               key={clan ?? "all"}
               onClick={() => setClanFilter(clan)}
