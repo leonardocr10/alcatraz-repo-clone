@@ -376,9 +376,14 @@ const AdminPage = () => {
                       </div>
                     </button>
                   </CollapsibleTrigger>
-                  <button onClick={() => deleteBoss(boss.id)} className="text-destructive/60 hover:text-destructive p-2 rounded-xl hover:bg-destructive/10 shrink-0 ml-2">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1 shrink-0 ml-2">
+                    <button onClick={() => openEditBoss(boss)} className="text-muted-foreground hover:text-primary p-2 rounded-xl hover:bg-primary/10">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => deleteBoss(boss.id)} className="text-destructive/60 hover:text-destructive p-2 rounded-xl hover:bg-destructive/10">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 <CollapsibleContent>
