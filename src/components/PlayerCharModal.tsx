@@ -87,7 +87,7 @@ export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
       }
       setLoading(false);
     };
-    fetch();
+    fetchData();
   }, [playerId]);
 
   const getEquip = (slot: EquipmentSlot) => equipment.find(e => e.slot === slot);
