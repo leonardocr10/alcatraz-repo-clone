@@ -69,6 +69,8 @@ export default function CharPage() {
   const [catalogSlot, setCatalogSlot] = useState<EquipmentSlot | null>(null);
   const [charVisible, setCharVisible] = useState(false);
   const [togglingVisibility, setTogglingVisibility] = useState(false);
+  const [avatarExpanded, setAvatarExpanded] = useState(false);
+  const [playerRanking, setPlayerRanking] = useState<{ level: number | null; xp: string | null } | null>(null);
 
   const fetchEquipment = async () => {
     if (!profile?.id) return;
@@ -107,9 +109,20 @@ export default function CharPage() {
     if (data) setCharVisible(!!data.char_visible);
   };
 
+  const fetchRanking = async () => {
+    if (!profile?.id) return;
+    const { data } = await supabase
+      .from("player_rankings")
+      .select("level, xp")
+      .eq("user_id", profile.id)
+      .maybeSingle();
+    if (data) setPlayerRanking(data);
+  };
+
   useEffect(() => {
     fetchEquipment();
     fetchVisibility();
+    fetchRanking();
   }, [profile?.id]);
 
   const toggleVisibility = async () => {
@@ -227,13 +240,47 @@ export default function CharPage() {
 
       {/* Avatar display */}
       {profile?.avatar_url && (
-        <div className="flex justify-center">
-          <img
-            src={profile.avatar_url}
-            alt={profile.nickname}
-            className="w-24 h-24 rounded-2xl object-cover border-2 border-primary/30 shadow-lg"
-          />
-        </div>
+        <>
+          <button onClick={() => setAvatarExpanded(true)} className="flex justify-center w-full">
+            <img
+              src={profile.avatar_url}
+              alt={profile.nickname}
+              className="w-32 h-32 rounded-2xl object-cover border-2 border-primary/30 shadow-lg hover:scale-105 transition-transform cursor-pointer"
+            />
+          </button>
+
+          {/* Expanded avatar modal */}
+          {avatarExpanded && (
+            <div
+              className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6"
+              onClick={() => setAvatarExpanded(false)}
+            >
+              <div className="flex flex-col items-center gap-4 animate-fade-in" onClick={e => e.stopPropagation()}>
+                <img
+                  src={profile.avatar_url}
+                  alt={profile.nickname}
+                  className="w-64 h-64 rounded-2xl object-cover border-2 border-primary/40 shadow-2xl"
+                />
+                <div className="text-center">
+                  <p className="font-display font-extrabold text-xl text-white uppercase tracking-wider">
+                    {profile.nickname}
+                  </p>
+                  {playerRanking && (
+                    <p className="font-display font-bold text-gold text-sm mt-1">
+                      Lv.{playerRanking.level} • {playerRanking.xp?.endsWith('%') ? playerRanking.xp : `${playerRanking.xp}%`}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => setAvatarExpanded(false)}
+                  className="mt-2 text-xs text-muted-foreground hover:text-white transition-colors font-display uppercase tracking-wider"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Visibility toggle */}
