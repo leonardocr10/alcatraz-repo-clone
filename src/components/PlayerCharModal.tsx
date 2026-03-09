@@ -192,6 +192,35 @@ export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
             </div>
           </div>
         )}
+
+        {/* Avatar expanded overlay */}
+        {avatarExpanded && avatarUrl && (
+          <div
+            className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center"
+            onClick={() => setAvatarExpanded(false)}
+          >
+            <div className="relative" onClick={e => e.stopPropagation()}>
+              <img src={avatarUrl} alt={playerName} className="max-w-[80vw] max-h-[70vh] rounded-2xl object-contain shadow-2xl border-2 border-primary/30" />
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent rounded-b-2xl p-4">
+                <p className="font-display font-extrabold text-lg text-white text-center uppercase">{playerName}</p>
+                <div className="flex items-center justify-center gap-3 mt-1">
+                  {level != null && (
+                    <span className="text-sm font-display font-extrabold text-primary">Lv. {level}</span>
+                  )}
+                  {xp && (
+                    <span className="text-sm font-display font-bold text-muted-foreground">{xp} XP</span>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setAvatarExpanded(false)}
+                className="absolute top-2 right-2 w-8 h-8 rounded-full bg-background/80 flex items-center justify-center hover:bg-background transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
