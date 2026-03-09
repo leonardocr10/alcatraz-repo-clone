@@ -10,7 +10,7 @@ interface LandingStats {
   totalClasses: number;
   totalItems: number;
   totalSessions: number;
-  topPlayers: { nickname: string; level: number | null; game_class: string | null }[];
+  topPlayers: { nickname: string; level: number | null; xp: string | null; game_class: string | null }[];
   classes: { name: string; image_url: string | null }[];
   recentWinners: { nickname: string; item_name: string }[];
 }
@@ -59,7 +59,7 @@ const Index = () => {
         supabase.from("character_classes").select("name, image_url"),
         supabase.from("roulette_items").select("id", { count: "exact", head: true }),
         supabase.from("roulette_sessions").select("id", { count: "exact", head: true }),
-        supabase.from("player_rankings").select("nickname, level, game_class").order("level", { ascending: false }).limit(5),
+        supabase.from("player_rankings").select("nickname, level, xp, game_class").order("level", { ascending: false }).order("xp", { ascending: false }).limit(5),
         supabase
           .from("roulette_winners")
           .select("number, users!roulette_winners_user_id_fkey(nickname), roulette_items!roulette_winners_item_id_fkey(name)")
@@ -197,7 +197,9 @@ const Index = () => {
                   </div>
                   <p className="font-display font-bold text-sm truncate">{player.nickname}</p>
                   {player.level && (
-                    <p className="text-xs text-primary font-display font-bold">Lv.{player.level}</p>
+                    <p className="text-xs text-primary font-display font-bold">
+                      Lv.{player.level} {player.xp ? `• ${player.xp.endsWith('%') ? player.xp : `${player.xp}%`}` : ""}
+                    </p>
                   )}
                   {player.game_class && (
                     <p className="text-[10px] text-muted-foreground font-body">{player.game_class}</p>
