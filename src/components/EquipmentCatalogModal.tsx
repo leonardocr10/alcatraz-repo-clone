@@ -275,7 +275,14 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                   return (
                     <button
                       key={mix}
-                      onClick={() => setSelectedMix(selectedMix === mix ? null : mix)}
+                      onClick={() => {
+                        if (selectedMix === mix) {
+                          setSelectedMix(null);
+                        } else {
+                          setSelectedMix(mix);
+                          if (hasAging) setPlusValue(0);
+                        }
+                      }}
                       className={`flex-1 py-1.5 rounded-xl text-[10px] font-display font-bold uppercase tracking-wider transition-all ${
                         selectedMix === mix
                           ? mixColorActive
