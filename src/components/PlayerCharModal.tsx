@@ -146,22 +146,25 @@ export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
       const images = shareRef.current.querySelectorAll('img');
       const originalSrcs: { img: HTMLImageElement; src: string }[] = [];
 
-      await Promise.all(
-        Array.from(images).map(async (img) => {
-          if (img.src.startsWith('data:') || img.src.startsWith('blob:')) return;
-          // Skip local assets (placeholders) - they don't need conversion
-          if (!img.src.includes('supabase.co')) return;
-          originalSrcs.push({ img, src: img.src });
+      // Convert images sequentially to avoid overloading the proxy
+      for (const img of Array.from(images)) {
+        if (img.src.startsWith('data:') || img.src.startsWith('blob:')) continue;
+        if (!img.src.includes('supabase.co')) continue;
+        originalSrcs.push({ img, src: img.src });
+        try {
           const base64 = await convertImageToBase64(img.src);
           img.src = base64;
-        })
-      );
+        } catch {
+          // Keep original src if conversion fails
+        }
+      }
+
+      await new Promise(r => setTimeout(r, 100));
 
       const dataUrl = await toPng(shareRef.current, {
         backgroundColor: '#1a1a2e',
         pixelRatio: 2,
         cacheBust: true,
-        imagePlaceholder: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
       });
 
       originalSrcs.forEach(({ img, src }) => { img.src = src; });
