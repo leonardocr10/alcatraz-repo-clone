@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { X, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -41,32 +41,24 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [selectedRarity, setSelectedRarity] = useState<Rarity>('normal');
   const [plusValue, setPlusValue] = useState(0);
+  const [maxAging, setMaxAging] = useState(12);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      // Fetch categories for this slot
-      const { data: cats } = await supabase
-        .from("equipment_categories")
-        .select("id, name, slot")
-        .eq("slot", slot)
-        .order("sort_order");
+      // Fetch categories, items, and max aging config in parallel
+      const [catsRes, itemsRes, configRes] = await Promise.all([
+        supabase.from("equipment_categories").select("id, name, slot").eq("slot", slot).order("sort_order"),
+        supabase.from("equipment_items").select("id, name, image_url, category_id").eq("slot", slot),
+        supabase.from("app_config").select("max_aging").eq("id", "main").maybeSingle(),
+      ]);
 
-      const catList = (cats as Category[]) || [];
+      const catList = (catsRes.data as Category[]) || [];
       setCategories(catList);
-
-      if (catList.length > 0) {
-        setSelectedCategory(catList[0].id);
-      }
-
-      // Fetch all items for this slot
-      const { data: itemsData } = await supabase
-        .from("equipment_items")
-        .select("id, name, image_url, category_id")
-        .eq("slot", slot);
-
-      setItems((itemsData as Item[]) || []);
+      if (catList.length > 0) setSelectedCategory(catList[0].id);
+      setItems((itemsRes.data as Item[]) || []);
+      if (configRes.data?.max_aging != null) setMaxAging(configRes.data.max_aging);
       setLoading(false);
     };
     fetchData();
@@ -236,14 +228,14 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
               <input
                 type="range"
                 min={0}
-                max={12}
+                max={maxAging}
                 value={plusValue}
                 onChange={e => setPlusValue(Number(e.target.value))}
                 className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-secondary/50 accent-primary"
               />
               <div className="flex justify-between mt-1">
                 <span className="text-[8px] text-muted-foreground">+0</span>
-                <span className="text-[8px] text-muted-foreground">+12</span>
+                <span className="text-[8px] text-muted-foreground">+{maxAging}</span>
               </div>
             </div>
           </div>

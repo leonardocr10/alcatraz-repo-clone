@@ -50,6 +50,10 @@ export default function ConfigPage() {
   const [discordLink, setDiscordLink] = useState("");
   const [savingDiscord, setSavingDiscord] = useState(false);
 
+  // Aging config state
+  const [maxAging, setMaxAging] = useState(12);
+  const [savingAging, setSavingAging] = useState(false);
+
   const fetchConfig = useCallback(async () => {
     const { data } = await supabase.from("whatsapp_config").select("*").limit(1).maybeSingle();
     if (data) {
@@ -73,8 +77,9 @@ export default function ConfigPage() {
       supabase.from("clan_rules").select("id, content").limit(1).maybeSingle().then(({ data }) => {
         if (data) { setRulesContent(data.content); setRulesId(data.id); }
       });
-      supabase.from("app_config").select("discord_link").eq("id", "main").maybeSingle().then(({ data }) => {
+      supabase.from("app_config").select("discord_link, max_aging").eq("id", "main").maybeSingle().then(({ data }) => {
         if (data?.discord_link) setDiscordLink(data.discord_link);
+        if (data?.max_aging != null) setMaxAging(data.max_aging);
       });
     }
   }, [isAdmin, fetchConfig]);
@@ -576,6 +581,48 @@ export default function ConfigPage() {
 
       {tab === "equip" && (
         <div className="space-y-4">
+          {/* Max Aging Config */}
+          <div className="glass-card p-5 rounded-2xl border border-border/40 space-y-4">
+            <h3 className="font-display font-bold text-sm uppercase tracking-wider flex items-center gap-2">
+              <Zap className="w-4 h-4 text-primary" />
+              Aging Máximo
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Define o valor máximo de aging que pode ser selecionado ao equipar itens. Pode variar de servidor para servidor.
+            </p>
+            <div className="flex items-center gap-4">
+              <input
+                type="range"
+                min={0}
+                max={20}
+                value={maxAging}
+                onChange={e => setMaxAging(Number(e.target.value))}
+                className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer bg-secondary/50 accent-primary"
+              />
+              <span className="text-lg font-display font-extrabold text-primary min-w-[3rem] text-center">
+                +{maxAging}
+              </span>
+            </div>
+            <button
+              onClick={async () => {
+                setSavingAging(true);
+                const { error } = await supabase.from("app_config").upsert({
+                  id: "main",
+                  max_aging: maxAging,
+                  updated_at: new Date().toISOString()
+                });
+                if (error) toast.error("Erro ao salvar aging máximo");
+                else toast.success("Aging máximo atualizado!");
+                setSavingAging(false);
+              }}
+              disabled={savingAging}
+              className="w-full btn-primary text-sm flex items-center justify-center gap-2 py-3"
+            >
+              <Save className="w-4 h-4" />
+              {savingAging ? "Salvando..." : "Salvar Aging Máximo"}
+            </button>
+          </div>
+
           <div className="glass-card p-5 rounded-2xl border border-border/40 space-y-4">
             <h3 className="font-display font-bold text-sm uppercase tracking-wider flex items-center gap-2">
               <Package className="w-4 h-4 text-primary" />
