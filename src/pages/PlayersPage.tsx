@@ -614,6 +614,25 @@ export default function PlayersPage() {
             </div>
 
             <div className="space-y-1.5">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Clã</span>
+              <div className="flex gap-2">
+                {["AZ", "AZ2"].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setEditClan(c)}
+                    className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-display font-bold uppercase tracking-wider transition-all border ${
+                      editClan === c
+                        ? "border-primary bg-primary/15 text-primary"
+                        : "border-border/40 text-muted-foreground hover:border-muted-foreground/30"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
               <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Cargo no Clã</span>
               <div className="flex flex-wrap gap-1.5">
                 {CLAN_ROLES.map((r) => (
