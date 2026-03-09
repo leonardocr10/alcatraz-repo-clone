@@ -6,6 +6,7 @@ import { Settings, MessageCircle, Palette, Trash2, Plus, X, Save, RotateCcw, Sen
 import { useTheme } from "@/hooks/useTheme";
 import { useClans } from "@/hooks/useClans";
 import AdminPage from "@/pages/AdminPage";
+import EquipmentManager from "@/components/EquipmentManager";
 
 type WhatsConfig = {
   id: string;
