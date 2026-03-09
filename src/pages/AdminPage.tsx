@@ -305,6 +305,50 @@ const AdminPage = () => {
             </DialogContent>
           </Dialog>
 
+          {/* Edit Boss Modal */}
+          <Dialog open={showEditBossModal} onOpenChange={setShowEditBossModal}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="font-display text-sm font-extrabold uppercase tracking-wider flex items-center gap-2">
+                  <Pencil className="w-4 h-4 text-primary" /> Editar Boss
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <input value={editBossName} onChange={(e) => setEditBossName(e.target.value)} placeholder="Nome do boss" className="input-modern" />
+                <input value={editBossMap} onChange={(e) => setEditBossMap(e.target.value)} placeholder="Nome do mapa" className="input-modern" />
+                <textarea value={editBossDesc} onChange={(e) => setEditBossDesc(e.target.value)} placeholder="Descrição..." rows={2} className="input-modern" />
+                <label className="flex items-center gap-2 input-modern cursor-pointer hover:border-primary/50">
+                  <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground truncate">{editBossFile ? editBossFile.name : editBoss?.image_url ? "Trocar imagem do boss" : "Imagem do boss"}</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setEditBossFile(e.target.files[0]); }} />
+                </label>
+                <label className="flex items-center gap-2 input-modern cursor-pointer hover:border-primary/50">
+                  <Image className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground truncate">{editBossMapFile ? editBossMapFile.name : editBoss?.map_image_url ? "Trocar imagem do mapa" : "Imagem do mapa"}</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setEditBossMapFile(e.target.files[0]); }} />
+                </label>
+                <div className="space-y-1">
+                  <label className="flex items-center gap-2 input-modern cursor-pointer hover:border-primary/50">
+                    <Volume2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground truncate">{editBossAudioFile ? editBossAudioFile.name : editBoss?.audio_url ? "Trocar áudio (.wav)" : "Áudio de alerta (.wav)"}</span>
+                    <input type="file" accept="audio/wav,audio/wave,.wav" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setEditBossAudioFile(e.target.files[0]); }} />
+                  </label>
+                  {editBoss?.audio_url && !editBossAudioFile && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Volume2 className="w-3 h-3" />
+                      <span className="truncate flex-1">Áudio atual definido</span>
+                      <button onClick={() => { removeBossAudio(editBoss.id); setEditBoss({ ...editBoss, audio_url: null }); }} className="text-destructive/70 hover:text-destructive text-[10px] font-bold">Remover</button>
+                    </div>
+                  )}
+                </div>
+                <button onClick={async () => { await updateBoss(); }} disabled={uploading} className="w-full btn-primary text-sm flex items-center justify-center gap-2">
+                  {uploading ? <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <Check className="w-4 h-4" />}
+                  {uploading ? "Salvando..." : "Salvar Alterações"}
+                </button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
           {bosses.map((boss) => (
             <Collapsible
               key={boss.id}
