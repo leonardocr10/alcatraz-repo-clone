@@ -334,7 +334,7 @@ const HomePage = () => {
           <Clock className="w-4 h-4 text-primary" />
           <span className="font-display text-lg font-extrabold tabular-nums">{getBrazilTimeStr()}</span>
           <span className="text-[10px] text-muted-foreground font-body bg-secondary px-1.5 py-0.5 rounded-md">BRT</span>
-          <span className="text-[9px] text-muted-foreground/40 font-body select-none">v1.0.0</span>
+          <span className="text-[9px] text-muted-foreground/40 font-body select-none">v{__APP_VERSION__}</span>
         </div>
         <div className="flex-1 flex justify-end">
           <button
