@@ -369,7 +369,7 @@ export default function PlayersPage() {
       )}
 
       {/* Clan Filter - only for admins */}
-      {isAdmin ? (
+      {isAdmin && (
         <div className="flex gap-1.5">
           {[null, "AZ", "AZ2"].map((clan) => (
             <button
@@ -384,15 +384,6 @@ export default function PlayersPage() {
               {clan ?? "Todos"}
             </button>
           ))}
-          <span className="ml-auto text-xs font-display font-bold text-muted-foreground self-center">
-            {filtered.length} jogadores
-          </span>
-        </div>
-      ) : (
-        <div className="flex gap-1.5">
-          <span className="px-3 py-1.5 rounded-xl text-xs font-display font-bold bg-primary/20 text-primary border border-primary/30">
-            {userClan}
-          </span>
           <span className="ml-auto text-xs font-display font-bold text-muted-foreground self-center">
             {filtered.length} jogadores
           </span>
