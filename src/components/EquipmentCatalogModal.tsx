@@ -30,7 +30,7 @@ const RARITY_OPTIONS: { key: Rarity; label: string; borderColor: string; dotColo
 interface Props {
   slot: EquipmentSlot;
   slotLabel: string;
-  onEquip: (slot: EquipmentSlot, itemId: string, rarity: Rarity) => void;
+  onEquip: (slot: EquipmentSlot, itemId: string, rarity: Rarity, plusValue: number) => void;
   onClose: () => void;
 }
 
