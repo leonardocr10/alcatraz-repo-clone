@@ -32,7 +32,7 @@ const ALL_CLASSES: CharacterClass[] = [
 ];
 
 export default function PlayersPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, profile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [players, setPlayers] = useState<Player[]>([]);
   const [icons, setIcons] = useState<ClassIcon[]>([]);
@@ -45,7 +45,11 @@ export default function PlayersPage() {
   });
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState<string | null>(searchParams.get("class"));
+  
+  // Auto-filter by user's clan; admins can switch freely
+  const userClan = profile?.clan || "AZ";
   const [clanFilter, setClanFilter] = useState<string | null>(null);
+  const effectiveClanFilter = isAdmin ? clanFilter : userClan;
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
   // Edit modal state
