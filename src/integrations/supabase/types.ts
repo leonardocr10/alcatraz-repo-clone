@@ -526,6 +526,7 @@ export type Database = {
         Row: {
           approved: boolean
           auth_id: string | null
+          clan: string | null
           clan_role: string | null
           class: Database["public"]["Enums"]["character_class"] | null
           created_at: string
@@ -539,6 +540,7 @@ export type Database = {
         Insert: {
           approved?: boolean
           auth_id?: string | null
+          clan?: string | null
           clan_role?: string | null
           class?: Database["public"]["Enums"]["character_class"] | null
           created_at?: string
@@ -552,6 +554,7 @@ export type Database = {
         Update: {
           approved?: boolean
           auth_id?: string | null
+          clan?: string | null
           clan_role?: string | null
           class?: Database["public"]["Enums"]["character_class"] | null
           created_at?: string
