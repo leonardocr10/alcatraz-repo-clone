@@ -49,8 +49,9 @@ const HomePage = () => {
   const [imageModal, setImageModal] = useState<{ url: string; title: string; description?: string; mapLevel?: string } | null>(null);
   const [sendingBoss, setSendingBoss] = useState<string | null>(null);
   const [sendingAll, setSendingAll] = useState(false);
-  const [classCounts, setClassCounts] = useState<ClassCount[]>([]);
+  const [classCounts, setClassCounts] = useState<(ClassCount & { clan: string })[]>([]);
   const [classIcons, setClassIcons] = useState<ClassIcon[]>([]);
+  const [classClanFilter, setClassClanFilter] = useState<string | null>(null);
   const [classesOpen, setClassesOpen] = useState(() => {
     const saved = localStorage.getItem("home-classes-open");
     return saved !== null ? saved === "true" : true;
