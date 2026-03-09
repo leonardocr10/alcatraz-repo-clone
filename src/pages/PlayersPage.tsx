@@ -466,6 +466,7 @@ export default function PlayersPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="font-display font-bold text-sm truncate">{player.nickname}</span>
+                    <span className="text-[9px] font-display font-bold px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{player.clan || "AZ"}</span>
                     {(() => {
                       const label = getClanRoleLabel(player.clan_role);
                       const emoji = getClanRoleEmoji(player.clan_role);
