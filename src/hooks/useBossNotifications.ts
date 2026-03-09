@@ -22,33 +22,58 @@ function playAlertSound() {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
     const now = ctx.currentTime;
 
-    // War drum hits
-    const playDrum = (time: number, freq: number, vol: number) => {
+    const playDrum = (time: number, freq: number, vol: number, decay = 0.35) => {
       const osc = ctx.createOscillator();
       const g = ctx.createGain();
       osc.type = "sine";
       osc.frequency.setValueAtTime(freq, now + time);
-      osc.frequency.exponentialRampToValueAtTime(40, now + time + 0.3);
+      osc.frequency.exponentialRampToValueAtTime(35, now + time + decay);
       g.gain.setValueAtTime(vol, now + time);
-      g.gain.exponentialRampToValueAtTime(0.001, now + time + 0.35);
+      g.gain.exponentialRampToValueAtTime(0.001, now + time + decay + 0.05);
       osc.connect(g);
       g.connect(ctx.destination);
       osc.start(now + time);
-      osc.stop(now + time + 0.4);
+      osc.stop(now + time + decay + 0.1);
     };
 
-    // War horn (brass-like)
     const playHorn = (time: number, freq: number, duration: number, vol: number) => {
       const osc = ctx.createOscillator();
       const osc2 = ctx.createOscillator();
+      const osc3 = ctx.createOscillator();
       const g = ctx.createGain();
       osc.type = "sawtooth";
       osc.frequency.value = freq;
       osc2.type = "sawtooth";
-      osc2.frequency.value = freq * 1.005; // slight detune for thickness
+      osc2.frequency.value = freq * 1.005;
+      osc3.type = "square";
+      osc3.frequency.value = freq * 0.5; // sub octave for depth
+      osc3.connect(g);
       g.gain.setValueAtTime(0.001, now + time);
-      g.gain.linearRampToValueAtTime(vol, now + time + 0.08);
-      g.gain.setValueAtTime(vol, now + time + duration - 0.1);
+      g.gain.linearRampToValueAtTime(vol, now + time + 0.12);
+      g.gain.setValueAtTime(vol, now + time + duration - 0.15);
+      g.gain.exponentialRampToValueAtTime(0.001, now + time + duration);
+      osc.connect(g);
+      osc2.connect(g);
+      g.connect(ctx.destination);
+      osc.start(now + time);
+      osc.stop(now + time + duration);
+      osc2.start(now + time);
+      osc2.stop(now + time + duration);
+      osc3.start(now + time);
+      osc3.stop(now + time + duration);
+    };
+
+    const playString = (time: number, freq: number, duration: number, vol: number) => {
+      const osc = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.value = freq;
+      osc2.type = "sawtooth";
+      osc2.frequency.value = freq * 2.01;
+      g.gain.setValueAtTime(0.001, now + time);
+      g.gain.linearRampToValueAtTime(vol, now + time + 0.05);
+      g.gain.setValueAtTime(vol * 0.8, now + time + duration * 0.6);
       g.gain.exponentialRampToValueAtTime(0.001, now + time + duration);
       osc.connect(g);
       osc2.connect(g);
@@ -59,14 +84,38 @@ function playAlertSound() {
       osc2.stop(now + time + duration);
     };
 
-    // Sequence: DRUM DRUM - HORN - DRUM DRUM DRUM - HORN (epic)
-    playDrum(0, 120, 0.5);
-    playDrum(0.2, 100, 0.45);
-    playHorn(0.45, 220, 0.5, 0.15);
-    playDrum(1.0, 130, 0.5);
-    playDrum(1.15, 110, 0.45);
-    playDrum(1.3, 100, 0.4);
-    playHorn(1.5, 293, 0.7, 0.18); // higher horn - battle cry!
+    // === GoT-style epic opening (~6 seconds) ===
+
+    // Intro: Deep war drums (0-1.2s)
+    playDrum(0, 80, 0.6, 0.5);
+    playDrum(0.55, 60, 0.5, 0.5);
+    playDrum(1.0, 80, 0.55, 0.4);
+
+    // Cello-like melody: D minor motif (1.2-3.5s)
+    // D - F - A - D (ascending, dark & epic)
+    playString(1.2, 146.83, 0.5, 0.12);  // D3
+    playString(1.7, 174.61, 0.5, 0.13);  // F3
+    playString(2.2, 220.00, 0.5, 0.14);  // A3
+    playString(2.7, 293.66, 0.7, 0.15);  // D4 (hold longer)
+
+    // War drums intensify (3.4-4.6s)
+    playDrum(3.4, 100, 0.55, 0.3);
+    playDrum(3.6, 80, 0.5, 0.3);
+    playDrum(3.8, 120, 0.6, 0.3);
+    playDrum(4.0, 90, 0.5, 0.25);
+    playDrum(4.15, 110, 0.55, 0.25);
+    playDrum(4.3, 130, 0.6, 0.3);
+
+    // War horns - epic climax (4.5-6.5s)
+    playHorn(4.5, 146.83, 0.8, 0.14);  // D3 horn
+    playHorn(5.3, 174.61, 0.6, 0.15);  // F3 horn
+    playHorn(5.9, 220.00, 1.0, 0.18);  // A3 horn - battle cry!
+
+    // Final string sustain + drum hit (6.5-7.5s)
+    playString(6.5, 293.66, 1.0, 0.16); // D4 resolve
+    playString(6.5, 146.83, 1.0, 0.12); // D3 octave below
+    playDrum(6.5, 60, 0.7, 0.6);        // Final deep boom
+
   } catch (e) {
     console.log("[Notify] Could not play alert sound", e);
   }
