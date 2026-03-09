@@ -1,0 +1,1 @@
+ALTER TABLE public.users ADD COLUMN char_visible boolean NOT NULL DEFAULT false;
