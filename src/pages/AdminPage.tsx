@@ -38,6 +38,7 @@ const AdminPage = () => {
   const [bossSchedules, setBossSchedules] = useState<Record<string, any[]>>({});
   const [newScheduleTime, setNewScheduleTime] = useState<Record<string, string>>({});
   const [newScheduleMinutes, setNewScheduleMinutes] = useState<Record<string, number>>({});
+  const [bossOpenState, setBossOpenState] = useState<Record<string, boolean>>({});
 
   // Tab
   const [tab, setTab] = useState<"boss" | "items" | "sessions" | "winners">("boss");
