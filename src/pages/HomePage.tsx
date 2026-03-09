@@ -233,7 +233,26 @@ const HomePage = () => {
   };
 
   const groupedBosses = getGroupedBosses();
-  const totalPlayers = classCounts.reduce((sum, c) => sum + c.count, 0);
+  
+  // Filter class counts by clan
+  const effectiveClassClanFilter = isAdmin ? classClanFilter : (profile?.clan || "AZ");
+  const filteredClassCounts = useMemo(() => {
+    if (!effectiveClassClanFilter) return classCounts;
+    return classCounts.filter(c => c.clan === effectiveClassClanFilter);
+  }, [classCounts, effectiveClassClanFilter]);
+  
+  // Aggregate same class across different clans when no filter
+  const aggregatedClassCounts = useMemo(() => {
+    const agg: Record<string, number> = {};
+    filteredClassCounts.forEach(c => {
+      agg[c.class] = (agg[c.class] || 0) + c.count;
+    });
+    return Object.entries(agg)
+      .map(([cls, count]) => ({ class: cls, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [filteredClassCounts]);
+  
+  const totalPlayers = aggregatedClassCounts.reduce((sum, c) => sum + c.count, 0);
 
   return (
     <div className="space-y-4">
