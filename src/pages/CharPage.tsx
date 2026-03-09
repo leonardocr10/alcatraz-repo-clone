@@ -229,22 +229,33 @@ export default function CharPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="p-2 rounded-xl bg-primary/15">
             <Shield className="w-5 h-5 text-primary" />
           </div>
           <h2 className="font-display text-lg font-extrabold tracking-wide uppercase">
-            Inventário de Equipamentos
+            Inventário
           </h2>
         </div>
-        <div className="flex items-center gap-2 text-[10px] font-bold">
-          {RARITY_LEGEND.map(r => (
-            <span key={r.key} className="flex items-center gap-1">
-              <span className={`w-2 h-2 rounded-full ${r.color}`} />
-              {r.label}
-            </span>
-          ))}
+        <div className="flex items-center gap-3">
+          {equipment.length > 0 && (
+            <button
+              onClick={handleClearAll}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-display font-bold text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Limpar
+            </button>
+          )}
+          <div className="flex items-center gap-2 text-[10px] font-bold">
+            {RARITY_LEGEND.map(r => (
+              <span key={r.key} className="flex items-center gap-1">
+                <span className={`w-2 h-2 rounded-full ${r.color}`} />
+                {r.label}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
