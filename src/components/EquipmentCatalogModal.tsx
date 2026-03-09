@@ -193,8 +193,12 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                       </span>
                     )}
                     {selectedMix && (
-                      <span className="text-[10px] font-display font-extrabold px-2 py-0.5 rounded-full bg-primary/20 text-primary uppercase">
-                        Mix{selectedMix}
+                      <span className={`text-[10px] font-display font-extrabold px-2 py-0.5 rounded-full uppercase ${
+                        selectedMix === 'Raident' ? 'text-blue-400 bg-blue-400/20' :
+                        selectedMix === 'Celesto' ? 'text-yellow-400 bg-yellow-400/20' :
+                        'text-gray-400 bg-gray-400/20'
+                      }`}>
+                        Mix {selectedMix}
                       </span>
                     )}
                   </div>
