@@ -199,6 +199,65 @@ export type Database = {
         }
         Relationships: []
       }
+      equipment_categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slot: Database["public"]["Enums"]["equipment_slot"]
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slot: Database["public"]["Enums"]["equipment_slot"]
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slot?: Database["public"]["Enums"]["equipment_slot"]
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      equipment_items: {
+        Row: {
+          category_id: string
+          created_at: string
+          id: string
+          image_url: string
+          name: string
+          slot: Database["public"]["Enums"]["equipment_slot"]
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          id?: string
+          image_url: string
+          name: string
+          slot: Database["public"]["Enums"]["equipment_slot"]
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          id?: string
+          image_url?: string
+          name?: string
+          slot?: Database["public"]["Enums"]["equipment_slot"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       history_cache: {
         Row: {
           data: Json
@@ -216,6 +275,51 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      player_equipment: {
+        Row: {
+          id: string
+          item_id: string
+          plus_value: number | null
+          rarity: Database["public"]["Enums"]["equipment_rarity"]
+          slot: Database["public"]["Enums"]["equipment_slot"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          item_id: string
+          plus_value?: number | null
+          rarity?: Database["public"]["Enums"]["equipment_rarity"]
+          slot: Database["public"]["Enums"]["equipment_slot"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          item_id?: string
+          plus_value?: number | null
+          rarity?: Database["public"]["Enums"]["equipment_rarity"]
+          slot?: Database["public"]["Enums"]["equipment_slot"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_equipment_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_equipment_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       player_rankings: {
         Row: {
@@ -647,6 +751,18 @@ export type Database = {
         | "Atalanta"
         | "Priestess"
         | "Magician"
+      equipment_rarity: "normal" | "raro" | "epico" | "lendario" | "boss"
+      equipment_slot:
+        | "arma_1m"
+        | "arma_2m"
+        | "escudo"
+        | "armadura"
+        | "bota"
+        | "luva"
+        | "bracelete"
+        | "anel_1"
+        | "colar"
+        | "anel_2"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -784,6 +900,19 @@ export const Constants = {
         "Atalanta",
         "Priestess",
         "Magician",
+      ],
+      equipment_rarity: ["normal", "raro", "epico", "lendario", "boss"],
+      equipment_slot: [
+        "arma_1m",
+        "arma_2m",
+        "escudo",
+        "armadura",
+        "bota",
+        "luva",
+        "bracelete",
+        "anel_1",
+        "colar",
+        "anel_2",
       ],
     },
   },
