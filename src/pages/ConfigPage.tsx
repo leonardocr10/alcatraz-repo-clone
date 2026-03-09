@@ -50,6 +50,10 @@ export default function ConfigPage() {
   const [discordLink, setDiscordLink] = useState("");
   const [savingDiscord, setSavingDiscord] = useState(false);
 
+  // Aging config state
+  const [maxAging, setMaxAging] = useState(12);
+  const [savingAging, setSavingAging] = useState(false);
+
   const fetchConfig = useCallback(async () => {
     const { data } = await supabase.from("whatsapp_config").select("*").limit(1).maybeSingle();
     if (data) {
