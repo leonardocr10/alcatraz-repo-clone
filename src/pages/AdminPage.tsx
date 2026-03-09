@@ -35,14 +35,25 @@ const AdminPage = () => {
   const [newBossDesc, setNewBossDesc] = useState("");
   const [newBossFile, setNewBossFile] = useState<File | null>(null);
   const [newBossMapFile, setNewBossMapFile] = useState<File | null>(null);
+  const [newBossAudioFile, setNewBossAudioFile] = useState<File | null>(null);
   const [bossSchedules, setBossSchedules] = useState<Record<string, any[]>>({});
   const [newScheduleTime, setNewScheduleTime] = useState<Record<string, string>>({});
   const [newScheduleMinutes, setNewScheduleMinutes] = useState<Record<string, number>>({});
   const [bossOpenState, setBossOpenState] = useState<Record<string, boolean>>({});
 
+  // Edit boss state
+  const [editBoss, setEditBoss] = useState<any | null>(null);
+  const [editBossName, setEditBossName] = useState("");
+  const [editBossMap, setEditBossMap] = useState("");
+  const [editBossDesc, setEditBossDesc] = useState("");
+  const [editBossFile, setEditBossFile] = useState<File | null>(null);
+  const [editBossMapFile, setEditBossMapFile] = useState<File | null>(null);
+  const [editBossAudioFile, setEditBossAudioFile] = useState<File | null>(null);
+
   // Tab
   const [tab, setTab] = useState<"boss" | "items" | "sessions" | "winners">("boss");
   const [showBossModal, setShowBossModal] = useState(false);
+  const [showEditBossModal, setShowEditBossModal] = useState(false);
 
 
   // Fetch functions
