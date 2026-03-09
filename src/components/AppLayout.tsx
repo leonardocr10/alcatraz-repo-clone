@@ -111,6 +111,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </h1>
               <p className="text-[10px] text-muted-foreground font-body">Sistema de Gestão</p>
             </div>
+            <span className="text-[9px] text-muted-foreground/40 font-body select-none self-end mb-0.5">v1.0.0</span>
           </div>
 
           <div className="flex items-center gap-2">
