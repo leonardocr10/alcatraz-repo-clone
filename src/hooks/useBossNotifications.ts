@@ -17,7 +17,16 @@ interface BossSchedule {
   notify_minutes_before: number;
 }
 
-function playAlertSound() {
+let activeAlertInterval: ReturnType<typeof setInterval> | null = null;
+
+function stopAlertSound() {
+  if (activeAlertInterval) {
+    clearInterval(activeAlertInterval);
+    activeAlertInterval = null;
+  }
+}
+
+function playSingleAlert() {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
     const now = ctx.currentTime;
@@ -46,7 +55,7 @@ function playAlertSound() {
       osc2.type = "sawtooth";
       osc2.frequency.value = freq * 1.005;
       osc3.type = "square";
-      osc3.frequency.value = freq * 0.5; // sub octave for depth
+      osc3.frequency.value = freq * 0.5;
       osc3.connect(g);
       g.gain.setValueAtTime(0.001, now + time);
       g.gain.linearRampToValueAtTime(vol, now + time + 0.12);
@@ -84,59 +93,62 @@ function playAlertSound() {
       osc2.stop(now + time + duration);
     };
 
-    // === GoT-style epic opening (~6 seconds) ===
-
-    // Intro: Deep war drums (0-1.2s)
     playDrum(0, 80, 0.6, 0.5);
     playDrum(0.55, 60, 0.5, 0.5);
     playDrum(1.0, 80, 0.55, 0.4);
-
-    // Cello-like melody: D minor motif (1.2-3.5s)
-    // D - F - A - D (ascending, dark & epic)
-    playString(1.2, 146.83, 0.5, 0.12);  // D3
-    playString(1.7, 174.61, 0.5, 0.13);  // F3
-    playString(2.2, 220.00, 0.5, 0.14);  // A3
-    playString(2.7, 293.66, 0.7, 0.15);  // D4 (hold longer)
-
-    // War drums intensify (3.4-4.6s)
+    playString(1.2, 146.83, 0.5, 0.12);
+    playString(1.7, 174.61, 0.5, 0.13);
+    playString(2.2, 220.00, 0.5, 0.14);
+    playString(2.7, 293.66, 0.7, 0.15);
     playDrum(3.4, 100, 0.55, 0.3);
     playDrum(3.6, 80, 0.5, 0.3);
     playDrum(3.8, 120, 0.6, 0.3);
     playDrum(4.0, 90, 0.5, 0.25);
     playDrum(4.15, 110, 0.55, 0.25);
     playDrum(4.3, 130, 0.6, 0.3);
-
-    // War horns - epic climax (4.5-6.5s)
-    playHorn(4.5, 146.83, 0.8, 0.14);  // D3 horn
-    playHorn(5.3, 174.61, 0.6, 0.15);  // F3 horn
-    playHorn(5.9, 220.00, 1.0, 0.18);  // A3 horn - battle cry!
-
-    // Final string sustain + drum hit (6.5-7.5s)
-    playString(6.5, 293.66, 1.0, 0.16); // D4 resolve
-    playString(6.5, 146.83, 1.0, 0.12); // D3 octave below
-    playDrum(6.5, 60, 0.7, 0.6);        // Final deep boom
-
+    playHorn(4.5, 146.83, 0.8, 0.14);
+    playHorn(5.3, 174.61, 0.6, 0.15);
+    playHorn(5.9, 220.00, 1.0, 0.18);
+    playString(6.5, 293.66, 1.0, 0.16);
+    playString(6.5, 146.83, 1.0, 0.12);
+    playDrum(6.5, 60, 0.7, 0.6);
   } catch (e) {
     console.log("[Notify] Could not play alert sound", e);
   }
 }
 
+function startAlertSoundLoop() {
+  stopAlertSound();
+  playSingleAlert();
+  activeAlertInterval = setInterval(() => playSingleAlert(), 8500);
+}
+
 async function showNotification(title: string, options: NotificationOptions) {
-  // Play alert sound
-  playAlertSound();
+  // Start looping alert sound
+  startAlertSoundLoop();
 
   // Try Service Worker first (works better in installed PWAs)
   if ("serviceWorker" in navigator) {
     try {
       const reg = await navigator.serviceWorker.ready;
       await reg.showNotification(title, options);
+      // SW notifications don't fire onclose easily, stop after 60s max
+      setTimeout(stopAlertSound, 60000);
       return;
     } catch (e) {
       console.log("[Notify] SW fallback to basic Notification", e);
     }
   }
   // Fallback to basic Notification API
-  new Notification(title, options);
+  const notif = new Notification(title, options);
+  notif.onclose = () => stopAlertSound();
+  notif.onclick = () => {
+    stopAlertSound();
+    window.focus();
+    notif.close();
+  };
+  // Safety: stop after 60 seconds max
+  setTimeout(stopAlertSound, 60000);
 }
 
 export function useBossNotifications() {
