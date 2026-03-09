@@ -392,21 +392,40 @@ export default function EquipmentManager() {
               <input value={editName} onChange={e => setEditName(e.target.value)} className="input-modern text-sm" />
             </label>
 
+            {/* Slot selector */}
+            <label className="block space-y-1">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Slot</span>
+              <select
+                value={editSlot}
+                onChange={e => {
+                  const newSlot = e.target.value as EquipmentSlot;
+                  setEditSlot(newSlot);
+                  const catsForSlot = categories.filter(c => c.slot === newSlot);
+                  if (catsForSlot.length > 0 && !catsForSlot.find(c => c.id === editCategoryId)) {
+                    setEditCategoryId(catsForSlot[0].id);
+                  }
+                }}
+                className="input-modern text-sm"
+              >
+                {(Object.keys(SLOT_LABELS) as EquipmentSlot[]).map(s => (
+                  <option key={s} value={s}>{SLOT_LABELS[s]}</option>
+                ))}
+              </select>
+            </label>
+
             {/* Category selector */}
-            {editingItem && (
-              <label className="block space-y-1">
-                <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Categoria</span>
-                <select
-                  value={editCategoryId}
-                  onChange={e => setEditCategoryId(e.target.value)}
-                  className="input-modern text-sm"
-                >
-                  {categories.filter(c => c.slot === editingItem.slot).map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
-              </label>
-            )}
+            <label className="block space-y-1">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Categoria</span>
+              <select
+                value={editCategoryId}
+                onChange={e => setEditCategoryId(e.target.value)}
+                className="input-modern text-sm"
+              >
+                {categories.filter(c => c.slot === editSlot).map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </label>
 
             <label className="block space-y-1">
               <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">URL da Imagem (prioritário)</span>
