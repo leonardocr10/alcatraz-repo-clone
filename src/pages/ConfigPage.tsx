@@ -40,6 +40,10 @@ export default function ConfigPage() {
   const [rulesId, setRulesId] = useState<string | null>(null);
   const [savingRules, setSavingRules] = useState(false);
 
+  // Discord state
+  const [discordLink, setDiscordLink] = useState("");
+  const [savingDiscord, setSavingDiscord] = useState(false);
+
   const fetchConfig = useCallback(async () => {
     const { data } = await supabase.from("whatsapp_config").select("*").limit(1).maybeSingle();
     if (data) {
