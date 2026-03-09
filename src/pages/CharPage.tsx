@@ -201,6 +201,11 @@ export default function CharPage() {
                   {equip?.item ? (
                     <>
                       <img src={equip.item.image_url} alt={equip.item.name} className="w-4/5 h-4/5 object-contain" />
+                      {equip.plus_value != null && equip.plus_value > 0 && (
+                        <span className="absolute bottom-0.5 right-0.5 text-[8px] font-display font-bold text-foreground bg-background/80 px-1 rounded">
+                          +{equip.plus_value}
+                        </span>
+                      )}
                       <button
                         onClick={(e) => { e.stopPropagation(); handleUnequip(slotCfg.slot); }}
                         className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-destructive/80 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
