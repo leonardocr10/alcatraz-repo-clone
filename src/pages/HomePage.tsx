@@ -400,7 +400,7 @@ const HomePage = () => {
                 <div className="flex items-center gap-2">
                   {isAdmin && (
                     <span
-                      onClick={(e) => { e.stopPropagation(); sendAllBossNotify(); }}
+                      onClick={(e) => { e.stopPropagation(); setConfirmSendAll(true); }}
                       className="text-xs font-display font-bold text-primary flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-primary/10 transition-colors disabled:opacity-50 cursor-pointer"
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
