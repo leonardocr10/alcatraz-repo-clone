@@ -67,6 +67,9 @@ export default function ConfigPage() {
       supabase.from("clan_rules").select("id, content").limit(1).maybeSingle().then(({ data }) => {
         if (data) { setRulesContent(data.content); setRulesId(data.id); }
       });
+      supabase.from("app_config").select("discord_link").eq("id", "main").maybeSingle().then(({ data }) => {
+        if (data?.discord_link) setDiscordLink(data.discord_link);
+      });
     }
   }, [isAdmin, fetchConfig]);
 
