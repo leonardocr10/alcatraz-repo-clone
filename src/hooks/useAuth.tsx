@@ -97,6 +97,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [fetchProfile]);
 
+  // If the current user's row is deleted, revoke access immediately
+  useEffect(() => {
+    if (!authUser || !profile?.id) return;
+
+    const channel = supabase
+      .channel(`users-delete-${profile.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "users",
+          filter: `id=eq.${profile.id}`,
+        },
+        async () => {
+          console.warn("[Auth] Current user row deleted; signing out");
+          await supabase.auth.signOut();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [authUser?.id, profile?.id]);
+
+  // Fallback: periodic check in case Realtime is unavailable
+  useEffect(() => {
+    if (!authUser) return;
+    const interval = window.setInterval(() => {
+      fetchProfile(authUser.id, { signOutIfMissing: true });
+    }, 60_000);
+
+    return () => window.clearInterval(interval);
+  }, [authUser?.id, fetchProfile]);
+
   const makeEmail = (phone: string) => {
     const digits = phone.replace(/\D/g, '');
     return `${digits}@phone.roleta.app`;
