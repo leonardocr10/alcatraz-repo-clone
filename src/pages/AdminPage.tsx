@@ -97,6 +97,10 @@ const AdminPage = () => {
     return urlData.publicUrl;
   };
 
+  const uploadAudioFile = async (file: File) => {
+    return uploadFile(file, "boss-audio");
+  };
+
   // Item functions
   const createItem = async () => {
     if (!newItemName.trim()) return;
