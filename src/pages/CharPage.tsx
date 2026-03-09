@@ -109,9 +109,20 @@ export default function CharPage() {
     if (data) setCharVisible(!!data.char_visible);
   };
 
+  const fetchRanking = async () => {
+    if (!profile?.id) return;
+    const { data } = await supabase
+      .from("player_rankings")
+      .select("level, xp")
+      .eq("user_id", profile.id)
+      .maybeSingle();
+    if (data) setPlayerRanking(data);
+  };
+
   useEffect(() => {
     fetchEquipment();
     fetchVisibility();
+    fetchRanking();
   }, [profile?.id]);
 
   const toggleVisibility = async () => {
