@@ -190,7 +190,7 @@ const Index = () => {
                 <div key={idx} className="glass-card rounded-2xl p-4 text-center border border-border/30">
                   <div className="flex justify-center mb-2">
                     {idx === 0 ? (
-                      <Trophy className="w-6 h-6 text-yellow-400" />
+                      <Trophy className="w-6 h-6 text-gold" />
                     ) : (
                       <Star className="w-5 h-5 text-muted-foreground" />
                     )}
