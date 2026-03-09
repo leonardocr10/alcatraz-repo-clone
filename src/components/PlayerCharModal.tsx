@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import slotSword from "@/assets/slot-sword.png";
 import slotShield from "@/assets/slot-shield.png";
@@ -59,16 +59,24 @@ interface Props {
 export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
   const [equipment, setEquipment] = useState<PlayerEquip[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [level, setLevel] = useState<number | null>(null);
+  const [xp, setXp] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [avatarExpanded, setAvatarExpanded] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       // Fetch avatar and equipment in parallel
-      const [userRes, equipRes] = await Promise.all([
+      const [userRes, equipRes, rankRes] = await Promise.all([
         supabase.from("users").select("avatar_url").eq("id", playerId).single(),
         supabase.from("player_equipment").select("slot, rarity, plus_value, item_id").eq("user_id", playerId),
+        supabase.from("player_rankings").select("level, xp").eq("user_id", playerId).maybeSingle(),
       ]);
       if (userRes.data?.avatar_url) setAvatarUrl(userRes.data.avatar_url);
+      if (rankRes.data) {
+        setLevel(rankRes.data.level);
+        setXp(rankRes.data.xp);
+      }
       const data = equipRes.data;
 
       if (data && data.length > 0) {
@@ -108,8 +116,22 @@ export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
         ) : (
           <div className="space-y-3">
             {avatarUrl && (
-              <div className="flex justify-center">
-                <img src={avatarUrl} alt={playerName} className="w-20 h-20 rounded-2xl object-cover border-2 border-primary/30 shadow-lg" />
+              <div className="flex flex-col items-center gap-1">
+                <button onClick={() => setAvatarExpanded(true)} className="focus:outline-none">
+                  <img src={avatarUrl} alt={playerName} className="w-20 h-20 rounded-2xl object-cover border-2 border-primary/30 shadow-lg hover:scale-105 transition-transform cursor-pointer" />
+                </button>
+                <div className="flex items-center gap-2">
+                  {level != null && (
+                    <span className="text-[10px] font-display font-extrabold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                      Lv. {level}
+                    </span>
+                  )}
+                  {xp && (
+                    <span className="text-[10px] font-display font-bold text-muted-foreground">
+                      {xp} XP
+                    </span>
+                  )}
+                </div>
               </div>
             )}
             <div className="flex gap-3">
@@ -167,6 +189,35 @@ export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* Avatar expanded overlay */}
+        {avatarExpanded && avatarUrl && (
+          <div
+            className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center"
+            onClick={() => setAvatarExpanded(false)}
+          >
+            <div className="relative" onClick={e => e.stopPropagation()}>
+              <img src={avatarUrl} alt={playerName} className="max-w-[80vw] max-h-[70vh] rounded-2xl object-contain shadow-2xl border-2 border-primary/30" />
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent rounded-b-2xl p-4">
+                <p className="font-display font-extrabold text-lg text-white text-center uppercase">{playerName}</p>
+                <div className="flex items-center justify-center gap-3 mt-1">
+                  {level != null && (
+                    <span className="text-sm font-display font-extrabold text-primary">Lv. {level}</span>
+                  )}
+                  {xp && (
+                    <span className="text-sm font-display font-bold text-muted-foreground">{xp} XP</span>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setAvatarExpanded(false)}
+                className="absolute top-2 right-2 w-8 h-8 rounded-full bg-background/80 flex items-center justify-center hover:bg-background transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           </div>
         )}
