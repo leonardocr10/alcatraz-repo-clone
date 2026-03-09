@@ -19,35 +19,51 @@ interface BossSchedule {
 }
 
 let activeAlertInterval: ReturnType<typeof setInterval> | null = null;
+let isSpeaking = false;
 
 function stopAlertSound() {
   if (activeAlertInterval) {
     clearInterval(activeAlertInterval);
     activeAlertInterval = null;
   }
+  isSpeaking = false;
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
 }
 
 function speakAlert(bossName?: string) {
   try {
     if (!("speechSynthesis" in window)) return;
+    if (isSpeaking && window.speechSynthesis.speaking) return;
     window.speechSynthesis.cancel();
     const name = bossName || "Boss";
-    const text = `Olhaaaaa o Bossssss! ${name}! Correeeeeee!`;
+    const text = `Alerta de Boss. ${name}.`;
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "pt-BR";
-    utterance.rate = 1.1;
-    utterance.pitch = 1.4;
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
     utterance.volume = 1;
+    // Try to pick a more natural voice
+    const voices = window.speechSynthesis.getVoices();
+    const ptVoice = voices.find(v => v.lang.startsWith("pt") && v.name.toLowerCase().includes("google"))
+      || voices.find(v => v.lang.startsWith("pt-BR"))
+      || voices.find(v => v.lang.startsWith("pt"));
+    if (ptVoice) utterance.voice = ptVoice;
+    isSpeaking = true;
+    utterance.onend = () => { isSpeaking = false; };
+    utterance.onerror = () => { isSpeaking = false; };
     window.speechSynthesis.speak(utterance);
   } catch (e) {
     console.log("[Notify] Could not speak alert", e);
+    isSpeaking = false;
   }
 }
 
 function startAlertSoundLoop(bossName?: string) {
   stopAlertSound();
   speakAlert(bossName);
-  activeAlertInterval = setInterval(() => speakAlert(bossName), 5000);
+  activeAlertInterval = setInterval(() => speakAlert(bossName), 6000);
 }
 
 async function showNotification(title: string, options: NotificationOptions, soundEnabled: boolean, bossName?: string) {
