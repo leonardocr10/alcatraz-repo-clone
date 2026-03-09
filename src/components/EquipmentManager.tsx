@@ -44,6 +44,7 @@ export default function EquipmentManager() {
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [editName, setEditName] = useState("");
   const [editImageUrl, setEditImageUrl] = useState("");
+  const [editCategoryId, setEditCategoryId] = useState("");
   const [editFile, setEditFile] = useState<File | null>(null);
   const [editPreview, setEditPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -87,6 +88,7 @@ export default function EquipmentManager() {
     setEditingItem(item);
     setEditName(item.name);
     setEditImageUrl(item.image_url);
+    setEditCategoryId(item.category_id);
     setEditFile(null);
     setEditPreview(null);
   };
@@ -95,6 +97,7 @@ export default function EquipmentManager() {
     setEditingItem(null);
     setEditName("");
     setEditImageUrl("");
+    setEditCategoryId("");
     setEditFile(null);
     setEditPreview(null);
   };
@@ -123,12 +126,12 @@ export default function EquipmentManager() {
       }
       const { error } = await supabase
         .from("equipment_items")
-        .update({ name: editName, image_url: finalUrl })
+        .update({ name: editName, image_url: finalUrl, category_id: editCategoryId })
         .eq("id", editingItem.id);
       if (error) throw error;
       toast.success("Item atualizado!");
       setItems(prev => prev.map(i =>
-        i.id === editingItem.id ? { ...i, name: editName, image_url: finalUrl } : i
+        i.id === editingItem.id ? { ...i, name: editName, image_url: finalUrl, category_id: editCategoryId } : i
       ));
       cancelEdit();
     } catch (err: any) {
@@ -385,6 +388,22 @@ export default function EquipmentManager() {
               <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Nome</span>
               <input value={editName} onChange={e => setEditName(e.target.value)} className="input-modern text-sm" />
             </label>
+
+            {/* Category selector */}
+            {editingItem && (
+              <label className="block space-y-1">
+                <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Categoria</span>
+                <select
+                  value={editCategoryId}
+                  onChange={e => setEditCategoryId(e.target.value)}
+                  className="input-modern text-sm"
+                >
+                  {categories.filter(c => c.slot === editingItem.slot).map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
 
             <label className="block space-y-1">
               <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">URL da Imagem (prioritário)</span>
