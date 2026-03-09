@@ -45,6 +45,7 @@ export default function PlayersPage() {
   });
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState<string | null>(searchParams.get("class"));
+  const [clanFilter, setClanFilter] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
   // Edit modal state
