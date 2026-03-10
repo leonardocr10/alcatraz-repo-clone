@@ -65,31 +65,42 @@ interface Props {
   onClose: () => void;
 }
 
+const fetchWithTimeout = (url: string, timeoutMs: number): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), timeoutMs);
+    supabase.functions.invoke('image-proxy', { body: { url } })
+      .then(({ data, error }) => {
+        clearTimeout(timer);
+        if (error) throw error;
+        if (data?.base64) resolve(data.base64);
+        else throw new Error('No base64');
+      })
+      .catch(err => { clearTimeout(timer); reject(err); });
+  });
+};
+
 const convertImageToBase64 = async (url: string): Promise<string> => {
   if (url.startsWith('data:') || url.startsWith('blob:')) return url;
   
-  try {
-    const { data, error } = await supabase.functions.invoke('image-proxy', {
-      body: { url },
-    });
-    if (error) throw error;
-    if (data?.base64) return data.base64;
-    throw new Error('No base64 returned');
-  } catch (e) {
-    console.error('Image proxy error for:', url, e);
+  for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const response = await fetch(url, { mode: 'cors' });
-      if (!response.ok) throw new Error('fetch failed');
-      const blob = await response.blob();
-      return await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = () => resolve(url);
-        reader.readAsDataURL(blob);
-      });
-    } catch {
-      return url;
+      return await fetchWithTimeout(url, 10000);
+    } catch (e) {
+      console.warn(`Proxy attempt ${attempt + 1} failed for:`, url, e);
     }
+  }
+  try {
+    const response = await fetch(url, { mode: 'cors' });
+    if (!response.ok) throw new Error('fetch failed');
+    const blob = await response.blob();
+    return await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(url);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return url;
   }
 };
 
