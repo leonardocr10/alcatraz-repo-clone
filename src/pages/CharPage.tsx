@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Shield, X, Eye, EyeOff, Trash2, Share2 } from "lucide-react";
+import { Shield, X, Eye, EyeOff, Trash2, Share2, Download } from "lucide-react";
 import { EquipmentCatalogModal } from "@/components/EquipmentCatalogModal";
 import { toPng } from "html-to-image";
 import slotSword from "@/assets/slot-sword.png";
