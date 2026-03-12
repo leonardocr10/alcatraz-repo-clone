@@ -233,40 +233,40 @@ export default function CharPage() {
     }
   };
 
+  const generateImage = async (): Promise<string> => {
+    if (!shareRef.current) throw new Error('No ref');
+    const images = shareRef.current.querySelectorAll('img');
+    const originalSrcs: { img: HTMLImageElement; src: string }[] = [];
+
+    for (const img of Array.from(images)) {
+      if (img.src.startsWith('data:') || img.src.startsWith('blob:')) continue;
+      const isLocal = img.src.includes(window.location.origin) || img.src.startsWith('/');
+      if (isLocal) continue;
+      originalSrcs.push({ img, src: img.src });
+      try {
+        const base64 = await convertImageToBase64(img.src);
+        img.src = base64;
+      } catch {
+        // Keep original src if conversion fails
+      }
+    }
+
+    await new Promise(r => setTimeout(r, 100));
+
+    const dataUrl = await toPng(shareRef.current, {
+      backgroundColor: '#1a1a2e',
+      pixelRatio: 2,
+      cacheBust: true,
+    });
+
+    originalSrcs.forEach(({ img, src }) => { img.src = src; });
+    return dataUrl;
+  };
+
   const handleShare = async () => {
-    if (!shareRef.current) return;
     setSharing(true);
     try {
-      // Pre-convert all images to base64
-      const images = shareRef.current.querySelectorAll('img');
-      const originalSrcs: { img: HTMLImageElement; src: string }[] = [];
-      
-      // Convert external images sequentially via proxy
-      for (const img of Array.from(images)) {
-        if (img.src.startsWith('data:') || img.src.startsWith('blob:')) continue;
-        // Skip local bundled assets (Vite imports) - they render fine in html-to-image
-        const isLocal = img.src.includes(window.location.origin) || img.src.startsWith('/');
-        if (isLocal) continue;
-        originalSrcs.push({ img, src: img.src });
-        try {
-          const base64 = await convertImageToBase64(img.src);
-          img.src = base64;
-        } catch {
-          // Keep original src if conversion fails
-        }
-      }
-
-      await new Promise(r => setTimeout(r, 100));
-
-      const dataUrl = await toPng(shareRef.current, {
-        backgroundColor: '#1a1a2e',
-        pixelRatio: 2,
-        cacheBust: true,
-      });
-
-      // Restore original srcs to avoid broken images in UI
-      originalSrcs.forEach(({ img, src }) => { img.src = src; });
-
+      const dataUrl = await generateImage();
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], `char-${profile?.nickname || 'player'}.png`, { type: 'image/png' });
 
@@ -277,17 +277,33 @@ export default function CharPage() {
           files: [file],
         });
       } else {
-        const link = document.createElement('a');
-        link.href = dataUrl;
-        link.download = `char-${profile?.nickname || 'player'}.png`;
-        link.click();
-        toast.success("Imagem salva! Envie pelo WhatsApp.");
+        handleDownloadFromDataUrl(dataUrl);
       }
     } catch (err: any) {
       if (err.name !== 'AbortError') {
         toast.error("Erro ao compartilhar");
         console.error("Share error:", err);
       }
+    }
+    setSharing(false);
+  };
+
+  const handleDownloadFromDataUrl = (dataUrl: string) => {
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = `char-${profile?.nickname || 'player'}.png`;
+    link.click();
+    toast.success("Imagem salva!");
+  };
+
+  const handleDownload = async () => {
+    setSharing(true);
+    try {
+      const dataUrl = await generateImage();
+      handleDownloadFromDataUrl(dataUrl);
+    } catch (err: any) {
+      toast.error("Erro ao baixar imagem");
+      console.error("Download error:", err);
     }
     setSharing(false);
   };
