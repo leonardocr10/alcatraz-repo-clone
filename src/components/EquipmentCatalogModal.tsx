@@ -119,7 +119,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
             </div>
 
             {/* Items grid */}
-            <div className="flex-1 overflow-y-auto min-h-0 pr-1">
+            <div className="flex-1 sm:overflow-y-auto min-h-0 pr-1">
               {loading ? (
                 <div className="flex items-center justify-center h-32">
                   <Loader2 className="w-6 h-6 animate-spin text-primary" />
