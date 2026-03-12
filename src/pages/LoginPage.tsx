@@ -27,6 +27,7 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [selectedClass, setSelectedClass] = useState<CharacterClass | "">("");
   const [classIcons, setClassIcons] = useState<{ name: CharacterClass; image_url: string | null }[]>([]);
+  const [playSchedule, setPlaySchedule] = useState<string[]>([]);
   const { signIn, signUp, authUser, isApproved, signOut } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
