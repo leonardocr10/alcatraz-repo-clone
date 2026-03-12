@@ -137,7 +137,28 @@ export default function CharPage() {
     fetchEquipment();
     fetchVisibility();
     fetchRanking();
+    // Load play_schedule from profile
+    if (profile) {
+      const ps = (profile as any)?.play_schedule as string[] | undefined;
+      setPlaySchedule(ps || []);
+    }
   }, [profile?.id]);
+
+  const savePlaySchedule = async (newSchedule: string[]) => {
+    if (!profile?.id) return;
+    setPlaySchedule(newSchedule);
+    setSavingSchedule(true);
+    const { error } = await supabase
+      .from("users")
+      .update({ play_schedule: newSchedule } as any)
+      .eq("id", profile.id);
+    if (error) {
+      toast.error("Erro ao salvar horários");
+    } else {
+      toast.success("Horários atualizados!");
+    }
+    setSavingSchedule(false);
+  };
 
   const toggleVisibility = async () => {
     if (!profile?.id) return;
