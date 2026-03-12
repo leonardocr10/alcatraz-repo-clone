@@ -6,6 +6,7 @@ import { Sword, Shield, Eye, EyeOff, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import logoAz from "@/assets/logo-az.jpeg";
 import bgBoss from "@/assets/bg-boss.jpg";
+import { PlayScheduleSelector } from "@/components/PlayScheduleSelector";
 import type { Database } from "@/integrations/supabase/types";
 
 type CharacterClass = Database["public"]["Enums"]["character_class"];
