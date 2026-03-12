@@ -81,6 +81,8 @@ export default function CharPage() {
   const [avatarExpanded, setAvatarExpanded] = useState(false);
   const [playerRanking, setPlayerRanking] = useState<{ level: number | null; xp: string | null } | null>(null);
   const [sharing, setSharing] = useState(false);
+  const [playSchedule, setPlaySchedule] = useState<string[]>([]);
+  const [savingSchedule, setSavingSchedule] = useState(false);
   const shareRef = useRef<HTMLDivElement>(null);
 
   const fetchEquipment = async () => {
