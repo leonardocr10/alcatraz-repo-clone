@@ -523,6 +523,20 @@ export default function CharPage() {
         </div>
       </button>
 
+      {/* Play Schedule */}
+      <div className="glass-card p-4 rounded-2xl border border-border/40 space-y-3">
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-primary" />
+          <span className="font-display font-bold text-xs uppercase tracking-wider text-foreground">
+            Horários que jogo
+          </span>
+          {savingSchedule && (
+            <div className="w-3 h-3 border border-primary border-t-transparent rounded-full animate-spin ml-auto" />
+          )}
+        </div>
+        <PlayScheduleSelector selected={playSchedule} onChange={savePlaySchedule} size="sm" />
+      </div>
+
       {catalogSlot && (
         <EquipmentCatalogModal
           slot={catalogSlot}

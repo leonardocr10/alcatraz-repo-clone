@@ -75,6 +75,7 @@ const App = () => {
           </Routes>
           <PWAInstallBanner />
           <PWAUpdateBanner />
+          <PlaySchedulePrompt />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
