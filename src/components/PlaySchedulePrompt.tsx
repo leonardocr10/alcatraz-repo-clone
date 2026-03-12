@@ -47,23 +47,19 @@ export function PlaySchedulePrompt() {
           Selecione os horários que você costuma jogar:
         </p>
         <PlayScheduleSelector selected={selected} onChange={setSelected} />
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setDismissed(true)}
-            className="flex-1 btn-secondary text-sm font-display tracking-wider uppercase"
-          >
-            Pular
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="flex-1 btn-primary text-sm font-display tracking-wider uppercase"
-          >
-            {saving ? "Salvando..." : "Salvar"}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving || selected.length === 0}
+          className="w-full btn-primary text-sm font-display tracking-wider uppercase"
+        >
+          {saving ? "Salvando..." : "Salvar"}
+        </button>
+        {selected.length === 0 && (
+          <p className="text-[10px] text-muted-foreground text-center font-body">
+            Selecione pelo menos um horário para continuar
+          </p>
+        )}
       </div>
     </div>
   );
