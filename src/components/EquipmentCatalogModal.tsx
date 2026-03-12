@@ -81,9 +81,9 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
+        <div className="flex-1 flex flex-col sm:flex-row gap-4 overflow-y-auto sm:overflow-hidden min-h-0">
           {/* Left side - Catalog */}
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="flex-1 flex flex-col min-h-0 sm:overflow-hidden">
             {/* Category tabs */}
             {categories.length > 0 && (
               <div className="mb-3">
