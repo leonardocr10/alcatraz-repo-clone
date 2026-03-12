@@ -371,7 +371,7 @@ export default function CharPage() {
             Inventário
           </h2>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={handleShare}
             disabled={sharing}
@@ -379,6 +379,14 @@ export default function CharPage() {
           >
             <Share2 className="w-3.5 h-3.5" />
             {sharing ? 'Gerando...' : 'Compartilhar'}
+          </button>
+          <button
+            onClick={handleDownload}
+            disabled={sharing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-display font-bold text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Baixar
           </button>
           {equipment.length > 0 && (
             <button
