@@ -156,7 +156,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
           </div>
 
           {/* Right side - Preview & Options */}
-          <div className="w-52 flex flex-col gap-3">
+          <div className="w-full sm:w-52 flex flex-col gap-3">
             {/* Item preview - larger */}
             <div className={`rounded-xl border border-border/40 flex items-center justify-center overflow-hidden transition-colors ${
               selectedItem
