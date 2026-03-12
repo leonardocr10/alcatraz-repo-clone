@@ -74,16 +74,16 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold uppercase tracking-wide">
             {slotLabel}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
+        <div className="flex-1 flex flex-col sm:flex-row gap-4 overflow-y-auto sm:overflow-hidden min-h-0">
           {/* Left side - Catalog */}
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="flex-1 flex flex-col min-h-0 sm:overflow-hidden">
             {/* Category tabs */}
             {categories.length > 0 && (
               <div className="mb-3">
@@ -119,7 +119,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
             </div>
 
             {/* Items grid */}
-            <div className="flex-1 overflow-y-auto min-h-0 pr-1">
+            <div className="flex-1 sm:overflow-y-auto min-h-0 pr-1">
               {loading ? (
                 <div className="flex items-center justify-center h-32">
                   <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -129,7 +129,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                   Nenhum item cadastrado para este slot
                 </div>
               ) : (
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
                   {filteredItems.map(item => (
                     <button
                       key={item.id}
@@ -156,7 +156,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
           </div>
 
           {/* Right side - Preview & Options */}
-          <div className="w-52 flex flex-col gap-3">
+          <div className="w-full sm:w-52 flex flex-col gap-3">
             {/* Item preview - larger */}
             <div className={`rounded-xl border border-border/40 flex items-center justify-center overflow-hidden transition-colors ${
               selectedItem
