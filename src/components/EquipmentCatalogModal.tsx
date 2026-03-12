@@ -74,7 +74,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-display text-xl font-extrabold uppercase tracking-wide">
             {slotLabel}
