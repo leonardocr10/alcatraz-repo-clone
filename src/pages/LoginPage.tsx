@@ -160,6 +160,12 @@ const LoginPage = () => {
                 </div>
               </div>
             )}
+            {isSignUp && (
+              <div>
+                <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">Horários que joga</label>
+                <PlayScheduleSelector selected={playSchedule} onChange={setPlaySchedule} size="sm" />
+              </div>
+            )}
             <button type="submit" disabled={loading} className="w-full btn-primary font-display tracking-wider uppercase text-sm">
               {loading ? <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mx-auto" /> : isSignUp ? "⚔️ CRIAR CONTA" : "⚔️ ENTRAR"}
             </button>
