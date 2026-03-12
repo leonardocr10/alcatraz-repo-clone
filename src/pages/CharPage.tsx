@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Shield, X, Eye, EyeOff, Trash2, Share2 } from "lucide-react";
+import { Shield, X, Eye, EyeOff, Trash2, Share2, Download } from "lucide-react";
 import { EquipmentCatalogModal } from "@/components/EquipmentCatalogModal";
 import { toPng } from "html-to-image";
 import slotSword from "@/assets/slot-sword.png";
@@ -233,40 +233,40 @@ export default function CharPage() {
     }
   };
 
+  const generateImage = async (): Promise<string> => {
+    if (!shareRef.current) throw new Error('No ref');
+    const images = shareRef.current.querySelectorAll('img');
+    const originalSrcs: { img: HTMLImageElement; src: string }[] = [];
+
+    for (const img of Array.from(images)) {
+      if (img.src.startsWith('data:') || img.src.startsWith('blob:')) continue;
+      const isLocal = img.src.includes(window.location.origin) || img.src.startsWith('/');
+      if (isLocal) continue;
+      originalSrcs.push({ img, src: img.src });
+      try {
+        const base64 = await convertImageToBase64(img.src);
+        img.src = base64;
+      } catch {
+        // Keep original src if conversion fails
+      }
+    }
+
+    await new Promise(r => setTimeout(r, 100));
+
+    const dataUrl = await toPng(shareRef.current, {
+      backgroundColor: '#1a1a2e',
+      pixelRatio: 2,
+      cacheBust: true,
+    });
+
+    originalSrcs.forEach(({ img, src }) => { img.src = src; });
+    return dataUrl;
+  };
+
   const handleShare = async () => {
-    if (!shareRef.current) return;
     setSharing(true);
     try {
-      // Pre-convert all images to base64
-      const images = shareRef.current.querySelectorAll('img');
-      const originalSrcs: { img: HTMLImageElement; src: string }[] = [];
-      
-      // Convert external images sequentially via proxy
-      for (const img of Array.from(images)) {
-        if (img.src.startsWith('data:') || img.src.startsWith('blob:')) continue;
-        // Skip local bundled assets (Vite imports) - they render fine in html-to-image
-        const isLocal = img.src.includes(window.location.origin) || img.src.startsWith('/');
-        if (isLocal) continue;
-        originalSrcs.push({ img, src: img.src });
-        try {
-          const base64 = await convertImageToBase64(img.src);
-          img.src = base64;
-        } catch {
-          // Keep original src if conversion fails
-        }
-      }
-
-      await new Promise(r => setTimeout(r, 100));
-
-      const dataUrl = await toPng(shareRef.current, {
-        backgroundColor: '#1a1a2e',
-        pixelRatio: 2,
-        cacheBust: true,
-      });
-
-      // Restore original srcs to avoid broken images in UI
-      originalSrcs.forEach(({ img, src }) => { img.src = src; });
-
+      const dataUrl = await generateImage();
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], `char-${profile?.nickname || 'player'}.png`, { type: 'image/png' });
 
@@ -277,17 +277,33 @@ export default function CharPage() {
           files: [file],
         });
       } else {
-        const link = document.createElement('a');
-        link.href = dataUrl;
-        link.download = `char-${profile?.nickname || 'player'}.png`;
-        link.click();
-        toast.success("Imagem salva! Envie pelo WhatsApp.");
+        handleDownloadFromDataUrl(dataUrl);
       }
     } catch (err: any) {
       if (err.name !== 'AbortError') {
         toast.error("Erro ao compartilhar");
         console.error("Share error:", err);
       }
+    }
+    setSharing(false);
+  };
+
+  const handleDownloadFromDataUrl = (dataUrl: string) => {
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = `char-${profile?.nickname || 'player'}.png`;
+    link.click();
+    toast.success("Imagem salva!");
+  };
+
+  const handleDownload = async () => {
+    setSharing(true);
+    try {
+      const dataUrl = await generateImage();
+      handleDownloadFromDataUrl(dataUrl);
+    } catch (err: any) {
+      toast.error("Erro ao baixar imagem");
+      console.error("Download error:", err);
     }
     setSharing(false);
   };
@@ -355,7 +371,7 @@ export default function CharPage() {
             Inventário
           </h2>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={handleShare}
             disabled={sharing}
@@ -363,6 +379,14 @@ export default function CharPage() {
           >
             <Share2 className="w-3.5 h-3.5" />
             {sharing ? 'Gerando...' : 'Compartilhar'}
+          </button>
+          <button
+            onClick={handleDownload}
+            disabled={sharing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-display font-bold text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Baixar
           </button>
           {equipment.length > 0 && (
             <button
