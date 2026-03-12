@@ -50,7 +50,7 @@ const LoginPage = () => {
       if (isSignUp) {
         if (!nickname.trim()) throw new Error("Informe um nickname");
         if (!selectedClass) throw new Error("Selecione uma classe");
-        await signUp(nickname.trim(), password, phone, selectedClass);
+        await signUp(nickname.trim(), password, phone, selectedClass, playSchedule);
         toast.success("Conta criada! Aguardando aprovação do admin.");
         navigate("/login?pending=1");
         return;
