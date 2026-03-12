@@ -1,0 +1,1 @@
+ALTER TABLE public.users ADD COLUMN play_schedule text[] NOT NULL DEFAULT '{}';

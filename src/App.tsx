@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/AppLayout";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
+import { PlaySchedulePrompt } from "@/components/PlaySchedulePrompt";
 import { PWAUpdateBanner } from "@/components/PWAUpdateBanner";
 import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/HomePage";
@@ -74,6 +75,7 @@ const App = () => {
           </Routes>
           <PWAInstallBanner />
           <PWAUpdateBanner />
+          <PlaySchedulePrompt />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

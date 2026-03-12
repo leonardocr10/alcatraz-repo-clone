@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Shield, X, Eye, EyeOff, Trash2, Share2, Download } from "lucide-react";
+import { Shield, X, Eye, EyeOff, Trash2, Share2, Download, Clock } from "lucide-react";
 import { EquipmentCatalogModal } from "@/components/EquipmentCatalogModal";
+import { PlayScheduleSelector } from "@/components/PlayScheduleSelector";
 import { toPng } from "html-to-image";
 import slotSword from "@/assets/slot-sword.png";
 import slotShield from "@/assets/slot-shield.png";
@@ -80,6 +81,8 @@ export default function CharPage() {
   const [avatarExpanded, setAvatarExpanded] = useState(false);
   const [playerRanking, setPlayerRanking] = useState<{ level: number | null; xp: string | null } | null>(null);
   const [sharing, setSharing] = useState(false);
+  const [playSchedule, setPlaySchedule] = useState<string[]>([]);
+  const [savingSchedule, setSavingSchedule] = useState(false);
   const shareRef = useRef<HTMLDivElement>(null);
 
   const fetchEquipment = async () => {
@@ -134,7 +137,28 @@ export default function CharPage() {
     fetchEquipment();
     fetchVisibility();
     fetchRanking();
+    // Load play_schedule from profile
+    if (profile) {
+      const ps = (profile as any)?.play_schedule as string[] | undefined;
+      setPlaySchedule(ps || []);
+    }
   }, [profile?.id]);
+
+  const savePlaySchedule = async (newSchedule: string[]) => {
+    if (!profile?.id) return;
+    setPlaySchedule(newSchedule);
+    setSavingSchedule(true);
+    const { error } = await supabase
+      .from("users")
+      .update({ play_schedule: newSchedule } as any)
+      .eq("id", profile.id);
+    if (error) {
+      toast.error("Erro ao salvar horários");
+    } else {
+      toast.success("Horários atualizados!");
+    }
+    setSavingSchedule(false);
+  };
 
   const toggleVisibility = async () => {
     if (!profile?.id) return;
@@ -498,6 +522,20 @@ export default function CharPage() {
           <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${charVisible ? 'translate-x-5' : 'translate-x-0.5'}`} />
         </div>
       </button>
+
+      {/* Play Schedule */}
+      <div className="glass-card p-4 rounded-2xl border border-border/40 space-y-3">
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-primary" />
+          <span className="font-display font-bold text-xs uppercase tracking-wider text-foreground">
+            Horários que jogo
+          </span>
+          {savingSchedule && (
+            <div className="w-3 h-3 border border-primary border-t-transparent rounded-full animate-spin ml-auto" />
+          )}
+        </div>
+        <PlayScheduleSelector selected={playSchedule} onChange={savePlaySchedule} size="sm" />
+      </div>
 
       {catalogSlot && (
         <EquipmentCatalogModal

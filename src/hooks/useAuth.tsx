@@ -11,7 +11,7 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   isApproved: boolean;
-  signUp: (nickname: string, password: string, phone: string, characterClass?: string) => Promise<void>;
+  signUp: (nickname: string, password: string, phone: string, characterClass?: string, playSchedule?: string[]) => Promise<void>;
   signIn: (phone: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -138,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return `${digits}@phone.roleta.app`;
   };
 
-  const signUp = async (nickname: string, password: string, phone: string, characterClass?: string) => {
+  const signUp = async (nickname: string, password: string, phone: string, characterClass?: string, playSchedule?: string[]) => {
     const fakeEmail = makeEmail(phone);
     const { data, error } = await supabase.auth.signUp({ email: fakeEmail, password });
     if (error) throw error;
@@ -148,6 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         nickname,
         phone: phone.replace(/\D/g, ''),
         class: (characterClass || null) as any,
+        play_schedule: (playSchedule && playSchedule.length > 0 ? playSchedule : []) as any,
       });
       if (profileError) throw profileError;
       await fetchProfile(data.user.id);

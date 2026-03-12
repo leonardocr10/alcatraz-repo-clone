@@ -6,6 +6,7 @@ import { Sword, Shield, Eye, EyeOff, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import logoAz from "@/assets/logo-az.jpeg";
 import bgBoss from "@/assets/bg-boss.jpg";
+import { PlayScheduleSelector } from "@/components/PlayScheduleSelector";
 import type { Database } from "@/integrations/supabase/types";
 
 type CharacterClass = Database["public"]["Enums"]["character_class"];
@@ -26,6 +27,7 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [selectedClass, setSelectedClass] = useState<CharacterClass | "">("");
   const [classIcons, setClassIcons] = useState<{ name: CharacterClass; image_url: string | null }[]>([]);
+  const [playSchedule, setPlaySchedule] = useState<string[]>([]);
   const { signIn, signUp, authUser, isApproved, signOut } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -48,7 +50,7 @@ const LoginPage = () => {
       if (isSignUp) {
         if (!nickname.trim()) throw new Error("Informe um nickname");
         if (!selectedClass) throw new Error("Selecione uma classe");
-        await signUp(nickname.trim(), password, phone, selectedClass);
+        await signUp(nickname.trim(), password, phone, selectedClass, playSchedule);
         toast.success("Conta criada! Aguardando aprovação do admin.");
         navigate("/login?pending=1");
         return;
@@ -156,6 +158,12 @@ const LoginPage = () => {
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+            {isSignUp && (
+              <div>
+                <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">Horários que joga</label>
+                <PlayScheduleSelector selected={playSchedule} onChange={setPlaySchedule} size="sm" />
               </div>
             )}
             <button type="submit" disabled={loading} className="w-full btn-primary font-display tracking-wider uppercase text-sm">

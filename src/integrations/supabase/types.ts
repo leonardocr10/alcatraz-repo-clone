@@ -673,6 +673,7 @@ export type Database = {
           id: string
           nickname: string
           phone: string | null
+          play_schedule: string[]
           role: Database["public"]["Enums"]["app_role"]
           whatsapp_optout: boolean
         }
@@ -689,6 +690,7 @@ export type Database = {
           id?: string
           nickname: string
           phone?: string | null
+          play_schedule?: string[]
           role?: Database["public"]["Enums"]["app_role"]
           whatsapp_optout?: boolean
         }
@@ -705,6 +707,7 @@ export type Database = {
           id?: string
           nickname?: string
           phone?: string | null
+          play_schedule?: string[]
           role?: Database["public"]["Enums"]["app_role"]
           whatsapp_optout?: boolean
         }
