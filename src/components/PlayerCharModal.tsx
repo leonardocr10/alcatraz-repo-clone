@@ -229,14 +229,24 @@ export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
             <DialogTitle className="font-display text-lg font-extrabold uppercase tracking-wide">
               Char de {playerName}
             </DialogTitle>
-            <button
-              onClick={handleShare}
-              disabled={sharing || loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-display font-bold text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              {sharing ? 'Gerando...' : 'Compartilhar'}
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handleShare}
+                disabled={sharing || loading}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-display font-bold text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                {sharing ? 'Gerando...' : 'Compartilhar'}
+              </button>
+              <button
+                onClick={handleDownload}
+                disabled={sharing || loading}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-display font-bold text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Baixar
+              </button>
+            </div>
           </div>
         </DialogHeader>
 
