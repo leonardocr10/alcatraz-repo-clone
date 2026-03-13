@@ -81,9 +81,9 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 flex flex-col sm:flex-row gap-4 overflow-y-auto sm:overflow-hidden min-h-0">
+        <div className="flex-1 flex flex-col sm:flex-row sm:gap-4 overflow-hidden min-h-0">
           {/* Left side - Catalog */}
-          <div className="flex-1 flex flex-col min-h-0 sm:overflow-hidden">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden pb-4 sm:pb-0">
             {/* Category tabs */}
             {categories.length > 0 && (
               <div className="mb-3">
@@ -119,7 +119,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
             </div>
 
             {/* Items grid */}
-            <div className="flex-1 sm:overflow-y-auto min-h-0 pr-1">
+            <div className="flex-1 overflow-y-auto min-h-0 pr-1">
               {loading ? (
                 <div className="flex items-center justify-center h-32">
                   <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -155,8 +155,11 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
             </div>
           </div>
 
+          {/* Mobile Divider */}
+          <div className="h-px bg-border/40 w-full sm:hidden shrink-0" />
+
           {/* Right side - Preview & Options */}
-          <div className="w-full sm:w-52 flex flex-col gap-3">
+          <div className="w-full sm:w-52 flex flex-col gap-3 shrink-0 pt-4 sm:pt-0 overflow-y-auto sm:overflow-visible max-h-[45vh] sm:max-h-none pb-2 sm:pb-0">
             {/* Item preview - larger */}
             <div className={`rounded-xl border border-border/40 flex items-center justify-center overflow-hidden transition-colors ${
               selectedItem
