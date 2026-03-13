@@ -3,8 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Shield, X, Eye, EyeOff, Trash2, Share2, Download, Clock } from "lucide-react";
-import { EquipmentCatalogModal } from "@/components/EquipmentCatalogModal";
 import { PlayScheduleSelector } from "@/components/PlayScheduleSelector";
+import { useNavigate } from "react-router-dom";
 import { toPng } from "html-to-image";
 import slotSword from "@/assets/slot-sword.png";
 import slotShield from "@/assets/slot-shield.png";
@@ -73,9 +73,9 @@ const MIX_COLORS: Record<string, { text: string; bg: string }> = {
 
 export default function CharPage() {
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const [equipment, setEquipment] = useState<PlayerEquip[]>([]);
   const [loading, setLoading] = useState(true);
-  const [catalogSlot, setCatalogSlot] = useState<EquipmentSlot | null>(null);
   const [charVisible, setCharVisible] = useState(false);
   const [togglingVisibility, setTogglingVisibility] = useState(false);
   const [avatarExpanded, setAvatarExpanded] = useState(false);
@@ -236,26 +236,6 @@ export default function CharPage() {
 
   const getEquipForSlot = (slot: EquipmentSlot) => equipment.find(e => e.slot === slot);
 
-  const handleEquip = async (slot: EquipmentSlot, itemId: string, rarity: Rarity, plusValue: number, mix?: string | null) => {
-    if (!profile?.id) return;
-    const existing = getEquipForSlot(slot);
-    if (existing) {
-      const { error } = await supabase
-        .from("player_equipment")
-        .update({ item_id: itemId, rarity, plus_value: plusValue, mix: mix || null, updated_at: new Date().toISOString() })
-        .eq("id", existing.id);
-      if (error) { toast.error("Erro ao equipar"); return; }
-    } else {
-      const { error } = await supabase
-        .from("player_equipment")
-        .insert({ user_id: profile.id, slot, item_id: itemId, rarity, plus_value: plusValue, mix: mix || null });
-      if (error) { toast.error("Erro ao equipar"); return; }
-    }
-    toast.success("Equipamento atualizado!");
-    setCatalogSlot(null);
-    fetchEquipment();
-  };
-
   const handleUnequip = async (slot: EquipmentSlot) => {
     const existing = getEquipForSlot(slot);
     if (!existing) return;
@@ -404,7 +384,7 @@ export default function CharPage() {
     return (
       <div key={slotCfg.slot} className={`flex flex-col items-center gap-1 ${isLarge ? 'flex-1' : ''}`}>
         <button
-          onClick={() => setCatalogSlot(slotCfg.slot)}
+          onClick={() => navigate(`/equipment/${slotCfg.slot}`)}
           className={`relative w-full ${sizeClass} rounded-xl border-2 transition-all hover:scale-105 flex items-center justify-center overflow-hidden ${
             equip ? `${RARITY_COLORS[equip.rarity]} ${RARITY_BG[equip.rarity]}` : 'border-border/40 bg-secondary/30'
           }`}
@@ -627,14 +607,6 @@ export default function CharPage() {
         <PlayScheduleSelector selected={playSchedule} onChange={savePlaySchedule} size="sm" />
       </div>
 
-      {catalogSlot && (
-        <EquipmentCatalogModal
-          slot={catalogSlot}
-          slotLabel={SLOT_CONFIG.find(s => s.slot === catalogSlot)?.label || ''}
-          onEquip={handleEquip}
-          onClose={() => setCatalogSlot(null)}
-        />
-      )}
     </div>
   );
 }

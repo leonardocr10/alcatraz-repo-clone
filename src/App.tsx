@@ -18,6 +18,7 @@ import ConfigPage from "@/pages/ConfigPage";
 import RulesPage from "@/pages/RulesPage";
 import HistoryPage from "@/pages/HistoryPage";
 import CharPage from "@/pages/CharPage";
+import EquipmentCatalogPage from "@/pages/EquipmentCatalogPage";
 import NotFound from "@/pages/NotFound";
 
 
@@ -68,6 +69,7 @@ const App = () => {
             <Route path="/historico" element={<ProtectedRoute><AppLayout><HistoryPage /></AppLayout></ProtectedRoute>} />
             
             <Route path="/char" element={<ProtectedRoute><AppLayout><CharPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/equipment/:slot" element={<ProtectedRoute><AppLayout><EquipmentCatalogPage /></AppLayout></ProtectedRoute>} />
             <Route path="/jogadores" element={<ProtectedRoute><AppLayout><PlayersPage /></AppLayout></ProtectedRoute>} />
             <Route path="/classes" element={<ProtectedRoute><AppLayout><ClassesPage /></AppLayout></ProtectedRoute>} />
             <Route path="/config" element={<ProtectedRoute><AdminRoute><AppLayout><ConfigPage /></AppLayout></AdminRoute></ProtectedRoute>} />
