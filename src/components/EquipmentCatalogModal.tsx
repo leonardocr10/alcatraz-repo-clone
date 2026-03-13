@@ -143,7 +143,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                       <img
                         src={item.image_url}
                         alt={item.name}
-                        className="w-14 h-14 object-contain"
+                        className="w-12 h-12 sm:w-14 sm:h-14 object-contain max-h-full max-w-full"
                       />
                       <span className="text-[9px] font-display font-bold text-center leading-tight truncate w-full uppercase">
                         {item.name.length > 12 ? item.name.substring(0, 12) + '...' : item.name}
@@ -172,7 +172,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                   <img
                     src={selectedItem.image_url}
                     alt={selectedItem.name}
-                    className="w-32 h-32 object-contain"
+                    className="w-24 h-24 sm:w-32 sm:h-32 object-contain max-w-full max-h-full"
                   />
                   <p className="font-display font-extrabold text-sm text-center uppercase">
                     {selectedItem.name}

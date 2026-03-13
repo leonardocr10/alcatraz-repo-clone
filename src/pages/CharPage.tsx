@@ -354,7 +354,7 @@ export default function CharPage() {
         >
           {equip?.item ? (
             <>
-              <img src={equip.item.image_url} alt={equip.item.name} className={`${imgSize} object-contain`} />
+              <img src={equip.item.image_url} alt={equip.item.name} className={`${imgSize} object-contain max-w-full max-h-full`} />
               {equip.plus_value != null && equip.plus_value > 0 && (
                 <span className={`absolute ${plusSize} font-display font-bold text-foreground bg-background/80 rounded`}>
                   +{equip.plus_value}
@@ -373,7 +373,7 @@ export default function CharPage() {
               </button>
             </>
           ) : (
-            <img src={slotCfg.placeholder} alt={slotCfg.label} className={`${placeholderSize} object-contain opacity-20`} />
+            <img src={slotCfg.placeholder} alt={slotCfg.label} className={`${placeholderSize} object-contain opacity-20 max-w-full max-h-full`} />
           )}
         </button>
         <span className={`${labelSize} font-display font-bold text-muted-foreground uppercase tracking-wider`}>
