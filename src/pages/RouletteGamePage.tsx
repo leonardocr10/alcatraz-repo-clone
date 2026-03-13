@@ -203,21 +203,39 @@ const RouletteGamePage = () => {
   const handleSpin = async () => {
     if (!session || !currentItem || !profile || hasPlayed || spinning) return;
     setSpinning(true); setHasPlayed(true);
-    try { const data = await invokePlay("spin", session.id, currentItem.item_id); setMyNumber(data.number); toast.success(`Seu número: ${data.number}`); }
+    try {
+      const data = await invokePlay("spin", session.id, currentItem.item_id);
+      setMyNumber(data.number);
+      await fetchPlays(session.id, currentItem.item_id);
+      toast.success(`Seu número: ${data.number}`);
+    }
     catch (err: any) { setHasPlayed(false); toast.error(err.message || "Erro ao aceitar"); }
     finally { setSpinning(false); }
   };
 
   const handleSkip = async () => {
     if (!session || !currentItem || !profile || hasPlayed) return;
-    try { await invokePlay("skip", session.id, currentItem.item_id); setMyNumber(0); setHasPlayed(true); toast.info("Você pulou esta rodada"); }
+    try {
+      await invokePlay("skip", session.id, currentItem.item_id);
+      setMyNumber(0);
+      setHasPlayed(true);
+      await fetchPlays(session.id, currentItem.item_id);
+      toast.info("Você pulou esta rodada");
+    }
     catch (err: any) { toast.error(err.message || "Erro ao pular"); }
   };
 
   const progressPercent = totalTime > 0 ? (timeLeft / totalTime) * 100 : 0;
   const isUrgent = timeLeft <= 5 && timeLeft > 0;
   const rankedPlays = plays.slice(0, TOP_PLAYERS_LIMIT);
-  const rankingRows = Array.from({ length: TOP_PLAYERS_LIMIT }, (_, idx) => rankedPlays[idx] ?? null);
+  const leftColumn = Array.from({ length: 10 }, (_, idx) => ({
+    rank: idx + 1,
+    play: rankedPlays[idx] ?? null,
+  }));
+  const rightColumn = Array.from({ length: 10 }, (_, idx) => ({
+    rank: idx + 11,
+    play: rankedPlays[idx + 10] ?? null,
+  }));
 
   return (
     <div className="space-y-4">
@@ -335,21 +353,36 @@ const RouletteGamePage = () => {
               <span className="text-xs uppercase tracking-wider font-display font-extrabold">Pontos</span>
               <span className="text-[10px] text-muted-foreground ml-auto font-body font-bold">{rankedPlays.length}/{TOP_PLAYERS_LIMIT} · Max 1000</span>
             </div>
-            <div className="divide-y divide-border/20 max-h-72 overflow-y-auto">
-              {rankingRows.map((p, idx) => {
-                const isMe = !!(p && profile && p.user_id === profile.id);
-                return (
-                  <div key={p?.id || `slot-${idx}`} className={`px-4 py-2.5 flex items-center gap-3 ${isMe ? "bg-primary/10" : "hover:bg-secondary/30"} transition-colors`}>
-                    <span className={`w-6 text-center font-display text-xs font-extrabold ${idx === 0 && p && p.number > 0 ? "text-gold" : "text-muted-foreground"}`}>{idx + 1}</span>
-                    <span className={`flex-1 font-body text-sm truncate ${isMe ? "text-primary font-bold" : "text-foreground"}`}>
-                      {p?.users?.nickname || "---"}{isMe && <span className="ml-1 text-[10px] text-primary/70">(você)</span>}
-                    </span>
-                    <span className={`font-display text-sm font-extrabold ${!p || p.number === 0 ? "text-muted-foreground" : idx === 0 ? "text-gold" : "text-foreground"}`}>
-                      {!p ? 0 : p.number}
-                    </span>
-                  </div>
-                );
-              })}
+            <div className="max-h-72 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-px bg-border/30">
+                {leftColumn.map((left, idx) => {
+                  const right = rightColumn[idx];
+                  const leftIsMe = !!(left.play && profile && left.play.user_id === profile.id);
+                  const rightIsMe = !!(right.play && profile && right.play.user_id === profile.id);
+                  return (
+                    <div key={`row-${idx}`} className="contents">
+                      <div className={`bg-card px-3 py-2 flex items-center gap-2 ${leftIsMe ? "bg-primary/10" : ""}`}>
+                        <span className={`w-5 text-center font-display text-xs font-extrabold ${left.rank === 1 && left.play && left.play.number > 0 ? "text-gold" : "text-muted-foreground"}`}>{left.rank}</span>
+                        <span className={`flex-1 font-body text-xs truncate ${leftIsMe ? "text-primary font-bold" : "text-foreground"}`}>
+                          {left.play?.users?.nickname || "---"}{leftIsMe && <span className="ml-1 text-[10px] text-primary/70">(você)</span>}
+                        </span>
+                        <span className={`font-display text-xs font-extrabold ${!left.play || left.play.number === 0 ? "text-muted-foreground" : left.rank === 1 ? "text-gold" : "text-foreground"}`}>
+                          {!left.play ? 0 : left.play.number}
+                        </span>
+                      </div>
+                      <div className={`bg-card px-3 py-2 flex items-center gap-2 border-l border-border/30 ${rightIsMe ? "bg-primary/10" : ""}`}>
+                        <span className="w-5 text-center font-display text-xs font-extrabold text-muted-foreground">{right.rank}</span>
+                        <span className={`flex-1 font-body text-xs truncate ${rightIsMe ? "text-primary font-bold" : "text-foreground"}`}>
+                          {right.play?.users?.nickname || "---"}{rightIsMe && <span className="ml-1 text-[10px] text-primary/70">(você)</span>}
+                        </span>
+                        <span className={`font-display text-xs font-extrabold ${!right.play || right.play.number === 0 ? "text-muted-foreground" : "text-foreground"}`}>
+                          {!right.play ? 0 : right.play.number}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
