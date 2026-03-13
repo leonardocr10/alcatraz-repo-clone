@@ -22,6 +22,7 @@ const items: NavItem[] = [
   { label: "Char", path: "/char", icon: UserCircle },
   { label: "Histórico", path: "/historico", icon: History },
   { label: "Roleta", path: "/roleta", icon: Dices },
+  { label: "Classes", path: "/classes", icon: Swords },
   { label: "Jogadores", path: "/jogadores", icon: Users },
   { label: "Config", path: "/config", icon: Settings, adminOnly: true },
 ];
@@ -40,6 +41,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [showNew, setShowNew] = useState(false);
   const [changingPw, setChangingPw] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [visibleMenus, setVisibleMenus] = useState<string[]>(["/inicio", "/char", "/historico", "/roleta", "/classes", "/jogadores"]);
 
   // Class icon
   const [classIcon, setClassIcon] = useState<string | null>(null);
@@ -56,6 +58,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           if (data) setClassIcon(data.image_url);
         });
     }
+
+    // Load visible menus
+    supabase
+      .from("app_config")
+      .select("visible_menus")
+      .eq("id", "main")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.visible_menus) {
+          setVisibleMenus(data.visible_menus as string[]);
+        }
+      });
   }, [profile?.class]);
 
   useEffect(() => {
@@ -71,7 +85,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [profile?.id]);
 
-  const navItems = items.filter((item) => !item.adminOnly || isAdmin);
+  const navItems = items.filter((item) => {
+    if (item.adminOnly && !isAdmin) return false; // Not admin, hide config
+    if (item.adminOnly && isAdmin) return true;   // Admin sees config
+    return visibleMenus.includes(item.path);      // Regular items depend on config
+  });
 
   const onLogout = async () => {
     await signOut();

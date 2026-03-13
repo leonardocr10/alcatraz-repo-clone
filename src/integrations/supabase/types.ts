@@ -20,18 +20,21 @@ export type Database = {
           id: string
           max_aging: number
           updated_at: string
+          visible_menus: Json | null
         }
         Insert: {
           discord_link?: string
           id?: string
           max_aging?: number
           updated_at?: string
+          visible_menus?: Json | null
         }
         Update: {
           discord_link?: string
           id?: string
           max_aging?: number
           updated_at?: string
+          visible_menus?: Json | null
         }
         Relationships: []
       }

@@ -21,7 +21,7 @@ export default function ConfigPage() {
   const { isAdmin } = useAuth();
   const { currentTheme, setTheme, resetTheme, presets } = useTheme();
 
-  const [tab, setTab] = useState<"manage" | "clans" | "whatsapp" | "theme" | "rules" | "discord" | "clear" | "equip">("manage");
+  const [tab, setTab] = useState<"manage" | "clans" | "whatsapp" | "theme" | "rules" | "discord" | "clear" | "equip" | "menus">("manage");
   const [seeding, setSeeding] = useState(false);
   const { clans, loading: clansLoading, refetch: refetchClans } = useClans();
   const [newClanName, setNewClanName] = useState("");
@@ -54,6 +54,10 @@ export default function ConfigPage() {
   const [maxAging, setMaxAging] = useState(12);
   const [savingAging, setSavingAging] = useState(false);
 
+  // Menus visibility state
+  const [visibleMenus, setVisibleMenus] = useState<string[]>(["/inicio", "/char", "/historico", "/roleta", "/classes", "/jogadores"]);
+  const [savingMenus, setSavingMenus] = useState(false);
+
   const fetchConfig = useCallback(async () => {
     const { data } = await supabase.from("whatsapp_config").select("*").limit(1).maybeSingle();
     if (data) {
@@ -77,9 +81,10 @@ export default function ConfigPage() {
       supabase.from("clan_rules").select("id, content").limit(1).maybeSingle().then(({ data }) => {
         if (data) { setRulesContent(data.content); setRulesId(data.id); }
       });
-      supabase.from("app_config").select("discord_link, max_aging").eq("id", "main").maybeSingle().then(({ data }) => {
+      supabase.from("app_config").select("discord_link, max_aging, visible_menus").eq("id", "main").maybeSingle().then(({ data }) => {
         if (data?.discord_link) setDiscordLink(data.discord_link);
         if (data?.max_aging != null) setMaxAging(data.max_aging);
+        if (data?.visible_menus) setVisibleMenus(data.visible_menus as string[]);
       });
     }
   }, [isAdmin, fetchConfig]);
@@ -184,6 +189,28 @@ export default function ConfigPage() {
     setSavingDiscord(false);
   };
 
+  const saveVisibleMenus = async () => {
+    setSavingMenus(true);
+    const { error } = await supabase.from("app_config").update({
+      visible_menus: visibleMenus,
+      updated_at: new Date().toISOString()
+    }).eq("id", "main");
+    
+    if (error) {
+      console.error("Save menus error:", error);
+      toast.error(error.message || "Erro ao salvar visibilidade dos menus");
+    } else {
+      toast.success("Menus atualizados!");
+    }
+    setSavingMenus(false);
+  };
+
+  const toggleMenu = (path: string) => {
+    setVisibleMenus(prev => 
+      prev.includes(path) ? prev.filter(p => p !== path) : [...prev, path]
+    );
+  };
+
   const tabs = [
     { key: "manage" as const, label: "Gerenciar", icon: Crown },
     { key: "clans" as const, label: "Clãs", icon: Shield },
@@ -192,6 +219,7 @@ export default function ConfigPage() {
     { key: "rules" as const, label: "Regras", icon: ScrollText },
     { key: "discord" as const, label: "Discord", icon: Link },
     { key: "equip" as const, label: "Equip", icon: Package },
+    { key: "menus" as const, label: "Telas", icon: Settings },
     { key: "clear" as const, label: "Limpar", icon: Trash2 },
   ];
 
@@ -467,6 +495,44 @@ export default function ConfigPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Menus / Telas Tab */}
+      {tab === "menus" && (
+        <div className="glass-card p-5 animate-fade-in space-y-4">
+          <div className="flex items-center gap-2 mb-4">
+            <Settings className="w-5 h-5 text-primary" />
+            <h3 className="font-display font-bold text-lg">Visibilidade de Telas</h3>
+          </div>
+          <p className="text-sm text-muted-foreground font-body">
+            Selecione quais telas ficarão visíveis para os jogadores na barra inferior. A tela de Configuração ficará sempre visível para os administradores.
+          </p>
+          <div className="space-y-2 mt-4">
+            {[ 
+              { path: "/inicio", label: "Início" },
+              { path: "/char", label: "Char" },
+              { path: "/historico", label: "Histórico" },
+              { path: "/roleta", label: "Roleta" },
+              { path: "/classes", label: "Classes" },
+              { path: "/jogadores", label: "Jogadores" }
+            ].map(menu => (
+              <label key={menu.path} className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-secondary/20 hover:bg-secondary/40 transition-colors cursor-pointer">
+                <span className="font-body text-sm font-bold text-foreground">{menu.label}</span>
+                <input 
+                  type="checkbox" 
+                  checked={visibleMenus.includes(menu.path)}
+                  onChange={() => toggleMenu(menu.path)}
+                  className="w-5 h-5 accent-primary cursor-pointer"
+                />
+              </label>
+            ))}
+          </div>
+
+          <button onClick={saveVisibleMenus} disabled={savingMenus} className="w-full btn-primary text-sm py-3 mt-4 flex justify-center items-center gap-2">
+            <Save className="w-4 h-4" />
+            {savingMenus ? "Salvando..." : "Salvar Telas"}
+          </button>
         </div>
       )}
 

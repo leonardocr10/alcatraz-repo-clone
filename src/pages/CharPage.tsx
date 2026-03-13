@@ -83,6 +83,9 @@ export default function CharPage() {
   const [sharing, setSharing] = useState(false);
   const [playSchedule, setPlaySchedule] = useState<string[]>([]);
   const [savingSchedule, setSavingSchedule] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [classImageUrl, setClassImageUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const shareRef = useRef<HTMLDivElement>(null);
 
   const fetchEquipment = async () => {
@@ -133,16 +136,70 @@ export default function CharPage() {
     if (data) setPlayerRanking(data);
   };
 
+  const fetchClassImage = async () => {
+    if (!profile?.class) return;
+    const { data } = await supabase
+      .from("character_classes")
+      .select("image_url")
+      .eq("name", profile.class)
+      .maybeSingle();
+    if (data) setClassImageUrl(data.image_url);
+  };
+
   useEffect(() => {
     fetchEquipment();
     fetchVisibility();
     fetchRanking();
+    fetchClassImage();
     // Load play_schedule from profile
     if (profile) {
       const ps = (profile as any)?.play_schedule as string[] | undefined;
       setPlaySchedule(ps || []);
     }
-  }, [profile?.id]);
+  }, [profile?.id, profile?.class]);
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      if (!event.target.files || event.target.files.length === 0 || !profile?.id) {
+        return;
+      }
+      setIsUploading(true);
+      const file = event.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${profile.id}-${Math.random()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ avatar_url: publicUrl })
+        .eq('id', profile.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      toast.success("Foto atualizada com sucesso!");
+      // Força um recarregamento da página para atualizar o contexto de Auth, mas preferencialmente só o update local seria melhor. 
+      // Como não temos acesso imediato a mutar o contexto do useAuth aqui (profile.avatar_url), orientamos refresh ou mudamos um state local:
+      setTimeout(() => window.location.reload(), 1500);
+
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao enviar a imagem");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const savePlaySchedule = async (newSchedule: string[]) => {
     if (!profile?.id) return;
@@ -426,37 +483,72 @@ export default function CharPage() {
 
       {/* Shareable card area */}
       <div ref={shareRef} className="space-y-4 p-1">
-        {/* Avatar display */}
-        {profile?.avatar_url && (
-          <>
-            <button onClick={() => setAvatarExpanded(true)} className="flex flex-col items-center w-full gap-2">
+        {/* Avatar and Profile display */}
+        <div className="flex flex-col items-center w-full gap-2 relative">
+          
+          <input 
+            type="file" 
+            accept="image/*" 
+            className="hidden" 
+            ref={fileInputRef} 
+            onChange={handleAvatarUpload} 
+          />
+
+          {profile?.avatar_url || classImageUrl ? (
+            <div className="relative group">
               <img
-                src={profile.avatar_url}
-                alt={profile.nickname}
-                className="w-40 h-40 rounded-2xl object-cover border-2 border-primary/30 shadow-lg hover:scale-105 transition-transform cursor-pointer"
+                src={profile?.avatar_url || classImageUrl || ""}
+                alt={profile?.nickname || 'Avatar'}
+                className={`w-40 h-40 rounded-2xl object-cover border-2 border-primary/30 shadow-lg cursor-pointer transition-transform hover:scale-105 ${isUploading ? 'opacity-50' : ''}`}
+                onClick={() => setAvatarExpanded(true)}
               />
-              <div className="text-center">
-                <p className="font-display font-extrabold text-base uppercase tracking-wider">
-                  {profile.nickname}
-                </p>
-                {playerRanking && (
-                  <p className="font-display font-bold text-primary text-sm">
-                    Lv.{playerRanking.level} • {playerRanking.xp?.endsWith('%') ? playerRanking.xp : `${playerRanking.xp}%`}
-                  </p>
+              <button 
+                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center pointer-events-none group-hover:pointer-events-auto"
+              >
+                <span className="text-white font-bold text-xs uppercase tracking-wider bg-black/50 px-3 py-1.5 rounded-xl border border-white/20">Mudar Foto</span>
+              </button>
+            </div>
+          ) : (
+            <button 
+              onClick={() => fileInputRef.current?.click()} 
+              disabled={isUploading}
+              className={`w-40 h-40 rounded-2xl bg-secondary/30 border-2 border-border/40 flex items-center justify-center shadow-inner hover:border-primary/50 transition-colors cursor-pointer ${isUploading ? 'opacity-50' : ''}`}
+            >
+              <div className="text-center space-y-2">
+                {isUploading ? (
+                  <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+                ) : (
+                  <>
+                    <Shield className="w-8 h-8 text-muted-foreground/30 mx-auto" />
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-extrabold px-4">Adicionar Foto</p>
+                  </>
                 )}
               </div>
             </button>
+          )}
+          <div className="text-center mt-1">
+            <p className="font-display font-extrabold text-base uppercase tracking-wider text-white">
+              {profile?.nickname || 'Jogador'}
+            </p>
+            {playerRanking && (
+              <p className="font-display font-bold mt-0.5">
+                <span className="text-gold text-[15px]">Lv.{playerRanking.level}</span> <span className="text-white mx-0.5">•</span> <span className="text-cyan-400 text-sm">{playerRanking.xp?.endsWith('%') ? playerRanking.xp : `${playerRanking.xp}%`}</span>
+              </p>
+            )}
+          </div>
+        </div>
 
-            {/* Expanded avatar modal */}
-            {avatarExpanded && (
+        {/* Expanded avatar modal */}
+        {(profile?.avatar_url || classImageUrl) && avatarExpanded && (
               <div
                 className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6"
                 onClick={() => setAvatarExpanded(false)}
               >
                 <div className="flex flex-col items-center gap-4 animate-fade-in" onClick={e => e.stopPropagation()}>
                   <img
-                    src={profile.avatar_url}
-                    alt={profile.nickname}
+                    src={profile?.avatar_url || classImageUrl || ""}
+                    alt={profile?.nickname || "Avatar"}
                     className="max-w-[80vw] max-h-[60vh] rounded-2xl object-contain border-2 border-primary/40 shadow-2xl"
                   />
                   <div className="text-center">
@@ -464,8 +556,8 @@ export default function CharPage() {
                       {profile.nickname}
                     </p>
                     {playerRanking && (
-                      <p className="font-display font-bold text-primary text-sm mt-1">
-                        Lv.{playerRanking.level} • {playerRanking.xp?.endsWith('%') ? playerRanking.xp : `${playerRanking.xp}%`}
+                      <p className="font-display font-bold mt-1">
+                        <span className="text-gold text-base">Lv.{playerRanking.level}</span> <span className="text-white mx-0.5">•</span> <span className="text-cyan-400 text-sm">{playerRanking.xp?.endsWith('%') ? playerRanking.xp : `${playerRanking.xp}%`}</span>
                       </p>
                     )}
                   </div>
@@ -478,8 +570,6 @@ export default function CharPage() {
                 </div>
               </div>
             )}
-          </>
-        )}
 
         {/* Rarity legend */}
         <div className="flex items-center justify-center gap-2 text-[10px] font-bold">
