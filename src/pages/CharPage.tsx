@@ -449,15 +449,6 @@ export default function CharPage() {
             <Download className="w-3.5 h-3.5" />
             Baixar
           </button>
-          {equipment.length > 0 && (
-            <button
-              onClick={handleClearAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-display font-bold text-destructive hover:bg-destructive/10 transition-colors"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Limpar
-            </button>
-          )}
         </div>
       </div>
 
@@ -572,26 +563,38 @@ export default function CharPage() {
         </div>
       </div>
 
-      {/* Visibility toggle */}
-      <button
-        onClick={toggleVisibility}
-        disabled={togglingVisibility}
-        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${
-          charVisible
-            ? 'border-primary/40 bg-primary/10 text-primary'
-            : 'border-border/40 bg-secondary/30 text-muted-foreground'
-        }`}
-      >
-        <div className="flex items-center gap-2">
-          {charVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-          <span className="font-display font-bold text-xs uppercase tracking-wider">
-            {charVisible ? 'Char visível para todos' : 'Char oculto'}
-          </span>
-        </div>
-        <div className={`w-10 h-5 rounded-full transition-colors relative ${charVisible ? 'bg-primary' : 'bg-secondary'}`}>
-          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${charVisible ? 'translate-x-5' : 'translate-x-0.5'}`} />
-        </div>
-      </button>
+      {/* Visibility + Clear actions */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={toggleVisibility}
+          disabled={togglingVisibility}
+          className={`flex-1 flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${
+            charVisible
+              ? 'border-primary/40 bg-primary/10 text-primary'
+              : 'border-border/40 bg-secondary/30 text-muted-foreground'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {charVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+            <span className="font-display font-bold text-xs uppercase tracking-wider">
+              {charVisible ? 'Char visível para todos' : 'Char oculto'}
+            </span>
+          </div>
+          <div className={`w-10 h-5 rounded-full transition-colors relative ${charVisible ? 'bg-primary' : 'bg-secondary'}`}>
+            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${charVisible ? 'translate-x-5' : 'translate-x-0.5'}`} />
+          </div>
+        </button>
+
+        {equipment.length > 0 && (
+          <button
+            onClick={handleClearAll}
+            className="h-full min-h-[46px] px-3 rounded-xl border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-1.5 text-xs font-display font-bold whitespace-nowrap"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Limpar
+          </button>
+        )}
+      </div>
 
       {/* Play Schedule */}
       <div className="glass-card p-4 rounded-2xl border border-border/40 space-y-3">
