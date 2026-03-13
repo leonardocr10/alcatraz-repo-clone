@@ -32,6 +32,7 @@ interface Play {
   id: string;
   user_id: string;
   number: number;
+  created_at?: string;
   users: { nickname: string };
 }
 
@@ -51,6 +52,7 @@ const RouletteGamePage = () => {
   const [winnerAnnouncement, setWinnerAnnouncement] = useState<{ nickname: string; itemName: string; number: number } | null>(null);
   const [processingRound, setProcessingRound] = useState(false);
   const [totalItems, setTotalItems] = useState(0);
+  const TOP_PLAYERS_LIMIT = 20;
 
   // === ROULETTE LOGIC ===
   const fetchActiveSession = useCallback(async () => {
@@ -91,9 +93,16 @@ const RouletteGamePage = () => {
   }, []);
 
   const fetchPlays = useCallback(async (sessId: string, itemId: string) => {
-    const { data } = await supabase.from("roulette_plays").select("id, user_id, number, users(nickname)").eq("session_id", sessId).eq("item_id", itemId).order("number", { ascending: false });
+    const { data } = await supabase
+      .from("roulette_plays")
+      .select("id, user_id, number, created_at, users(nickname)")
+      .eq("session_id", sessId)
+      .eq("item_id", itemId)
+      .order("number", { ascending: false })
+      .order("created_at", { ascending: true })
+      .limit(TOP_PLAYERS_LIMIT);
     setPlays((data as any) || []);
-  }, []);
+  }, [TOP_PLAYERS_LIMIT]);
 
   useEffect(() => {
     const load = async () => {
@@ -207,6 +216,8 @@ const RouletteGamePage = () => {
 
   const progressPercent = totalTime > 0 ? (timeLeft / totalTime) * 100 : 0;
   const isUrgent = timeLeft <= 5 && timeLeft > 0;
+  const rankedPlays = plays.slice(0, TOP_PLAYERS_LIMIT);
+  const rankingRows = Array.from({ length: TOP_PLAYERS_LIMIT }, (_, idx) => rankedPlays[idx] ?? null);
 
   return (
     <div className="space-y-4">
@@ -317,32 +328,30 @@ const RouletteGamePage = () => {
             </div>
           </div>
 
-          {/* Players list */}
-          {plays.length > 0 && (
-            <div className="glass-card overflow-hidden animate-slide-up">
-              <div className="px-4 py-2.5 border-b border-border/40 flex items-center gap-2">
-                <Swords className="w-4 h-4 text-primary" />
-                <span className="text-xs uppercase tracking-wider font-display font-extrabold">Jogadores</span>
-                <span className="text-[10px] text-muted-foreground ml-auto font-body font-bold">{plays.length}</span>
-              </div>
-              <div className="divide-y divide-border/20 max-h-48 overflow-y-auto">
-                {plays.map((p, idx) => {
-                  const isMe = profile && p.user_id === profile.id;
-                  return (
-                    <div key={p.id} className={`px-4 py-2.5 flex items-center gap-3 ${isMe ? "bg-primary/10" : "hover:bg-secondary/30"} transition-colors`}>
-                      <span className={`w-5 text-center font-display text-xs font-extrabold ${idx === 0 && p.number > 0 ? "text-gold" : "text-muted-foreground"}`}>{idx + 1}</span>
-                      <span className={`flex-1 font-body text-sm ${isMe ? "text-primary font-bold" : "text-foreground"}`}>
-                        {p.users?.nickname || "???"}{isMe && <span className="ml-1 text-[10px] text-primary/70">(você)</span>}
-                      </span>
-                      <span className={`font-display text-sm font-extrabold ${p.number === 0 ? "text-muted-foreground" : idx === 0 ? "text-gold" : "text-foreground"}`}>
-                        {p.number === 0 ? "PULOU" : p.number}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+          {/* Players ranking */}
+          <div className="glass-card overflow-hidden animate-slide-up">
+            <div className="px-4 py-2.5 border-b border-border/40 flex items-center gap-2">
+              <Swords className="w-4 h-4 text-primary" />
+              <span className="text-xs uppercase tracking-wider font-display font-extrabold">Pontos</span>
+              <span className="text-[10px] text-muted-foreground ml-auto font-body font-bold">{rankedPlays.length}/{TOP_PLAYERS_LIMIT} · Max 1000</span>
             </div>
-          )}
+            <div className="divide-y divide-border/20 max-h-72 overflow-y-auto">
+              {rankingRows.map((p, idx) => {
+                const isMe = !!(p && profile && p.user_id === profile.id);
+                return (
+                  <div key={p?.id || `slot-${idx}`} className={`px-4 py-2.5 flex items-center gap-3 ${isMe ? "bg-primary/10" : "hover:bg-secondary/30"} transition-colors`}>
+                    <span className={`w-6 text-center font-display text-xs font-extrabold ${idx === 0 && p && p.number > 0 ? "text-gold" : "text-muted-foreground"}`}>{idx + 1}</span>
+                    <span className={`flex-1 font-body text-sm truncate ${isMe ? "text-primary font-bold" : "text-foreground"}`}>
+                      {p?.users?.nickname || "---"}{isMe && <span className="ml-1 text-[10px] text-primary/70">(você)</span>}
+                    </span>
+                    <span className={`font-display text-sm font-extrabold ${!p || p.number === 0 ? "text-muted-foreground" : idx === 0 ? "text-gold" : "text-foreground"}`}>
+                      {!p ? 0 : p.number}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Winners in this session */}
           {winners.length > 0 && (
