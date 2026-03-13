@@ -129,9 +129,9 @@ export default function EquipmentCatalogPage() {
         </h1>
       </div>
 
-      <div className="flex-1 flex flex-col sm:flex-row sm:gap-6 max-w-7xl mx-auto w-full">
+      <div className="flex-1 flex flex-col gap-4 sm:gap-6 w-full">
         {/* Left side - Catalog */}
-        <div className="flex-1 flex flex-col shrink-0 sm:shrink min-w-0">
+        <div className="flex flex-col shrink-0 min-w-0">
           {/* Category tabs */}
           {categories.length > 0 && (
             <div className="mb-4">
@@ -177,18 +177,18 @@ export default function EquipmentCatalogPage() {
                 Nenhum item cadastrado para este slot
               </div>
             ) : (
-              <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-4">
+              <div className="grid grid-cols-4 gap-2 sm:gap-4">
                 {filteredItems.map(item => (
                   <button
                     key={item.id}
                     onClick={() => setSelectedItem(item)}
-                    className={`rounded-xl border-2 p-1.5 sm:p-3 flex flex-col items-center justify-between gap-1 sm:gap-3 transition-all hover:scale-105 h-[88px] sm:h-auto sm:aspect-square ${
+                    className={`rounded-xl border-2 p-1.5 sm:p-2.5 flex flex-col items-center justify-between gap-1 sm:gap-2 transition-all hover:scale-105 h-[88px] sm:h-[110px] ${
                       selectedItem?.id === item.id
                         ? 'border-primary bg-primary/10'
                         : 'border-border/40 bg-secondary/30 hover:border-border/60'
                     }`}
                   >
-                    <div className="flex-1 w-full flex items-center justify-center min-h-0 sm:min-h-[60px]">
+                    <div className="flex-1 w-full flex items-center justify-center min-h-0">
                       <img
                         src={item.image_url}
                         alt={item.name}
@@ -206,7 +206,7 @@ export default function EquipmentCatalogPage() {
         </div>
 
         {/* Right side - Preview & Options */}
-        <div className="w-full sm:w-80 lg:w-96 flex flex-col gap-3 sm:gap-5 shrink-0 mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-0 border-border/40">
+        <div className="w-full flex flex-col gap-3 sm:gap-5 shrink-0 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-border/40">
           {/* Item preview - larger */}
           <div className={`rounded-xl border border-border/40 flex items-center justify-center overflow-hidden transition-colors ${
             selectedItem
