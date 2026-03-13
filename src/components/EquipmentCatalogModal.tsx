@@ -74,7 +74,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="w-[100vw] sm:w-[95vw] max-w-none sm:max-w-2xl h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[85vh] rounded-none sm:rounded-xl border-0 sm:border overflow-hidden flex flex-col p-4 sm:p-6 gap-2 sm:gap-4">
+      <DialogContent className="w-[100vw] sm:w-[95vw] max-w-none sm:max-w-2xl h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[85vh] rounded-none sm:rounded-xl border-0 sm:border flex flex-col p-4 sm:p-6 gap-0 sm:gap-4 overflow-hidden">
         <DialogHeader className="shrink-0 pb-1 sm:pb-0 flex flex-row items-center justify-between">
           <DialogTitle className="font-display text-lg sm:text-xl font-extrabold uppercase tracking-wide">
             {slotLabel}
@@ -84,21 +84,21 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
           </button>
         </DialogHeader>
 
-        <div className="flex-1 flex flex-col sm:flex-row sm:gap-4 overflow-hidden min-h-0">
+        <div className="flex-1 flex flex-col sm:flex-row sm:gap-4 min-h-0 overflow-y-auto sm:overflow-hidden pt-2 sm:pt-0">
           {/* Left side - Catalog */}
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden pb-3 sm:pb-0">
+          <div className="flex-1 flex flex-col min-h-0 pb-3 sm:pb-0 shrink-0 sm:shrink">
             {/* Category tabs */}
             {categories.length > 0 && (
               <div className="mb-3">
                 <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-widest mb-2">
                   Navegar Categoria
                 </p>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-row overflow-x-auto gap-1.5 pb-2 scrollbar-none snap-x">
                   {categories.map(cat => (
                     <button
                       key={cat.id}
                       onClick={() => { setSelectedCategory(cat.id); setSelectedItem(null); }}
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                      className={`whitespace-nowrap shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all snap-start ${
                         selectedCategory === cat.id
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary'
@@ -122,7 +122,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
             </div>
 
             {/* Items grid */}
-            <div className="flex-1 overflow-y-auto min-h-0 pr-1">
+            <div className="flex-1 overflow-visible min-h-0 pb-2">
               {loading ? (
                 <div className="flex items-center justify-center h-32">
                   <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -137,7 +137,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                     <button
                       key={item.id}
                       onClick={() => setSelectedItem(item)}
-                      className={`rounded-xl border-2 p-1.5 sm:p-2 flex flex-col items-center justify-between gap-1 transition-all hover:scale-105 h-20 sm:h-24 ${
+                      className={`rounded-xl border-2 p-1.5 sm:p-2 flex flex-col items-center justify-between gap-1 transition-all hover:scale-105 h-[88px] sm:h-24 ${
                         selectedItem?.id === item.id
                           ? 'border-primary bg-primary/10'
                           : 'border-border/40 bg-secondary/30 hover:border-border/60'
@@ -161,9 +161,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
           </div>
 
           {/* Right side - Preview & Options */}
-          <div className="w-full sm:w-52 flex flex-col gap-2 sm:gap-2.5 shrink-0 overflow-y-auto sm:overflow-visible pb-1 sm:pb-0 mt-2 sm:mt-0">
-            {/* Mobile Divider */}
-            <div className="h-px bg-border/40 w-full sm:hidden shrink-0 mt-0 mb-1" />
+          <div className="w-full sm:w-52 flex flex-col gap-2 sm:gap-2.5 shrink-0 pb-1 sm:pb-0 mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-0 border-border/40">
             {/* Item preview - larger */}
             <div className={`rounded-xl border border-border/40 flex items-center justify-center overflow-hidden transition-colors ${
               selectedItem
