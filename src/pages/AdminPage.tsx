@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const AdminPage = () => {
-  const { isAdmin, loading } = useAuth();
+  const { isAdmin, loading, profile } = useAuth();
   const navigate = useNavigate();
 
   // Items state
@@ -120,11 +120,38 @@ const AdminPage = () => {
   // Session functions
   const createSession = async () => {
     if (!newSessionName.trim() || selectedItems.length === 0) { toast.error("Preencha nome e adicione pelo menos 1 item"); return; }
-    const { data: sess, error } = await supabase.from("roulette_sessions").insert({ name: newSessionName.trim() }).select().single();
-    if (error) { toast.error(error.message); return; }
-    const sessionItems = selectedItems.map((si, idx) => ({ session_id: sess.id, item_id: si.item_id, order_index: idx, round_duration_seconds: si.duration }));
-    await supabase.from("roulette_session_items").insert(sessionItems);
-    toast.success("Sessão criada!"); setNewSessionName(""); setSelectedItems([]); fetchSessions();
+    try {
+      const { data: sess, error } = await supabase
+        .from("roulette_sessions")
+        .insert({
+          name: newSessionName.trim(),
+          created_by: profile?.id ?? null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const sessionItems = selectedItems.map((si, idx) => ({
+        session_id: sess.id,
+        item_id: si.item_id,
+        order_index: idx,
+        round_duration_seconds: si.duration,
+      }));
+
+      const { error: itemsError } = await supabase.from("roulette_session_items").insert(sessionItems);
+      if (itemsError) {
+        await supabase.from("roulette_sessions").delete().eq("id", sess.id);
+        throw itemsError;
+      }
+
+      toast.success("Sessão criada!");
+      setNewSessionName("");
+      setSelectedItems([]);
+      fetchSessions();
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao criar sessão");
+    }
   };
 
   const startSession = async (sessionId: string) => {
