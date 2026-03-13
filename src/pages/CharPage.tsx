@@ -585,15 +585,14 @@ export default function CharPage() {
           </div>
         </button>
 
-        {equipment.length > 0 && (
-          <button
-            onClick={handleClearAll}
-            className="h-full min-h-[46px] px-3 rounded-xl border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-1.5 text-xs font-display font-bold whitespace-nowrap"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            Limpar
-          </button>
-        )}
+        <button
+          onClick={handleClearAll}
+          disabled={equipment.length === 0}
+          className="h-full min-h-[46px] px-3 rounded-xl border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-1.5 text-xs font-display font-bold whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          Limpar
+        </button>
       </div>
 
       {/* Play Schedule */}
