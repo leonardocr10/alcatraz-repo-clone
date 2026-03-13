@@ -74,16 +74,19 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="font-display text-xl font-extrabold uppercase tracking-wide">
+      <DialogContent className="w-[100vw] sm:w-[95vw] max-w-none sm:max-w-2xl h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[85vh] rounded-none sm:rounded-xl border-0 sm:border overflow-hidden flex flex-col p-4 sm:p-6 gap-2 sm:gap-4">
+        <DialogHeader className="shrink-0 pb-1 sm:pb-0 flex flex-row items-center justify-between">
+          <DialogTitle className="font-display text-lg sm:text-xl font-extrabold uppercase tracking-wide">
             {slotLabel}
           </DialogTitle>
+          <button onClick={onClose} className="sm:hidden p-2 rounded-full hover:bg-secondary/50 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
         </DialogHeader>
 
         <div className="flex-1 flex flex-col sm:flex-row sm:gap-4 overflow-hidden min-h-0">
           {/* Left side - Catalog */}
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden pb-4 sm:pb-0">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden pb-3 sm:pb-0">
             {/* Category tabs */}
             {categories.length > 0 && (
               <div className="mb-3">
@@ -134,17 +137,19 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                     <button
                       key={item.id}
                       onClick={() => setSelectedItem(item)}
-                      className={`rounded-xl border-2 p-2 flex flex-col items-center gap-1 transition-all hover:scale-105 ${
+                      className={`rounded-xl border-2 p-1.5 sm:p-2 flex flex-col items-center justify-between gap-1 transition-all hover:scale-105 h-20 sm:h-24 ${
                         selectedItem?.id === item.id
                           ? 'border-primary bg-primary/10'
                           : 'border-border/40 bg-secondary/30 hover:border-border/60'
                       }`}
                     >
-                      <img
-                        src={item.image_url}
-                        alt={item.name}
-                        className="w-12 h-12 sm:w-14 sm:h-14 object-contain max-h-full max-w-full"
-                      />
+                      <div className="flex-1 w-full flex items-center justify-center min-h-0">
+                        <img
+                          src={item.image_url}
+                          alt={item.name}
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      </div>
                       <span className="text-[9px] font-display font-bold text-center leading-tight truncate w-full uppercase">
                         {item.name.length > 12 ? item.name.substring(0, 12) + '...' : item.name}
                       </span>
@@ -155,11 +160,10 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
             </div>
           </div>
 
-          {/* Mobile Divider */}
-          <div className="h-px bg-border/40 w-full sm:hidden shrink-0" />
-
           {/* Right side - Preview & Options */}
-          <div className="w-full sm:w-52 flex flex-col gap-3 shrink-0 pt-4 sm:pt-0 overflow-y-auto sm:overflow-visible max-h-[45vh] sm:max-h-none pb-2 sm:pb-0">
+          <div className="w-full sm:w-52 flex flex-col gap-2 sm:gap-2.5 shrink-0 overflow-y-auto sm:overflow-visible pb-1 sm:pb-0 mt-2 sm:mt-0">
+            {/* Mobile Divider */}
+            <div className="h-px bg-border/40 w-full sm:hidden shrink-0 mt-0 mb-1" />
             {/* Item preview - larger */}
             <div className={`rounded-xl border border-border/40 flex items-center justify-center overflow-hidden transition-colors ${
               selectedItem
@@ -169,15 +173,15 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                   : selectedRarity === 'lendario' ? 'bg-yellow-500/10'
                   : 'bg-red-500/10'
                 : 'bg-secondary/20'
-            }`} style={{ minHeight: hasAging ? '180px' : '200px' }}>
+            }`} style={{ minHeight: '110px' }}>
               {selectedItem ? (
-                <div className="flex flex-col items-center gap-2 p-4">
+                <div className="flex flex-col items-center gap-1 p-2 sm:p-3">
                   <img
                     src={selectedItem.image_url}
                     alt={selectedItem.name}
-                    className="w-24 h-24 sm:w-32 sm:h-32 object-contain max-w-full max-h-full"
+                    className="w-16 h-16 sm:w-32 sm:h-32 object-contain max-w-full max-h-full"
                   />
-                  <p className="font-display font-extrabold text-sm text-center uppercase">
+                  <p className="font-display font-extrabold text-xs sm:text-sm text-center uppercase">
                     {selectedItem.name}
                   </p>
                   <div className="flex flex-wrap items-center justify-center gap-1.5">
@@ -207,9 +211,9 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center gap-2 text-muted-foreground/30 p-4">
-                  <div className="w-20 h-20 rounded-full border-2 border-dashed border-muted-foreground/20" />
-                  <span className="text-[10px] font-display font-bold uppercase tracking-wider">
+                <div className="flex flex-col items-center gap-1 sm:gap-2 text-muted-foreground/30 p-2 sm:p-3">
+                  <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-full border-2 border-dashed border-muted-foreground/20" />
+                  <span className="text-[9px] sm:text-[10px] font-display font-bold uppercase tracking-wider">
                     Aguardando Seleção
                   </span>
                 </div>
@@ -218,7 +222,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
 
             {/* Rarity selector */}
             <div>
-              <p className="text-[10px] font-display font-bold text-muted-foreground mb-2">
+              <p className="text-[9px] sm:text-[10px] font-display font-bold text-muted-foreground mb-1.5 sm:mb-2">
                 Selecione Raridade
               </p>
               <div className="flex gap-2 justify-center">
@@ -244,11 +248,11 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
             {/* Aging Enhancement - only for weapon/armor slots */}
             {hasAging && (
               <div className={selectedMix ? 'opacity-40' : ''}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-widest">
+                <div className="flex items-center justify-between mb-1 sm:mb-2">
+                  <p className="text-[9px] sm:text-[10px] font-display font-bold text-muted-foreground uppercase tracking-widest">
                     Aging Enhancement
                   </p>
-                  <span className="text-sm font-display font-extrabold text-primary">
+                  <span className="text-xs sm:text-sm font-display font-extrabold text-primary">
                     +{plusValue}
                   </span>
                 </div>
@@ -269,7 +273,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
 
             {/* Mix selector - always shown */}
             <div className={hasAging && plusValue > 0 ? 'opacity-40' : ''}>
-              <p className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-widest mb-2">
+              <p className="text-[9px] sm:text-[10px] font-display font-bold text-muted-foreground uppercase tracking-widest mb-1.5 sm:mb-2">
                 Specialization (Mix)
               </p>
               <div className="flex gap-1.5">
@@ -305,7 +309,7 @@ export function EquipmentCatalogModal({ slot, slotLabel, onEquip, onClose }: Pro
         <button
           disabled={!selectedItem}
           onClick={() => selectedItem && onEquip(slot, selectedItem.id, selectedRarity, plusValue, selectedMix)}
-          className="w-full mt-3 py-3 rounded-xl bg-primary/80 hover:bg-primary text-primary-foreground font-display font-extrabold text-sm uppercase tracking-widest transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full mt-1 sm:mt-3 py-2 sm:py-3 rounded-xl bg-primary/80 hover:bg-primary text-primary-foreground font-display font-extrabold text-xs sm:text-sm uppercase tracking-widest transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 shrink-0 h-10 sm:h-auto"
         >
           Confirmar Equipamento →
         </button>
