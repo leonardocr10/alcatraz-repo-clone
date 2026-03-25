@@ -5,7 +5,13 @@ import { Calendar, Users, Plus, CheckCircle2, XCircle, Image as ImageIcon, Loade
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { PlayerCharModal } from "@/components/PlayerCharModal";
 
 export default function EventsPage() {
   const { isAdmin, profile } = useAuth();
@@ -34,6 +40,8 @@ export default function EventsPage() {
   const [myPresence, setMyPresence] = useState<any | null>(null);
   const [myReason, setMyReason] = useState("");
   const [isChangingToNo, setIsChangingToNo] = useState(false);
+  
+  const [selectedPlayerForModal, setSelectedPlayerForModal] = useState<{id: string, name: string} | null>(null);
 
   const handleUpdatePresence = async (status: 'confirmed' | 'declined') => {
     if (status === 'declined' && !myReason.trim()) {
@@ -516,9 +524,29 @@ export default function EventsPage() {
       {/* ATTENDEES MODAL */}
       <Dialog open={showAttendeesModal} onOpenChange={setShowAttendeesModal}>
         <DialogContent className="max-w-md sm:max-w-xl h-[80vh] flex flex-col p-0">
-          <div className="p-4 border-b border-border/30 shrink-0">
-             <DialogTitle className="font-display text-lg">{selectedEvent?.title}</DialogTitle>
-             <p className="text-xs text-muted-foreground font-body mt-1">Lista de Presenças</p>
+          <div className="p-4 border-b border-border/30 shrink-0 flex items-start justify-between">
+             <div>
+                 <DialogTitle className="font-display text-lg">{selectedEvent?.title}</DialogTitle>
+                 <p className="text-xs text-muted-foreground font-body mt-1">Lista de Presenças</p>
+             </div>
+             {isAdmin && selectedEvent && (
+                 <div className="flex gap-2">
+                     <button
+                        onClick={() => handleDeleteEvent(selectedEvent.id)}
+                        className="p-2 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-lg transition-colors border border-destructive/20"
+                        title="Excluir Evento"
+                     >
+                        <Trash2 className="w-4 h-4" />
+                     </button>
+                     <button
+                        onClick={() => handleClearPresences(selectedEvent.id)}
+                        className="p-2 bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 rounded-lg transition-colors border border-orange-500/20"
+                        title="Limpar Presenças"
+                     >
+                        <Trash2 className="w-4 h-4" />
+                     </button>
+                 </div>
+             )}
           </div>
           
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -542,9 +570,16 @@ export default function EventsPage() {
                                      {att.users?.nickname?.substring(0,2) || "??"}
                                    </div>
                                )}
-                               <div>
-                                   <p className="font-bold font-display text-sm leading-none">{att.users?.nickname || "Usuário Desconhecido"}</p>
-                                   <p className="text-[10px] text-muted-foreground mt-0.5">
+                               <div 
+                                    className="cursor-pointer group flex flex-col justify-center"
+                                    onClick={() => {
+                                        if (att.users?.id && att.users?.nickname) {
+                                            setSelectedPlayerForModal({ id: att.users.id, name: att.users.nickname });
+                                        }
+                                    }}
+                               >
+                                   <p className="font-bold font-display text-sm leading-none group-hover:text-primary transition-colors">{att.users?.nickname || "Usuário Desconhecido"}</p>
+                                   <p className="text-[10px] text-muted-foreground mt-0.5 group-hover:text-primary/70 transition-colors">
                                       {att.users?.class || "Sem Classe"}
                                       {att.users?.level ? ` • Lvl ${att.users.level}` : ""}
                                    </p>
@@ -588,6 +623,14 @@ export default function EventsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {selectedPlayerForModal && (
+        <PlayerCharModal
+          playerId={selectedPlayerForModal.id}
+          playerName={selectedPlayerForModal.name}
+          onClose={() => setSelectedPlayerForModal(null)}
+        />
+      )}
     </div>
   );
 }
