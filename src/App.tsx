@@ -8,6 +8,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { PlaySchedulePrompt } from "@/components/PlaySchedulePrompt";
 import { PWAUpdateBanner } from "@/components/PWAUpdateBanner";
+import { EventPresencePrompt } from "@/components/events/EventPresencePrompt";
 import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/HomePage";
 import RouletteGamePage from "@/pages/RouletteGamePage";
@@ -19,6 +20,8 @@ import RulesPage from "@/pages/RulesPage";
 import HistoryPage from "@/pages/HistoryPage";
 import CharPage from "@/pages/CharPage";
 import EquipmentCatalogPage from "@/pages/EquipmentCatalogPage";
+import AdminAlcatrazPage from "@/pages/AdminAlcatrazPage";
+import EventsPage from "@/pages/EventsPage";
 import NotFound from "@/pages/NotFound";
 
 
@@ -67,17 +70,20 @@ const App = () => {
             <Route path="/roleta" element={<ProtectedRoute><AppLayout><RouletteGamePage /></AppLayout></ProtectedRoute>} />
             <Route path="/regras" element={<ProtectedRoute><AppLayout><RulesPage /></AppLayout></ProtectedRoute>} />
             <Route path="/historico" element={<ProtectedRoute><AppLayout><HistoryPage /></AppLayout></ProtectedRoute>} />
+            <Route path="/eventos" element={<ProtectedRoute><AppLayout><EventsPage /></AppLayout></ProtectedRoute>} />
             
             <Route path="/char" element={<ProtectedRoute><AppLayout><CharPage /></AppLayout></ProtectedRoute>} />
             <Route path="/equipment/:slot" element={<ProtectedRoute><AppLayout><EquipmentCatalogPage /></AppLayout></ProtectedRoute>} />
             <Route path="/jogadores" element={<ProtectedRoute><AppLayout><PlayersPage /></AppLayout></ProtectedRoute>} />
             <Route path="/classes" element={<ProtectedRoute><AppLayout><ClassesPage /></AppLayout></ProtectedRoute>} />
             <Route path="/config" element={<ProtectedRoute><AdminRoute><AppLayout><ConfigPage /></AppLayout></AdminRoute></ProtectedRoute>} />
+            <Route path="/admin/alcatraz" element={<ProtectedRoute><AdminRoute><AppLayout><AdminAlcatrazPage /></AppLayout></AdminRoute></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <PWAInstallBanner />
           <PWAUpdateBanner />
           <PlaySchedulePrompt />
+          <EventPresencePrompt />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

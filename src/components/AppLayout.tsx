@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Dices, Shield, Users, Swords, Settings, LogOut, Home, ScrollText, KeyRound, User, X, Save, Eye, EyeOff, History, UsersRound, UserCircle, Camera, Loader2 } from "lucide-react";
+import { Dices, Shield, Users, Swords, Settings, LogOut, Home, ScrollText, KeyRound, User, X, Save, Eye, EyeOff, History, UsersRound, UserCircle, Camera, Loader2, Calendar } from "lucide-react";
 import { StaffModal } from "@/components/StaffModal";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,8 +22,10 @@ const items: NavItem[] = [
   { label: "Char", path: "/char", icon: UserCircle },
   { label: "Histórico", path: "/historico", icon: History },
   { label: "Roleta", path: "/roleta", icon: Dices },
+  { label: "Eventos", path: "/eventos", icon: Calendar },
   { label: "Classes", path: "/classes", icon: Swords },
   { label: "Jogadores", path: "/jogadores", icon: Users },
+  { label: "AlcatraZ", path: "/admin/alcatraz", icon: Users, adminOnly: true },
   { label: "Config", path: "/config", icon: Settings, adminOnly: true },
 ];
 
@@ -41,7 +43,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [showNew, setShowNew] = useState(false);
   const [changingPw, setChangingPw] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [visibleMenus, setVisibleMenus] = useState<string[]>(["/inicio", "/char", "/historico", "/roleta", "/classes", "/jogadores"]);
+  const [visibleMenus, setVisibleMenus] = useState<string[]>(["/inicio", "/char", "/historico", "/eventos", "/roleta", "/classes", "/jogadores"]);
 
   // Class icon
   const [classIcon, setClassIcon] = useState<string | null>(null);

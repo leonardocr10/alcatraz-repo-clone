@@ -513,9 +513,11 @@ export default function ConfigPage() {
               { path: "/inicio", label: "Início" },
               { path: "/char", label: "Char" },
               { path: "/historico", label: "Histórico" },
+              { path: "/eventos", label: "Eventos" },
               { path: "/roleta", label: "Roleta" },
               { path: "/classes", label: "Classes" },
-              { path: "/jogadores", label: "Jogadores" }
+              { path: "/jogadores", label: "Jogadores" },
+              { path: "/admin/alcatraz", label: "AlcatraZ" }
             ].map(menu => (
               <label key={menu.path} className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-secondary/20 hover:bg-secondary/40 transition-colors cursor-pointer">
                 <span className="font-body text-sm font-bold text-foreground">{menu.label}</span>
