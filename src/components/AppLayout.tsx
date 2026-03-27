@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Dices, Shield, Users, Swords, Settings, LogOut, Home, ScrollText, KeyRound, User, X, Save, Eye, EyeOff, History, UsersRound, UserCircle, Camera, Loader2, Calendar } from "lucide-react";
 import { StaffModal } from "@/components/StaffModal";
@@ -45,6 +45,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [changingPw, setChangingPw] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [visibleMenus, setVisibleMenus] = useState<string[]>(["/inicio", "/char", "/historico", "/eventos", "/roleta", "/classes", "/jogadores"]);
+  const profileAvatarInputRef = useRef<HTMLInputElement>(null);
 
   // Class icon
   const [classIcon, setClassIcon] = useState<string | null>(null);
@@ -114,6 +115,36 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       toast.error(err.message || "Erro ao alterar senha");
     }
     setChangingPw(false);
+  };
+
+  const handleProfileAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !profile?.id) return;
+
+    setUploadingAvatar(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `${profile.id}/avatar.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true });
+      if (uploadErr) throw uploadErr;
+
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+      const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+      const { error: updateErr } = await supabase
+        .from("users")
+        .update({ avatar_url: avatarUrl })
+        .eq("id", profile.id);
+      if (updateErr) throw updateErr;
+
+      toast.success("Foto atualizada!");
+      window.location.reload();
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao enviar foto");
+    }
+    setUploadingAvatar(false);
+    e.target.value = "";
   };
 
   return (
@@ -256,8 +287,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <DialogTitle className="font-display">Meu Perfil</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <input
+              ref={profileAvatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={uploadingAvatar}
+              onChange={handleProfileAvatarUpload}
+            />
+
             <div className="flex items-center gap-4">
-              <div className="relative group">
+              <div>
                 {profileImage ? (
                   <button
                     type="button"
@@ -272,47 +312,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     {profile?.nickname?.charAt(0).toUpperCase()}
                   </div>
                 )}
-                <label className="absolute inset-0 rounded-2xl bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                  {uploadingAvatar ? (
-                    <Loader2 className="w-5 h-5 text-white animate-spin" />
-                  ) : (
-                    <Camera className="w-5 h-5 text-white" />
-                  )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    disabled={uploadingAvatar}
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file || !profile?.id) return;
-                      setUploadingAvatar(true);
-                      try {
-                        const ext = file.name.split('.').pop();
-                        const path = `${profile.id}/avatar.${ext}`;
-                        const { error: uploadErr } = await supabase.storage
-                          .from("avatars")
-                          .upload(path, file, { upsert: true });
-                        if (uploadErr) throw uploadErr;
-                        const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
-                        const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-                        const { error: updateErr } = await supabase
-                          .from("users")
-                          .update({ avatar_url: avatarUrl })
-                          .eq("id", profile.id);
-                        if (updateErr) throw updateErr;
-                        toast.success("Foto atualizada!");
-                        // Refresh profile
-                        window.location.reload();
-                      } catch (err: any) {
-                        toast.error(err.message || "Erro ao enviar foto");
-                      }
-                      setUploadingAvatar(false);
-                    }}
-                  />
-                </label>
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="font-display font-bold text-lg">{profile?.nickname}</p>
                 <p className="text-xs text-muted-foreground font-body">
                   {profile?.class || "Sem classe"}
@@ -323,6 +324,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     Lv.{playerRanking.level} • {playerRanking.xp?.endsWith('%') ? playerRanking.xp : `${playerRanking.xp}%`}
                   </p>
                 )}
+                <button
+                  type="button"
+                  onClick={() => profileAvatarInputRef.current?.click()}
+                  disabled={uploadingAvatar}
+                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/20 border border-primary/40 text-primary font-display font-bold text-xs uppercase tracking-wider hover:bg-primary/30 transition-colors disabled:opacity-50"
+                >
+                  {uploadingAvatar ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
+                  {uploadingAvatar ? "Enviando..." : "Mudar Foto"}
+                </button>
               </div>
             </div>
 
@@ -331,19 +341,29 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-6"
                 onClick={() => setProfileAvatarExpanded(false)}
               >
-                <div className="relative max-w-[92vw] max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+                <div className="flex flex-col md:flex-row items-center md:items-start gap-4" onClick={(e) => e.stopPropagation()}>
                   <img
                     src={profileImage}
                     alt={profile?.nickname || "Avatar"}
-                    className="max-w-[92vw] max-h-[90vh] rounded-2xl object-contain border-2 border-primary/30 shadow-2xl bg-background/50"
+                    className="max-w-[92vw] md:max-w-[70vw] max-h-[80vh] rounded-2xl object-contain border-2 border-primary/30 shadow-2xl bg-background/50"
                   />
+                  <div className="w-full md:w-48">
+                    <button
+                      type="button"
+                      onClick={() => profileAvatarInputRef.current?.click()}
+                      disabled={uploadingAvatar}
+                      className="w-full px-3 py-2.5 rounded-xl bg-primary/20 border border-primary/40 text-primary font-display font-bold text-xs uppercase tracking-wider hover:bg-primary/30 transition-colors disabled:opacity-50"
+                    >
+                      {uploadingAvatar ? "Enviando..." : "Mudar Foto"}
+                    </button>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setProfileAvatarExpanded(false)}
-                    className="absolute top-2 right-2 w-8 h-8 rounded-full bg-background/85 flex items-center justify-center hover:bg-background transition-colors"
+                    className="text-xs text-muted-foreground hover:text-white transition-colors font-display uppercase tracking-wider"
                     title="Fechar"
                   >
-                    <X className="w-4 h-4" />
+                    Fechar
                   </button>
                 </div>
               </div>
