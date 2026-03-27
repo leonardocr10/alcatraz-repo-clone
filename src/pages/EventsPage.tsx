@@ -46,6 +46,7 @@ export default function EventsPage() {
   // Attendees
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const [attendees, setAttendees] = useState<any[]>([]);
+  const [attendeesStatusFilter, setAttendeesStatusFilter] = useState<"all" | "confirmed" | "declined">("all");
   const [loadingAttendees, setLoadingAttendees] = useState(false);
   const [loadingClassSummary, setLoadingClassSummary] = useState(false);
   const [sendingPendingReminder, setSendingPendingReminder] = useState(false);
@@ -191,9 +192,10 @@ export default function EventsPage() {
     }
   };
 
-  const viewAttendees = async (event: any) => {
+  const viewAttendees = async (event: any, statusFilter: "all" | "confirmed" | "declined" = "all") => {
     setSelectedEvent(event);
     setShowAttendeesModal(true);
+    setAttendeesStatusFilter(statusFilter);
     setLoadingAttendees(true);
     try {
       // Fetch event presences and join with users to get nickname, class
@@ -253,6 +255,16 @@ export default function EventsPage() {
       setLoadingAttendees(false);
     }
   };
+
+  const filteredAttendees = attendeesStatusFilter === "all"
+    ? attendees
+    : attendees.filter((att) => att.status === attendeesStatusFilter);
+
+  const attendeesFilterLabel = attendeesStatusFilter === "confirmed"
+    ? "Confirmados"
+    : attendeesStatusFilter === "declined"
+      ? "Não vão"
+      : "Lista de Presenças";
 
   const openMyPresence = async (ev: any) => {
      setSelectedEvent(ev);
@@ -550,20 +562,26 @@ export default function EventsPage() {
                     </div>
                     {ev.event_presences && (
                       <div className="flex items-center gap-2 shrink-0">
-                         <div className="flex flex-col items-center justify-center bg-primary/10 rounded-xl px-3 py-1.5 border border-primary/20">
+                         <button
+                           onClick={() => viewAttendees(ev, "confirmed")}
+                           className="flex flex-col items-center justify-center bg-primary/10 rounded-xl px-3 py-1.5 border border-primary/20 hover:bg-primary/15 transition-colors"
+                         >
                             <div className="flex items-center gap-1.5 text-primary font-display font-extrabold text-sm">
                               <Users className="w-4 h-4" />
                               {ev.event_presences.filter((p: any) => p.status === 'confirmed').length}
                             </div>
                             <span className="text-[9px] text-primary/70 uppercase font-bold tracking-widest mt-0.5">Confirmados</span>
-                         </div>
-                         <div className="flex flex-col items-center justify-center bg-red-500/10 rounded-xl px-3 py-1.5 border border-red-500/20">
+                         </button>
+                         <button
+                           onClick={() => viewAttendees(ev, "declined")}
+                           className="flex flex-col items-center justify-center bg-red-500/10 rounded-xl px-3 py-1.5 border border-red-500/20 hover:bg-red-500/15 transition-colors"
+                         >
                             <div className="flex items-center gap-1.5 text-red-500 font-display font-extrabold text-sm">
                               <XCircle className="w-4 h-4" />
                               {ev.event_presences.filter((p: any) => p.status === 'declined').length}
                             </div>
                             <span className="text-[9px] text-red-500/70 uppercase font-bold tracking-widest mt-0.5">Não vão</span>
-                         </div>
+                         </button>
                       </div>
                     )}
                 </div>
@@ -850,7 +868,7 @@ export default function EventsPage() {
           <div className="p-4 border-b border-border/30 shrink-0 flex items-start justify-between">
              <div>
                  <DialogTitle className="font-display text-lg">{selectedEvent?.title}</DialogTitle>
-                 <p className="text-xs text-muted-foreground font-body mt-1">Lista de Presenças</p>
+               <p className="text-xs text-muted-foreground font-body mt-1">{attendeesFilterLabel}</p>
              </div>
              {selectedEvent && (
                <div className="flex gap-2">
@@ -898,12 +916,14 @@ export default function EventsPage() {
                 <div className="flex justify-center py-10">
                     <Loader2 className="w-6 h-6 text-primary animate-spin" />
                 </div>
-             ) : attendees.length === 0 ? (
+             ) : filteredAttendees.length === 0 ? (
                 <div className="text-center py-10">
-                    <p className="text-sm text-muted-foreground font-body">Ninguém respondeu ainda.</p>
+                    <p className="text-sm text-muted-foreground font-body">
+                      {attendeesStatusFilter === "all" ? "Ninguém respondeu ainda." : `Nenhum jogador em ${attendeesFilterLabel.toLowerCase()}.`}
+                    </p>
                 </div>
              ) : (
-                attendees.map((att, i) => (
+                filteredAttendees.map((att, i) => (
                     <div key={i} className="glass-card p-3 flex flex-col gap-2">
                         <div className="flex items-center justify-between flex-wrap gap-2">
                             <div className="flex items-center gap-2">
