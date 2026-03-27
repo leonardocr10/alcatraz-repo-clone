@@ -466,18 +466,26 @@ export default function CharPage() {
           />
 
           {profile?.avatar_url || classImageUrl ? (
-            <div className="relative group">
-              <img
-                src={profile?.avatar_url || classImageUrl || ""}
-                alt={profile?.nickname || 'Avatar'}
-                className={`w-40 h-40 rounded-2xl object-cover border-2 border-primary/30 shadow-lg cursor-pointer transition-transform hover:scale-105 ${isUploading ? 'opacity-50' : ''}`}
+            <div className="flex flex-col md:flex-row items-center gap-3">
+              <button
+                type="button"
                 onClick={() => setAvatarExpanded(true)}
-              />
-              <button 
-                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center pointer-events-none group-hover:pointer-events-auto"
+                className="block"
+                title="Ver maior"
               >
-                <span className="text-white font-bold text-xs uppercase tracking-wider bg-black/50 px-3 py-1.5 rounded-xl border border-white/20">Mudar Foto</span>
+                <img
+                  src={profile?.avatar_url || classImageUrl || ""}
+                  alt={profile?.nickname || 'Avatar'}
+                  className={`w-40 h-40 rounded-2xl object-cover border-2 border-primary/30 shadow-lg cursor-pointer transition-transform hover:scale-105 ${isUploading ? 'opacity-50' : ''}`}
+                />
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="px-3 py-2.5 rounded-xl bg-primary/20 border border-primary/40 text-primary font-display font-bold text-xs uppercase tracking-wider hover:bg-primary/30 transition-colors disabled:opacity-50"
+              >
+                {isUploading ? 'Enviando...' : 'Mudar Foto'}
               </button>
             </div>
           ) : (
@@ -516,25 +524,34 @@ export default function CharPage() {
                 className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-6"
                 onClick={() => setAvatarExpanded(false)}
               >
-                <div className="flex flex-col items-center gap-4 animate-fade-in" onClick={e => e.stopPropagation()}>
+                <div className="flex flex-col md:flex-row items-center md:items-start gap-4 animate-fade-in" onClick={e => e.stopPropagation()}>
                   <img
                     src={profile?.avatar_url || classImageUrl || ""}
                     alt={profile?.nickname || "Avatar"}
-                    className="max-w-[80vw] max-h-[60vh] rounded-2xl object-contain border-2 border-primary/40 shadow-2xl"
+                    className="max-w-[92vw] md:max-w-[70vw] max-h-[80vh] rounded-2xl object-contain border-2 border-primary/40 shadow-2xl bg-background/40"
                   />
-                  <div className="text-center">
-                    <p className="font-display font-extrabold text-xl text-white uppercase tracking-wider">
-                      {profile.nickname}
-                    </p>
-                    {playerRanking && (
-                      <p className="font-display font-bold mt-1">
-                        <span className="text-gold text-base">Lv.{playerRanking.level}</span> <span className="text-white mx-0.5">•</span> <span className="text-cyan-400 text-sm">{playerRanking.xp?.endsWith('%') ? playerRanking.xp : `${playerRanking.xp}%`}</span>
+                  <div className="w-full md:w-52 space-y-3">
+                    <div className="text-center md:text-left">
+                      <p className="font-display font-extrabold text-xl text-white uppercase tracking-wider">
+                        {profile.nickname}
                       </p>
-                    )}
+                      {playerRanking && (
+                        <p className="font-display font-bold mt-1">
+                          <span className="text-gold text-base">Lv.{playerRanking.level}</span> <span className="text-white mx-0.5">•</span> <span className="text-cyan-400 text-sm">{playerRanking.xp?.endsWith('%') ? playerRanking.xp : `${playerRanking.xp}%`}</span>
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                      className="w-full px-3 py-2.5 rounded-xl bg-primary/20 border border-primary/40 text-primary font-display font-bold text-xs uppercase tracking-wider hover:bg-primary/30 transition-colors disabled:opacity-50"
+                    >
+                      {isUploading ? 'Enviando...' : 'Mudar Foto'}
+                    </button>
                   </div>
                   <button
                     onClick={() => setAvatarExpanded(false)}
-                    className="mt-2 text-xs text-muted-foreground hover:text-white transition-colors font-display uppercase tracking-wider"
+                    className="mt-1 md:mt-0 text-xs text-muted-foreground hover:text-white transition-colors font-display uppercase tracking-wider"
                   >
                     Fechar
                   </button>

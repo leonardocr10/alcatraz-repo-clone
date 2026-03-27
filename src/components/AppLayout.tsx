@@ -38,6 +38,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileAvatarExpanded, setProfileAvatarExpanded] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [showNew, setShowNew] = useState(false);
@@ -48,6 +49,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // Class icon
   const [classIcon, setClassIcon] = useState<string | null>(null);
   const [playerRanking, setPlayerRanking] = useState<{ level: number | null; xp: string | null } | null>(null);
+  const profileImage = profile?.avatar_url || classIcon || null;
 
   useEffect(() => {
     if (profile?.class) {
@@ -242,7 +244,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </nav>
 
       {/* Profile Modal */}
-      <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
+      <Dialog
+        open={showProfileModal}
+        onOpenChange={(open) => {
+          setShowProfileModal(open);
+          if (!open) setProfileAvatarExpanded(false);
+        }}
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="font-display">Meu Perfil</DialogTitle>
@@ -250,10 +258,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="space-y-4">
             <div className="flex items-center gap-4">
               <div className="relative group">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" className="w-16 h-16 rounded-2xl object-cover border-2 border-primary/30" />
-                ) : classIcon ? (
-                  <img src={classIcon} alt="" className="w-16 h-16 rounded-2xl object-cover border-2 border-primary/30" />
+                {profileImage ? (
+                  <button
+                    type="button"
+                    onClick={() => setProfileAvatarExpanded(true)}
+                    className="block"
+                    title="Ver imagem completa"
+                  >
+                    <img src={profileImage} alt="" className="w-16 h-16 rounded-2xl object-cover border-2 border-primary/30" />
+                  </button>
                 ) : (
                   <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center text-2xl font-bold text-primary">
                     {profile?.nickname?.charAt(0).toUpperCase()}
@@ -312,6 +325,29 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 )}
               </div>
             </div>
+
+            {profileImage && profileAvatarExpanded && (
+              <div
+                className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-6"
+                onClick={() => setProfileAvatarExpanded(false)}
+              >
+                <div className="relative max-w-[92vw] max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+                  <img
+                    src={profileImage}
+                    alt={profile?.nickname || "Avatar"}
+                    className="max-w-[92vw] max-h-[90vh] rounded-2xl object-contain border-2 border-primary/30 shadow-2xl bg-background/50"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setProfileAvatarExpanded(false)}
+                    className="absolute top-2 right-2 w-8 h-8 rounded-full bg-background/85 flex items-center justify-center hover:bg-background transition-colors"
+                    title="Fechar"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               {playerRanking && (
