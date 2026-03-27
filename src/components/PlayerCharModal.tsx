@@ -117,11 +117,23 @@ export function PlayerCharModal({ playerId, playerName, onClose }: Props) {
   useEffect(() => {
     const fetchData = async () => {
       const [userRes, equipRes, rankRes] = await Promise.all([
-        supabase.from("users").select("avatar_url").eq("id", playerId).single(),
+        supabase.from("users").select("avatar_url, class").eq("id", playerId).single(),
         supabase.from("player_equipment").select("slot, rarity, plus_value, mix, item_id").eq("user_id", playerId),
         supabase.from("player_rankings").select("level, xp").eq("user_id", playerId).maybeSingle(),
       ]);
-      if (userRes.data?.avatar_url) setAvatarUrl(userRes.data.avatar_url);
+      if (userRes.data?.avatar_url) {
+        setAvatarUrl(userRes.data.avatar_url);
+      } else if (userRes.data?.class) {
+        const { data: classData } = await supabase
+          .from("character_classes")
+          .select("image_url")
+          .eq("name", userRes.data.class)
+          .maybeSingle();
+
+        if (classData?.image_url) {
+          setAvatarUrl(classData.image_url);
+        }
+      }
       if (rankRes.data) {
         setLevel(rankRes.data.level);
         setXp(rankRes.data.xp);

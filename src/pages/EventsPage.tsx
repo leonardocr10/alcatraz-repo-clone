@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Calendar, Users, Plus, CheckCircle2, XCircle, Image as ImageIcon, Loader2, Clock, Trash2 } from "lucide-react";
+import { Calendar, Users, Plus, CheckCircle2, XCircle, Image as ImageIcon, Loader2, Clock, Trash2, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -13,6 +13,18 @@ import {
 } from "@/components/ui/dialog";
 import { PlayerCharModal } from "@/components/PlayerCharModal";
 
+type ClassSummaryPlayer = {
+  name: string;
+  className: string;
+  imageUrl: string | null;
+};
+
+type ClassSummaryItem = {
+  className: string;
+  imageUrl: string | null;
+  players: ClassSummaryPlayer[];
+};
+
 export default function EventsPage() {
   const { isAdmin, profile } = useAuth();
   const [events, setEvents] = useState<any[]>([]);
@@ -21,6 +33,7 @@ export default function EventsPage() {
   // Custom modals
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAttendeesModal, setShowAttendeesModal] = useState(false);
+  const [showClassSummaryModal, setShowClassSummaryModal] = useState(false);
   
   // Create form
   const [title, setTitle] = useState("");
@@ -34,6 +47,10 @@ export default function EventsPage() {
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const [attendees, setAttendees] = useState<any[]>([]);
   const [loadingAttendees, setLoadingAttendees] = useState(false);
+  const [loadingClassSummary, setLoadingClassSummary] = useState(false);
+  const [sendingPendingReminder, setSendingPendingReminder] = useState(false);
+  const [classSummary, setClassSummary] = useState<ClassSummaryItem[]>([]);
+  const [selectedClassSummary, setSelectedClassSummary] = useState<string | null>(null);
 
   // My Presence Modal State
   const [showMyPresenceModal, setShowMyPresenceModal] = useState(false);
@@ -211,6 +228,23 @@ export default function EventsPage() {
           });
         }
       }
+
+      const classes = [...new Set(atts.map((d: any) => d.users?.class).filter(Boolean))];
+      if (classes.length > 0) {
+        const { data: classImages } = await supabase
+          .from("character_classes")
+          .select("name, image_url")
+          .in("name", classes as any[]);
+
+        if (classImages) {
+          const classImageMap = new Map(classImages.map((item) => [item.name, item.image_url]));
+          atts.forEach((d: any) => {
+            if (d.users?.class && !d.users?.avatar_url) {
+              d.users.class_image_url = classImageMap.get(d.users.class) || null;
+            }
+          });
+        }
+      }
       
       setAttendees(atts);
     } catch (err: any) {
@@ -240,6 +274,211 @@ export default function EventsPage() {
      } finally {
        setLoadingAttendees(false);
      }
+  };
+
+  const openClassSummary = async (event: any) => {
+    setSelectedEvent(event);
+    setShowClassSummaryModal(true);
+    setLoadingClassSummary(true);
+    setSelectedClassSummary(null);
+
+    try {
+      const { data, error } = await supabase
+        .from("event_presences")
+        .select(`
+          status,
+          users:user_id (nickname, class)
+        `)
+        .eq("event_id", event.id);
+
+      if (error) throw error;
+
+      const confirmed = (data || []).filter((item: any) => item.status === "confirmed");
+      const classNames = [...new Set(confirmed.map((item: any) => item.users?.class).filter(Boolean))];
+      const { data: classImages, error: classImagesError } = await supabase
+        .from("character_classes")
+        .select("name, image_url")
+        .in("name", classNames as any[]);
+
+      if (classImagesError) throw classImagesError;
+
+      const classImageMap = new Map((classImages || []).map((item) => [item.name, item.image_url]));
+      const grouped = new Map<string, ClassSummaryPlayer[]>();
+
+      confirmed.forEach((item: any) => {
+        const className = item.users?.class || "Sem Classe";
+        const playerName = item.users?.nickname;
+        if (!playerName) return;
+        const players = grouped.get(className) || [];
+        players.push({
+          name: playerName,
+          className,
+          imageUrl: classImageMap.get(className as any) || null,
+        });
+        grouped.set(className, players);
+      });
+
+      const summaryWithoutAll = Array.from(grouped.entries())
+        .map(([className, players]) => ({
+          className,
+          imageUrl: classImageMap.get(className as any) || null,
+          players: players.sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+        }))
+        .sort((a, b) => b.players.length - a.players.length || a.className.localeCompare(b.className, "pt-BR"));
+
+      const allPlayers = summaryWithoutAll.flatMap((item) => item.players)
+        .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+
+      const summary = [
+        {
+          className: "Todos",
+          imageUrl: null,
+          players: allPlayers,
+        },
+        ...summaryWithoutAll,
+      ];
+
+      setClassSummary(summary);
+      if (summary.length > 0) {
+        setSelectedClassSummary(summary[0].className);
+      }
+    } catch (err: any) {
+      toast.error("Erro ao buscar presenças por classe: " + err.message);
+      setShowClassSummaryModal(false);
+    } finally {
+      setLoadingClassSummary(false);
+    }
+  };
+
+  const handleShareWhatsApp = async (event: any) => {
+    try {
+      const [{ data: presences, error: presencesError }, { data: users, error: usersError }] = await Promise.all([
+        supabase
+          .from("event_presences")
+          .select(`
+            status,
+            users:user_id (id, nickname, class)
+          `)
+          .eq("event_id", event.id),
+        supabase
+          .from("users")
+          .select("id, nickname, class")
+          .eq("approved", true)
+          .order("nickname", { ascending: true }),
+      ]);
+
+      if (presencesError) throw presencesError;
+      if (usersError) throw usersError;
+
+      const presenceList = presences || [];
+      const approvedUsers = users || [];
+
+      const confirmedCount = presenceList.filter((item: any) => item.status === "confirmed").length;
+      const declinedCount = presenceList.filter((item: any) => item.status === "declined").length;
+      const respondedIds = new Set(
+        presenceList
+          .map((item: any) => item.users?.id)
+          .filter(Boolean)
+      );
+
+      const pendingUsers = approvedUsers.filter((user: any) => !respondedIds.has(user.id));
+
+      const pendingLines = pendingUsers.length > 0
+        ? pendingUsers.map((user: any) => `- ${user.nickname} (${user.class || "Sem Classe"})`).join("\n")
+        : "Todos já responderam.";
+
+      const message = [
+        `*Presenças do evento:* ${event.title}`,
+        `*Data:* ${format(new Date(event.event_date + "T00:00:00"), "dd/MM/yyyy")}${event.event_time ? ` às ${event.event_time.slice(0, 5)}` : ""}`,
+        "",
+        `*Confirmados:* ${confirmedCount}`,
+        `*Não vão:* ${declinedCount}`,
+        `*Ainda não confirmaram:* ${pendingUsers.length}`,
+        "",
+        "*Pendentes:*",
+        pendingLines,
+      ].join("\n");
+
+      window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao preparar compartilhamento no WhatsApp");
+    }
+  };
+
+  const handleSendPendingReminder = async (event: any) => {
+    setSendingPendingReminder(true);
+    try {
+      const [
+        { data: presences, error: presencesError },
+        { data: users, error: usersError },
+        { data: whatsConfig, error: whatsConfigError },
+      ] = await Promise.all([
+        supabase
+          .from("event_presences")
+          .select("user_id")
+          .eq("event_id", event.id),
+        supabase
+          .from("users")
+          .select("id, nickname, phone, whatsapp_optout")
+          .eq("approved", true),
+        supabase
+          .from("whatsapp_config")
+          .select("allow_user_optout")
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+      if (presencesError) throw presencesError;
+      if (usersError) throw usersError;
+      if (whatsConfigError) throw whatsConfigError;
+
+      const respondedIds = new Set((presences || []).map((item: any) => item.user_id).filter(Boolean));
+      const allowOptout = Boolean(whatsConfig?.allow_user_optout);
+
+      const pendingUsers = (users || []).filter((user: any) => !respondedIds.has(user.id));
+      const recipients = pendingUsers
+        .filter((user: any) => {
+          const digits = user.phone?.replace(/\D/g, "") || "";
+          if (digits.length < 10) return false;
+          if (allowOptout && user.whatsapp_optout) return false;
+          return true;
+        })
+        .map((user: any) => ({
+          phone: user.phone,
+          nickname: user.nickname,
+        }));
+
+      if (recipients.length === 0) {
+        toast.error("Nenhum pendente com telefone válido para envio.");
+        return;
+      }
+
+      const message = [
+        `Olá! Você ainda não confirmou sua presença no evento ${event.title}.`,
+        "Entre no app e confirme se vai participar.",
+        "https://clanaz.lovable.app/",
+      ].join("\n");
+
+      const { data, error } = await supabase.functions.invoke("send-message", {
+        body: {
+          phones: recipients,
+          message,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const skippedCount = pendingUsers.length - recipients.length;
+      toast.success(`Lembrete enviado para ${data.sent}/${data.total} pendentes${skippedCount > 0 ? ` • ${skippedCount} pulados` : ""}!`);
+      if (data?.errors?.length) {
+        console.warn("Pending reminder errors:", data.errors);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao enviar lembrete para pendentes");
+    } finally {
+      setSendingPendingReminder(false);
+    }
   };
 
   return (
@@ -310,12 +549,21 @@ export default function EventsPage() {
                         </div>
                     </div>
                     {ev.event_presences && (
-                      <div className="flex flex-col items-center justify-center bg-primary/10 rounded-xl px-3 py-1.5 border border-primary/20 shrink-0">
-                         <div className="flex items-center gap-1.5 text-primary font-display font-extrabold text-sm">
-                           <Users className="w-4 h-4" />
-                           {ev.event_presences.filter((p: any) => p.status === 'confirmed').length}
+                      <div className="flex items-center gap-2 shrink-0">
+                         <div className="flex flex-col items-center justify-center bg-primary/10 rounded-xl px-3 py-1.5 border border-primary/20">
+                            <div className="flex items-center gap-1.5 text-primary font-display font-extrabold text-sm">
+                              <Users className="w-4 h-4" />
+                              {ev.event_presences.filter((p: any) => p.status === 'confirmed').length}
+                            </div>
+                            <span className="text-[9px] text-primary/70 uppercase font-bold tracking-widest mt-0.5">Confirmados</span>
                          </div>
-                         <span className="text-[9px] text-primary/70 uppercase font-bold tracking-widest mt-0.5">Confirmados</span>
+                         <div className="flex flex-col items-center justify-center bg-red-500/10 rounded-xl px-3 py-1.5 border border-red-500/20">
+                            <div className="flex items-center gap-1.5 text-red-500 font-display font-extrabold text-sm">
+                              <XCircle className="w-4 h-4" />
+                              {ev.event_presences.filter((p: any) => p.status === 'declined').length}
+                            </div>
+                            <span className="text-[9px] text-red-500/70 uppercase font-bold tracking-widest mt-0.5">Não vão</span>
+                         </div>
                       </div>
                     )}
                 </div>
@@ -329,6 +577,12 @@ export default function EventsPage() {
                             {ev.is_active ? 'Ativo' : 'Ativar'}
                         </button>
                     )}
+                      <button
+                        onClick={() => openClassSummary(ev)}
+                        className="text-xs px-3 py-1.5 rounded-xl font-bold border border-border/50 text-foreground hover:bg-white/5 transition-colors"
+                      >
+                        Por Classe
+                      </button>
                     {ev.is_active && (() => {
                        const myPresenceObj = ev.event_presences?.find((p: any) => p.user_id === profile?.id);
                        
@@ -521,6 +775,75 @@ export default function EventsPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={showClassSummaryModal} onOpenChange={setShowClassSummaryModal}>
+        <DialogContent className="max-w-md sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="font-display">Presenças por Classe: {selectedEvent?.title}</DialogTitle>
+          </DialogHeader>
+
+          {loadingClassSummary ? (
+            <div className="flex justify-center py-10">
+              <Loader2 className="w-6 h-6 text-primary animate-spin" />
+            </div>
+          ) : classSummary.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-sm text-muted-foreground font-body">Nenhuma presença confirmada para agrupar.</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-[240px,1fr]">
+              <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+                {classSummary.map((item) => (
+                  <button
+                    key={item.className}
+                    onClick={() => setSelectedClassSummary(item.className)}
+                    className={`w-full rounded-xl border px-3 py-2 text-left transition-colors ${selectedClassSummary === item.className ? 'border-primary/40 bg-primary/10' : 'border-border/40 bg-secondary/20 hover:bg-secondary/40'}`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt={item.className} className="w-6 h-6 rounded-md object-cover border border-border/30 shrink-0" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                            <Users className="w-3.5 h-3.5" />
+                          </div>
+                        )}
+                        <span className="font-display font-bold text-sm truncate">{item.className}</span>
+                      </div>
+                      <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded-lg">{item.players.length}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <div className="rounded-2xl border border-border/30 bg-background/40 p-4 max-h-[50vh] overflow-y-auto">
+                <p className="text-xs uppercase tracking-widest text-muted-foreground font-bold mb-3">
+                  {selectedClassSummary ? `Nomes de ${selectedClassSummary}` : 'Selecione uma classe'}
+                </p>
+                <div className="space-y-2">
+                  {(classSummary.find((item) => item.className === selectedClassSummary)?.players || []).map((player) => (
+                    <div key={`${player.className}-${player.name}`} className="rounded-xl bg-secondary/20 border border-border/20 px-3 py-2 text-sm font-medium text-foreground flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {player.imageUrl ? (
+                          <img src={player.imageUrl} alt={player.className} className="w-6 h-6 rounded-md object-cover border border-border/30 shrink-0" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-md bg-secondary/40 flex items-center justify-center shrink-0">
+                            <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                          </div>
+                        )}
+                        <span className="truncate">{player.name}</span>
+                      </div>
+                      {selectedClassSummary === "Todos" && (
+                        <span className="text-[11px] uppercase tracking-wide text-muted-foreground shrink-0">{player.className}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* ATTENDEES MODAL */}
       <Dialog open={showAttendeesModal} onOpenChange={setShowAttendeesModal}>
         <DialogContent className="max-w-md sm:max-w-xl h-[80vh] flex flex-col p-0">
@@ -529,8 +852,27 @@ export default function EventsPage() {
                  <DialogTitle className="font-display text-lg">{selectedEvent?.title}</DialogTitle>
                  <p className="text-xs text-muted-foreground font-body mt-1">Lista de Presenças</p>
              </div>
-             {isAdmin && selectedEvent && (
-                 <div className="flex gap-2">
+             {selectedEvent && (
+               <div className="flex gap-2">
+                 <button
+                  onClick={() => handleShareWhatsApp(selectedEvent)}
+                  className="p-2 bg-green-500/10 text-green-500 hover:bg-green-500/20 rounded-lg transition-colors border border-green-500/20"
+                  title="Compartilhar no WhatsApp"
+                 >
+                  <MessageCircle className="w-4 h-4" />
+                 </button>
+                 {isAdmin && (
+                   <button
+                    onClick={() => handleSendPendingReminder(selectedEvent)}
+                    disabled={sendingPendingReminder}
+                    className="p-2 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 rounded-lg transition-colors border border-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Enviar lembrete aos pendentes"
+                   >
+                    {sendingPendingReminder ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
+                   </button>
+                 )}
+                 {isAdmin && (
+                   <>
                      <button
                         onClick={() => handleDeleteEvent(selectedEvent.id)}
                         className="p-2 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-lg transition-colors border border-destructive/20"
@@ -545,7 +887,9 @@ export default function EventsPage() {
                      >
                         <Trash2 className="w-4 h-4" />
                      </button>
-                 </div>
+                        </>
+                      )}
+                    </div>
              )}
           </div>
           
@@ -563,8 +907,8 @@ export default function EventsPage() {
                     <div key={i} className="glass-card p-3 flex flex-col gap-2">
                         <div className="flex items-center justify-between flex-wrap gap-2">
                             <div className="flex items-center gap-2">
-                               {att.users?.avatar_url ? (
-                                   <img src={att.users.avatar_url} className="w-8 h-8 rounded-lg object-cover" />
+                         {att.users?.avatar_url || att.users?.class_image_url ? (
+                           <img src={att.users.avatar_url || att.users.class_image_url} alt={att.users?.nickname || "Personagem"} className="w-8 h-8 rounded-lg object-cover" />
                                ) : (
                                    <div className="w-8 h-8 rounded-lg bg-secondary/50 flex items-center justify-center font-bold text-xs uppercase">
                                      {att.users?.nickname?.substring(0,2) || "??"}
