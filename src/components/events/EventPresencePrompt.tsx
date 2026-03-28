@@ -45,6 +45,8 @@ export function EventPresencePrompt() {
         .select("id")
         .eq("event_id", event.id)
         .eq("user_id", profile.id)
+        .order("updated_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       // If no presence explicitly recorded, prompt them
@@ -61,11 +63,18 @@ export function EventPresencePrompt() {
     if (!activeEvent || !profile) return;
     setLoading(true);
     try {
-      const { error } = await supabase.from("event_presences").insert({
-        event_id: activeEvent.id,
-        user_id: profile.id,
-        status: "confirmed"
-      });
+      const { error } = await supabase
+        .from("event_presences")
+        .upsert(
+          {
+            event_id: activeEvent.id,
+            user_id: profile.id,
+            status: "confirmed",
+            reason: null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "event_id,user_id" }
+        );
       if (error) throw error;
       toast.success("Presença confirmada!");
       setOpen(false);
@@ -84,12 +93,18 @@ export function EventPresencePrompt() {
     }
     setLoading(true);
     try {
-      const { error } = await supabase.from("event_presences").insert({
-        event_id: activeEvent.id,
-        user_id: profile.id,
-        status: "declined",
-        reason: reason.trim()
-      });
+      const { error } = await supabase
+        .from("event_presences")
+        .upsert(
+          {
+            event_id: activeEvent.id,
+            user_id: profile.id,
+            status: "declined",
+            reason: reason.trim(),
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "event_id,user_id" }
+        );
       if (error) throw error;
       toast.success("Falta justificada!");
       setOpen(false);

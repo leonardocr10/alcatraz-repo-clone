@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Calendar, Users, Plus, CheckCircle2, XCircle, Image as ImageIcon, Loader2, Clock, Trash2, MessageCircle } from "lucide-react";
+import { Calendar, Users, Plus, CheckCircle2, XCircle, Image as ImageIcon, Loader2, Clock, Trash2, MessageCircle, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -61,6 +61,31 @@ export default function EventsPage() {
   
   const [selectedPlayerForModal, setSelectedPlayerForModal] = useState<{id: string, name: string} | null>(null);
 
+  const getPresenceTime = (presence: any) => {
+    const raw = presence?.updated_at || presence?.created_at;
+    const ts = raw ? new Date(raw).getTime() : 0;
+    return Number.isNaN(ts) ? 0 : ts;
+  };
+
+  const getPresenceKey = (presence: any) => {
+    return presence?.user_id || presence?.users?.id || presence?.users?.nickname || null;
+  };
+
+  const dedupePresences = (presenceList: any[]) => {
+    const uniqueMap = new Map<string, any>();
+
+    (presenceList || []).forEach((presence, index) => {
+      const key = getPresenceKey(presence) || `__no_user__${presence?.id || presence?.created_at || index}`;
+
+      const previous = uniqueMap.get(key);
+      if (!previous || getPresenceTime(presence) >= getPresenceTime(previous)) {
+        uniqueMap.set(key, presence);
+      }
+    });
+
+    return Array.from(uniqueMap.values());
+  };
+
   const handleUpdatePresence = async (status: 'confirmed' | 'declined') => {
     if (status === 'declined' && !myReason.trim()) {
       toast.error("Por favor, informe a justificativa.");
@@ -74,15 +99,10 @@ export default function EventsPage() {
         reason: status === 'declined' ? myReason.trim() : null,
         updated_at: new Date().toISOString()
       };
-      let err;
-      if (myPresence?.id) {
-         const { error } = await supabase.from("event_presences").update(payload).eq("id", myPresence.id);
-         err = error;
-      } else {
-         const { error } = await supabase.from("event_presences").insert([payload]);
-         err = error;
-      }
-      if (err) throw err;
+      const { error } = await supabase
+        .from("event_presences")
+        .upsert(payload, { onConflict: "event_id,user_id" });
+      if (error) throw error;
       
       toast.success("Presença atualizada com sucesso!");
       setShowMyPresenceModal(false);
@@ -105,7 +125,11 @@ export default function EventsPage() {
         .order("created_at", { ascending: false });
       
       if (error) throw error;
-      setEvents(data || []);
+      const normalizedEvents = (data || []).map((ev: any) => ({
+        ...ev,
+        event_presences: dedupePresences(ev.event_presences || []),
+      }));
+      setEvents(normalizedEvents);
     } catch (err: any) {
       toast.error("Erro ao buscar eventos: " + err.message);
     } finally {
@@ -202,6 +226,7 @@ export default function EventsPage() {
       const { data, error } = await supabase
         .from("event_presences")
         .select(`
+          user_id,
           status,
           reason,
           created_at,
@@ -213,7 +238,7 @@ export default function EventsPage() {
         
       if (error) throw error;
       
-      const atts = data || [];
+      const atts = dedupePresences(data || []);
       
       // Fetch levels from alcatraz_members by matching nickname
       const nicknames = atts.map((d: any) => d.users?.nickname).filter(Boolean);
@@ -278,6 +303,8 @@ export default function EventsPage() {
          .select("*")
          .eq("event_id", ev.id)
          .eq("user_id", profile?.id)
+         .order("updated_at", { ascending: false })
+         .limit(1)
          .maybeSingle();
        setMyPresence(data || null);
        setMyReason(data?.reason || "");
@@ -298,14 +325,15 @@ export default function EventsPage() {
       const { data, error } = await supabase
         .from("event_presences")
         .select(`
+          user_id,
           status,
-          users:user_id (nickname, class)
+          users:user_id (id, nickname, class)
         `)
         .eq("event_id", event.id);
 
       if (error) throw error;
 
-      const confirmed = (data || []).filter((item: any) => item.status === "confirmed");
+      const confirmed = dedupePresences(data || []).filter((item: any) => item.status === "confirmed");
       const classNames = [...new Set(confirmed.map((item: any) => item.users?.class).filter(Boolean))];
       const { data: classImages, error: classImagesError } = await supabase
         .from("character_classes")
@@ -382,7 +410,7 @@ export default function EventsPage() {
       if (presencesError) throw presencesError;
       if (usersError) throw usersError;
 
-      const presenceList = presences || [];
+      const presenceList = dedupePresences(presences || []);
       const approvedUsers = users || [];
 
       const confirmedCount = presenceList.filter((item: any) => item.status === "confirmed").length;
@@ -414,6 +442,73 @@ export default function EventsPage() {
       window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank");
     } catch (err: any) {
       toast.error(err.message || "Erro ao preparar compartilhamento no WhatsApp");
+    }
+  };
+
+  const copyTextToClipboard = async (text: string) => {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+  };
+
+  const handleCopyConfirmedChars = async () => {
+    const confirmedCharsRaw = attendees
+      .filter((att: any) => att.status === "confirmed" && att.users?.nickname)
+      .map((att: any) => ({
+        nickname: att.users.nickname,
+        className: att.users.class || "Sem Classe",
+      }));
+
+    const uniqueConfirmedChars = Array.from(
+      new Map(
+        confirmedCharsRaw.map((player: { nickname: string; className: string }) => [
+          `${player.className.trim().toLowerCase()}::${player.nickname.trim().toLowerCase()}`,
+          player,
+        ])
+      ).values()
+    )
+      .sort((a: { nickname: string }, b: { nickname: string }) => a.nickname.localeCompare(b.nickname, "pt-BR"));
+
+    if (uniqueConfirmedChars.length === 0) {
+      toast.error("Nenhum char confirmado para copiar.");
+      return;
+    }
+
+    const eventDateLabel = selectedEvent?.event_date
+      ? format(new Date(selectedEvent.event_date + "T00:00:00"), "dd/MM/yyyy")
+      : "Data não informada";
+    const eventTimeLabel = selectedEvent?.event_time
+      ? ` às ${selectedEvent.event_time.slice(0, 5)}`
+      : "";
+
+    const numberedList = uniqueConfirmedChars
+      .map((player: { nickname: string; className: string }, index: number) => `${index + 1}. ${player.className} - ${player.nickname}`)
+      .join("\n");
+
+    const copyContent = [
+      "Confirmados",
+      `Evento: ${selectedEvent?.title || "Não informado"}`,
+      `Data: ${eventDateLabel}${eventTimeLabel}`,
+      "",
+      numberedList,
+    ].join("\n");
+
+    try {
+      await copyTextToClipboard(copyContent);
+      toast.success(`${uniqueConfirmedChars.length} chars confirmados copiados.`);
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao copiar chars confirmados.");
     }
   };
 
@@ -610,11 +705,18 @@ export default function EventsPage() {
                                 <button 
                                    onClick={async () => {
                                      try {
-                                       const { error } = await supabase.from("event_presences").insert({
-                                         event_id: ev.id,
-                                         user_id: profile!.id,
-                                         status: 'confirmed'
-                                       });
+                                         const { error } = await supabase
+                                           .from("event_presences")
+                                           .upsert(
+                                             {
+                                               event_id: ev.id,
+                                               user_id: profile!.id,
+                                               status: 'confirmed',
+                                               reason: null,
+                                               updated_at: new Date().toISOString(),
+                                             },
+                                             { onConflict: "event_id,user_id" }
+                                           );
                                        if (error) throw error;
                                        toast.success("Presença Confirmada!");
                                        fetchEvents();
@@ -872,6 +974,13 @@ export default function EventsPage() {
              </div>
              {selectedEvent && (
                <div className="flex gap-2">
+                 <button
+                  onClick={handleCopyConfirmedChars}
+                  className="p-2 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg transition-colors border border-primary/20"
+                  title="Copiar chars confirmados"
+                 >
+                  <Copy className="w-4 h-4" />
+                 </button>
                  <button
                   onClick={() => handleShareWhatsApp(selectedEvent)}
                   className="p-2 bg-green-500/10 text-green-500 hover:bg-green-500/20 rounded-lg transition-colors border border-green-500/20"
