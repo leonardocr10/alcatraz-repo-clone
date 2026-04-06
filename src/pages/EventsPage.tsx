@@ -50,6 +50,7 @@ export default function EventsPage() {
   const [loadingAttendees, setLoadingAttendees] = useState(false);
   const [loadingClassSummary, setLoadingClassSummary] = useState(false);
   const [sendingPendingReminder, setSendingPendingReminder] = useState(false);
+  const [sendingConfirmedCall, setSendingConfirmedCall] = useState(false);
   const [classSummary, setClassSummary] = useState<ClassSummaryItem[]>([]);
   const [selectedClassSummary, setSelectedClassSummary] = useState<string | null>(null);
 
@@ -588,6 +589,80 @@ export default function EventsPage() {
     }
   };
 
+  const handleSendConfirmedDiscordCall = async (event: any) => {
+    setSendingConfirmedCall(true);
+    try {
+      const [
+        { data: presences, error: presencesError },
+        { data: whatsConfig, error: whatsConfigError },
+      ] = await Promise.all([
+        supabase
+          .from("event_presences")
+          .select(`
+            user_id,
+            status,
+            users:user_id (phone, nickname, whatsapp_optout)
+          `)
+          .eq("event_id", event.id),
+        supabase
+          .from("whatsapp_config")
+          .select("allow_user_optout")
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+      if (presencesError) throw presencesError;
+      if (whatsConfigError) throw whatsConfigError;
+
+      const allowOptout = Boolean(whatsConfig?.allow_user_optout);
+      const confirmedPresences = dedupePresences(presences || []).filter((item: any) => item.status === "confirmed");
+
+      const recipients = confirmedPresences
+        .filter((item: any) => {
+          const digits = item.users?.phone?.replace(/\D/g, "") || "";
+          if (digits.length < 10) return false;
+          if (allowOptout && item.users?.whatsapp_optout) return false;
+          return true;
+        })
+        .map((item: any) => ({
+          phone: item.users.phone,
+          nickname: item.users.nickname,
+        }));
+
+      if (recipients.length === 0) {
+        toast.error("Nenhum confirmado com telefone válido para envio.");
+        return;
+      }
+
+      const message = [
+        `BC confirmado: ${event.title}`,
+        "Quem confirmou precisa logar no Discord:",
+        "https://discord.gg/YRhAa4mG",
+        "e logar no PT e ficar em richatem no mestre dos clan.",
+      ].join("\n");
+
+      const { data, error } = await supabase.functions.invoke("send-message", {
+        body: {
+          phones: recipients,
+          message,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const skippedCount = confirmedPresences.length - recipients.length;
+      toast.success(`Aviso enviado para ${data.sent}/${data.total} confirmados${skippedCount > 0 ? ` • ${skippedCount} pulados` : ""}!`);
+      if (data?.errors?.length) {
+        console.warn("Confirmed BC call errors:", data.errors);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao enviar aviso para confirmados");
+    } finally {
+      setSendingConfirmedCall(false);
+    }
+  };
+
   return (
     <div className="space-y-4 animate-fade-in pb-10">
       <div className="flex items-center justify-between">
@@ -988,6 +1063,16 @@ export default function EventsPage() {
                  >
                   <MessageCircle className="w-4 h-4" />
                  </button>
+                 {isAdmin && (
+                   <button
+                    onClick={() => handleSendConfirmedDiscordCall(selectedEvent)}
+                    disabled={sendingConfirmedCall}
+                    className="p-2 bg-sky-500/10 text-sky-500 hover:bg-sky-500/20 rounded-lg transition-colors border border-sky-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Enviar aviso aos confirmados"
+                   >
+                    {sendingConfirmedCall ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
+                   </button>
+                 )}
                  {isAdmin && (
                    <button
                     onClick={() => handleSendPendingReminder(selectedEvent)}
