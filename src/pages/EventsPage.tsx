@@ -218,10 +218,12 @@ export default function EventsPage() {
   };
 
   const viewAttendees = async (event: any, statusFilter: "all" | "confirmed" | "declined" = "all") => {
+    const eventId = event.id; // Store event ID to check for race conditions
     setSelectedEvent(event);
     setShowAttendeesModal(true);
     setAttendeesStatusFilter(statusFilter);
     setLoadingAttendees(true);
+    setAttendees([]); // Clear previous attendees immediately
     try {
       // Fetch event presences and join with users to get nickname, class
       const { data, error } = await supabase
@@ -234,7 +236,7 @@ export default function EventsPage() {
           updated_at,
           users:user_id (id, nickname, class, avatar_url)
         `)
-        .eq("event_id", event.id)
+        .eq("event_id", eventId)
         .order("created_at", { ascending: false });
         
       if (error) throw error;
@@ -274,7 +276,10 @@ export default function EventsPage() {
         }
       }
       
-      setAttendees(atts);
+      // Only update if this is still the selected event (prevents race conditions)
+      if (eventId === selectedEvent?.id) {
+        setAttendees(atts);
+      }
     } catch (err: any) {
       toast.error("Erro ao buscar participantes: " + err.message);
     } finally {
@@ -293,22 +298,28 @@ export default function EventsPage() {
       : "Lista de Presenças";
 
   const openMyPresence = async (ev: any) => {
+     const eventId = ev.id; // Store event ID to check for race conditions
      setSelectedEvent(ev);
      setShowMyPresenceModal(true);
      setShowAttendeesModal(false); // close attendees list if opened from there
      setLoadingAttendees(true);
      setIsChangingToNo(false);
+     setMyPresence(null); // Clear previous data
+     setMyReason(""); // Clear previous reason
      try {
        const { data } = await supabase
          .from("event_presences")
          .select("*")
-         .eq("event_id", ev.id)
+         .eq("event_id", eventId)
          .eq("user_id", profile?.id)
          .order("updated_at", { ascending: false })
          .limit(1)
          .maybeSingle();
-       setMyPresence(data || null);
-       setMyReason(data?.reason || "");
+       // Only update if this is still the selected event (prevents race conditions)
+       if (eventId === selectedEvent?.id) {
+         setMyPresence(data || null);
+         setMyReason(data?.reason || "");
+       }
      } catch {
        //
      } finally {
@@ -317,10 +328,12 @@ export default function EventsPage() {
   };
 
   const openClassSummary = async (event: any) => {
+    const eventId = event.id; // Store event ID to check for race conditions
     setSelectedEvent(event);
     setShowClassSummaryModal(true);
     setLoadingClassSummary(true);
     setSelectedClassSummary(null);
+    setClassSummary([]); // Clear previous class summary
 
     try {
       const { data, error } = await supabase
@@ -330,7 +343,7 @@ export default function EventsPage() {
           status,
           users:user_id (id, nickname, class)
         `)
-        .eq("event_id", event.id);
+        .eq("event_id", eventId);
 
       if (error) throw error;
 
@@ -379,9 +392,12 @@ export default function EventsPage() {
         ...summaryWithoutAll,
       ];
 
-      setClassSummary(summary);
-      if (summary.length > 0) {
-        setSelectedClassSummary(summary[0].className);
+      // Only update if this is still the selected event (prevents race conditions)
+      if (eventId === selectedEvent?.id) {
+        setClassSummary(summary);
+        if (summary.length > 0) {
+          setSelectedClassSummary(summary[0].className);
+        }
       }
     } catch (err: any) {
       toast.error("Erro ao buscar presenças por classe: " + err.message);
