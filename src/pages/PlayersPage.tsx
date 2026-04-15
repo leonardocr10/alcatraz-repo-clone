@@ -323,7 +323,21 @@ export default function PlayersPage() {
       body: { action: "hard_delete_user", user_id: player.id },
     });
     if (error || data?.error) {
-      const raw = data?.error || error?.message || "Erro ao remover jogador";
+      let raw = data?.error || error?.message || "Erro ao remover jogador";
+      const context = (error as any)?.context;
+      if (context) {
+        try {
+          const payload = await context.json();
+          if (payload?.error) raw = payload.error;
+        } catch {
+          try {
+            const textPayload = await context.text();
+            if (textPayload) raw = textPayload;
+          } catch {
+            // ignore parse fallback
+          }
+        }
+      }
       const normalized = String(raw || "").toLowerCase();
       if (normalized.includes("not authorized") || normalized.includes("acesso negado") || normalized.includes("sem permissão")) {
         toast.error("Você não tem permissão para remover este jogador.");

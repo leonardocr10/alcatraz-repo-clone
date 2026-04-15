@@ -342,8 +342,12 @@ export default function ConfigPage() {
       },
       { onConflict: "clan" }
     );
-    if (error) toast.error(`Erro ao salvar identidade do clã: ${error.message || "erro desconhecido"}`);
-    else toast.success("Identidade do clã atualizada!");
+    if (error) {
+      toast.error(`Erro ao salvar identidade do clã: ${error.message || "erro desconhecido"}`);
+    } else {
+      toast.success("Identidade do clã atualizada! Atualizando painel...");
+      setTimeout(() => window.location.reload(), 350);
+    }
     setSavingIdentity(false);
   };
 
@@ -495,17 +499,20 @@ export default function ConfigPage() {
               placeholder="Ex: ALCATRAZ"
             />
           </label>
-          <label className="block space-y-2">
-            <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Logo URL</span>
-            <input
-              value={identityLogo}
-              onChange={(e) => setIdentityLogo(e.target.value)}
-              className="input-modern text-sm"
-              placeholder="https://..."
-            />
-          </label>
           <div className="space-y-2">
-            <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Ou enviar do computador</span>
+            <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Logo Atual</span>
+            {identityLogo ? (
+              <div className="rounded-xl border border-border/40 bg-secondary/20 p-3 flex items-center justify-center">
+                <img src={identityLogo} alt="Logo do clã" className="w-24 h-24 rounded-2xl object-cover border border-primary/30" />
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-border/50 bg-secondary/10 p-4 text-center text-xs text-muted-foreground">
+                Nenhuma logo enviada ainda
+              </div>
+            )}
+          </div>
+          <div className="space-y-2">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Enviar Logo</span>
             <button
               type="button"
               onClick={() => identityLogoInputRef.current?.click()}
@@ -513,7 +520,7 @@ export default function ConfigPage() {
               className="w-full btn-secondary text-sm flex items-center justify-center gap-2 py-2.5 disabled:opacity-50"
             >
               {uploadingIdentityLogo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-              {uploadingIdentityLogo ? "Enviando..." : "Enviar Logo"}
+              {uploadingIdentityLogo ? "Enviando..." : identityLogo ? "Trocar Logo" : "Enviar Logo"}
             </button>
           </div>
           <div className="space-y-2">

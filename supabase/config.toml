@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.seed-equipment]
 verify_jwt = false
+
+[functions.roulette-admin]
+verify_jwt = false

@@ -194,8 +194,9 @@ serve(async (req) => {
 
     throw new Error("Ação inválida");
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 400,
+    console.error("roulette-admin error:", err);
+    return new Response(JSON.stringify({ success: false, error: err.message || "Erro interno" }), {
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
