@@ -42,6 +42,8 @@ export default function EventsPage() {
   // Create form
   const [title, setTitle] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [eventDate, setEventDate] = useState("");
   const [eventTime, setEventTime] = useState("");
   const [isActive, setIsActive] = useState(true);
@@ -337,9 +339,25 @@ export default function EventsPage() {
     if (!profile) return;
     setCreating(true);
     try {
+      let finalPhotoUrl = photoUrl.trim() || null;
+
+      if (photoFile) {
+        const ext = photoFile.name.split(".").pop() || "jpg";
+        const safeName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const path = `${profile.id}/${safeName}`;
+        const { error: uploadError } = await supabase.storage.from("event_images").upload(path, photoFile, {
+          upsert: true,
+          contentType: photoFile.type || undefined,
+        });
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage.from("event_images").getPublicUrl(path);
+        finalPhotoUrl = data.publicUrl;
+      }
+
       const payload = {
         title,
-        photo_url: photoUrl || null,
+        photo_url: finalPhotoUrl,
         event_date: eventDate,
         event_time: eventTime || null,
         is_active: isActive,
@@ -354,6 +372,8 @@ export default function EventsPage() {
       // Reset
       setTitle("");
       setPhotoUrl("");
+      setPhotoFile(null);
+      setPhotoPreviewUrl(null);
       setEventDate("");
       setEventTime("");
       setIsActive(true);
@@ -365,6 +385,12 @@ export default function EventsPage() {
       setCreating(false);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+    };
+  }, [photoPreviewUrl]);
 
   const handleToggleActive = async (id: string, currentStatus: boolean) => {
     if (!canManageEvents) return;
@@ -1160,6 +1186,30 @@ export default function EventsPage() {
                     <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input value={photoUrl} onChange={e => setPhotoUrl(e.target.value)} placeholder="https://..." className="input-modern pl-9" />
                 </div>
+             </div>
+             <div className="space-y-1.5">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Enviar Foto (Opcional)</label>
+                <label className="w-full rounded-xl border border-border/40 bg-secondary/20 hover:bg-secondary/30 transition-colors px-3 py-2.5 text-xs font-bold text-muted-foreground cursor-pointer flex items-center justify-center gap-2">
+                  <ImageIcon className="w-4 h-4" />
+                  {photoFile ? "Trocar Imagem" : "Selecionar do Celular/Computador"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      setPhotoFile(file);
+                      if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+                      setPhotoPreviewUrl(file ? URL.createObjectURL(file) : null);
+                    }}
+                  />
+                </label>
+                {photoPreviewUrl && (
+                  <div className="rounded-xl border border-border/30 bg-secondary/20 p-2">
+                    <img src={photoPreviewUrl} alt="Prévia do evento" className="w-full max-h-44 object-cover rounded-lg" />
+                  </div>
+                )}
+                <p className="text-[11px] text-muted-foreground">Se enviar foto, ela terá prioridade sobre a URL.</p>
              </div>
              <div className="flex items-center gap-2 pt-2">
                 <input type="checkbox" id="isActive" checked={isActive} onChange={e => setIsActive(e.target.checked)} className="w-4 h-4 rounded border-border/50 bg-background/50 accent-primary" />
