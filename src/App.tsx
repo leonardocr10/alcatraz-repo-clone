@@ -11,6 +11,7 @@ import { PWAUpdateBanner } from "@/components/PWAUpdateBanner";
 import { EventPresencePrompt } from "@/components/events/EventPresencePrompt";
 import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/HomePage";
+import InfoPage from "@/pages/InfoPage";
 import RouletteGamePage from "@/pages/RouletteGamePage";
 import AdminPage from "@/pages/AdminPage";
 import PlayersPage from "@/pages/PlayersPage";
@@ -73,6 +74,7 @@ const App = () => {
             <Route path="/" element={<Navigate to="/inicio" replace />} />
             <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
             <Route path="/inicio" element={<ProtectedRoute><AppLayout><HomePage /></AppLayout></ProtectedRoute>} />
+            <Route path="/info" element={<ProtectedRoute><AppLayout><InfoPage /></AppLayout></ProtectedRoute>} />
             <Route path="/roleta" element={<ProtectedRoute><AppLayout><RouletteGamePage /></AppLayout></ProtectedRoute>} />
             <Route path="/regras" element={<ProtectedRoute><AppLayout><RulesPage /></AppLayout></ProtectedRoute>} />
             <Route path="/historico" element={<ProtectedRoute><AppLayout><HistoryPage /></AppLayout></ProtectedRoute>} />

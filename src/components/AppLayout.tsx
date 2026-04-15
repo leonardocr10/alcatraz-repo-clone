@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Dices, Shield, Users, Swords, Settings, LogOut, Home, ScrollText, KeyRound, User, X, Save, Eye, EyeOff, History, UsersRound, UserCircle, Camera, Loader2, Calendar } from "lucide-react";
+import { Dices, Shield, Users, Settings, LogOut, Home, ScrollText, KeyRound, User, X, Save, Eye, EyeOff, History, UsersRound, UserCircle, Camera, Loader2, Calendar, Info } from "lucide-react";
 import { StaffModal } from "@/components/StaffModal";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,11 +19,11 @@ interface NavItem {
 
 const items: NavItem[] = [
   { label: "Início", path: "/inicio", icon: Home },
+  { label: "Info", path: "/info", icon: Info },
   { label: "Char", path: "/char", icon: UserCircle },
   { label: "Histórico", path: "/historico", icon: History },
   { label: "Roleta", path: "/roleta", icon: Dices },
   { label: "Eventos", path: "/eventos", icon: Calendar },
-  { label: "Classes", path: "/classes", icon: Swords },
   { label: "Jogadores", path: "/jogadores", icon: Users },
   { label: "Config", path: "/config", icon: Settings, adminOnly: true },
 ];
@@ -43,7 +43,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [showNew, setShowNew] = useState(false);
   const [changingPw, setChangingPw] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [visibleMenus, setVisibleMenus] = useState<string[]>(["/inicio", "/char", "/historico", "/eventos", "/roleta", "/classes", "/jogadores"]);
+  const [visibleMenus, setVisibleMenus] = useState<string[]>(["/inicio", "/info", "/char", "/historico", "/eventos", "/roleta", "/jogadores"]);
   const [brandName, setBrandName] = useState("Clan Panel");
   const [brandLogo, setBrandLogo] = useState<string>(logoClanPanel);
   const [brandPrimaryColor, setBrandPrimaryColor] = useState<string | null>(null);
@@ -78,7 +78,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       .maybeSingle()
       .then(({ data }) => {
         if (data?.visible_menus) {
-          setVisibleMenus(data.visible_menus as string[]);
+          const fromDb = data.visible_menus as string[];
+          setVisibleMenus(fromDb.includes("/info") ? fromDb : ["/info", ...fromDb]);
         }
       });
   }, [profile?.class]);

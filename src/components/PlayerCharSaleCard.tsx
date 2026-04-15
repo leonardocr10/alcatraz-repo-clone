@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, MessageCircle, Share2 } from "lucide-react";
+import { Download, Loader2, MessageCircle, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { toPng } from "html-to-image";
 import slotSword from "@/assets/slot-sword.png";
@@ -77,6 +77,7 @@ export function PlayerCharSaleCard({
   const [xp, setXp] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
+  const [showDownloadFallback, setShowDownloadFallback] = useState(false);
   const shareRef = useRef<HTMLDivElement>(null);
 
   const formatCurrencyInput = (value: string) => {
@@ -184,17 +185,33 @@ export function PlayerCharSaleCard({
           text: `${playerName} está vendendo char por ${formatSalePrice(price)}.`,
           files: [file],
         });
+        setShowDownloadFallback(false);
       } else {
-        const link = document.createElement("a");
-        link.href = dataUrl;
-        link.download = `anuncio-${playerName}.png`;
-        link.click();
+        setShowDownloadFallback(true);
+        toast.error("Compartilhamento indisponível neste dispositivo. Use o botão Baixar.");
+        return;
       }
       toast.success("Anúncio pronto para compartilhar!");
     } catch (err: any) {
       if (err?.name !== "AbortError") {
         toast.error("Erro ao compartilhar anúncio");
+        setShowDownloadFallback(true);
       }
+    }
+    setSharing(false);
+  };
+
+  const handleDownload = async () => {
+    setSharing(true);
+    try {
+      const dataUrl = await generateImage();
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = `anuncio-${playerName}.png`;
+      link.click();
+      toast.success("Imagem do anúncio baixada!");
+    } catch {
+      toast.error("Erro ao baixar anúncio");
     }
     setSharing(false);
   };
@@ -258,7 +275,7 @@ export function PlayerCharSaleCard({
 
   return (
     <div ref={shareRef} className="glass-card p-4 space-y-3">
-      <div className="flex items-center gap-3">
+      <div className="grid grid-cols-[auto,1fr,auto] items-start gap-3">
         {avatarUrl ? (
           <img src={avatarUrl} alt={playerName} className="w-20 h-20 rounded-2xl object-cover border-2 border-primary/30" />
         ) : (
@@ -276,23 +293,36 @@ export function PlayerCharSaleCard({
             </p>
           )}
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex flex-col sm:flex-row items-center gap-1.5 shrink-0">
           <button
             onClick={handleShare}
             disabled={sharing}
-            className="px-2.5 py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-colors text-xs font-bold flex items-center gap-1.5 disabled:opacity-40"
+            className="w-9 h-9 sm:w-auto sm:h-auto sm:px-2.5 sm:py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-colors text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-40"
+            title="Compartilhar"
           >
             <Share2 className="w-3.5 h-3.5" />
-            {sharing ? "Gerando..." : "Compartilhar"}
+            <span className="hidden sm:inline">{sharing ? "Gerando..." : "Compartilhar"}</span>
           </button>
           <button
             onClick={onContact}
             disabled={!phone}
-            className="px-2.5 py-2 rounded-xl bg-green-500/10 text-green-500 hover:bg-green-500/20 border border-green-500/20 transition-colors text-xs font-bold flex items-center gap-1.5 disabled:opacity-40"
+            className="w-9 h-9 sm:w-auto sm:h-auto sm:px-2.5 sm:py-2 rounded-xl bg-green-500/10 text-green-500 hover:bg-green-500/20 border border-green-500/20 transition-colors text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-40"
+            title="WhatsApp"
           >
             <MessageCircle className="w-3.5 h-3.5" />
-            WhatsApp
+            <span className="hidden sm:inline">WhatsApp</span>
           </button>
+          {showDownloadFallback && (
+            <button
+              onClick={handleDownload}
+              disabled={sharing}
+              className="w-9 h-9 sm:w-auto sm:h-auto sm:px-2.5 sm:py-2 rounded-xl bg-gold/10 text-gold hover:bg-gold/20 border border-gold/20 transition-colors text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-40"
+              title="Baixar"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Baixar</span>
+            </button>
+          )}
         </div>
       </div>
 

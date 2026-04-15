@@ -70,7 +70,7 @@ export default function ConfigPage() {
   const [savingAging, setSavingAging] = useState(false);
 
   // Menus visibility state
-  const [visibleMenus, setVisibleMenus] = useState<string[]>(["/inicio", "/char", "/historico", "/roleta", "/classes", "/jogadores"]);
+  const [visibleMenus, setVisibleMenus] = useState<string[]>(["/inicio", "/info", "/char", "/historico", "/roleta", "/jogadores"]);
   const [savingMenus, setSavingMenus] = useState(false);
   const [selectedConfigClan, setSelectedConfigClan] = useState("");
   const canManageConfig = isAdmin || isLeader;
@@ -800,11 +800,11 @@ export default function ConfigPage() {
           <div className="space-y-2 mt-4">
             {[ 
               { path: "/inicio", label: "Início" },
+              { path: "/info", label: "Info" },
               { path: "/char", label: "Char" },
               { path: "/historico", label: "Histórico" },
               { path: "/eventos", label: "Eventos" },
               { path: "/roleta", label: "Roleta" },
-              { path: "/classes", label: "Classes" },
               { path: "/jogadores", label: "Jogadores" }
             ].map(menu => (
               <label key={menu.path} className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-secondary/20 hover:bg-secondary/40 transition-colors cursor-pointer">
