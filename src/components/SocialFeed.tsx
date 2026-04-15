@@ -4,6 +4,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Check, ChevronLeft, ChevronRight, Heart, ImagePlus, Pencil, Plus, Send, Share2, Smile, Trash2, Video, X } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 type SocialPost = {
   id: string;
@@ -101,6 +103,7 @@ export function SocialFeed() {
   const [sendingStoryComment, setSendingStoryComment] = useState(false);
   const [loadingStoryDetails, setLoadingStoryDetails] = useState(false);
   const [expandedFeedImage, setExpandedFeedImage] = useState<{ url: string; authorName: string } | null>(null);
+  const [expandedPosts, setExpandedPosts] = useState<Record<string, boolean>>({});
 
   const quickEmojis = ["😀", "😎", "🔥", "💪", "🎯", "⚔️", "🏆", "🎮", "🚀", "✅", "❤️", "😂", "👏", "🤝", "📢", "🛡️"];
   const storyReactionEmojis = ["👍", "❤️", "🥰", "😆", "😮", "😢", "😡"];
@@ -487,14 +490,25 @@ export function SocialFeed() {
     setSendingPostCommentId(null);
   };
 
-  const formatDate = (iso: string) =>
-    new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  const formatDate = (iso: string) => {
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return "";
+    return formatDistanceToNow(date, { addSuffix: true, locale: ptBR });
+  };
 
   const myStoryReaction = storyReactions.find((r) => r.user_id === profile?.id)?.reaction || null;
   const reactionCountMap = storyReactions.reduce<Record<string, number>>((acc, r) => {
     acc[r.reaction] = (acc[r.reaction] || 0) + 1;
     return acc;
   }, {});
+
+  const isLongPost = (text?: string | null) => {
+    if (!text) return false;
+    const normalized = text.trim();
+    if (normalized.length > 220) return true;
+    const lineBreaks = (normalized.match(/\n/g) || []).length;
+    return lineBreaks >= 3;
+  };
 
   return (
     <div className="space-y-3">
@@ -629,6 +643,8 @@ export function SocialFeed() {
           posts.map((post) => {
             const mine = post.user_id === profile?.id;
             const editing = editingPostId === post.id;
+            const longPost = isLongPost(post.content);
+            const postExpanded = Boolean(expandedPosts[post.id]);
             return (
               <div key={post.id} className="glass-card p-4 space-y-3">
                 <div className="flex items-center gap-2.5">
@@ -709,7 +725,21 @@ export function SocialFeed() {
                     </div>
                   </div>
                 ) : (
-                  post.content && <p className="text-sm whitespace-pre-wrap">{post.content}</p>
+                  post.content && (
+                    <div>
+                      <p className={`text-sm whitespace-pre-wrap ${longPost && !postExpanded ? "line-clamp-3" : ""}`}>
+                        {post.content}
+                      </p>
+                      {longPost && (
+                        <button
+                          onClick={() => setExpandedPosts((prev) => ({ ...prev, [post.id]: !postExpanded }))}
+                          className="mt-1 text-xs font-bold text-primary hover:text-primary/80 transition-colors"
+                        >
+                          {postExpanded ? "menos" : "mais"}
+                        </button>
+                      )}
+                    </div>
+                  )
                 )}
 
                 {post.media_url && post.media_type === "image" && (

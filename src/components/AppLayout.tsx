@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Dices, Shield, Users, Settings, LogOut, Home, ScrollText, KeyRound, User, X, Save, Eye, EyeOff, History, UsersRound, UserCircle, Camera, Loader2, Calendar, Info } from "lucide-react";
+import { Dices, Shield, Users, Settings, LogOut, Home, ScrollText, KeyRound, User, X, Save, Eye, EyeOff, History, UsersRound, UserCircle, Camera, Loader2, Calendar, Info, Download } from "lucide-react";
 import { StaffModal } from "@/components/StaffModal";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,11 @@ interface NavItem {
   path: string;
   icon: React.ElementType;
   adminOnly?: boolean;
+}
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
 const items: NavItem[] = [
@@ -51,12 +56,39 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [loginAnnouncement, setLoginAnnouncement] = useState<any | null>(null);
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [acknowledgingAnnouncement, setAcknowledgingAnnouncement] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isPwaInstalled, setIsPwaInstalled] = useState(false);
   const profileAvatarInputRef = useRef<HTMLInputElement>(null);
 
   // Class icon
   const [classIcon, setClassIcon] = useState<string | null>(null);
   const [playerRanking, setPlayerRanking] = useState<{ level: number | null; xp: string | null } | null>(null);
   const profileImage = profile?.avatar_url || classIcon || null;
+
+  useEffect(() => {
+    const standalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true;
+    if (standalone) setIsPwaInstalled(true);
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e as BeforeInstallPromptEvent);
+    };
+
+    const handleAppInstalled = () => {
+      setIsPwaInstalled(true);
+      setInstallPrompt(null);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
 
   useEffect(() => {
     if (profile?.class) {
@@ -230,6 +262,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     navigate("/login");
   };
 
+  const installAppFromMenu = async () => {
+    if (!installPrompt) return;
+    try {
+      await installPrompt.prompt();
+      const { outcome } = await installPrompt.userChoice;
+      if (outcome === "accepted") {
+        toast.success("Instalação iniciada.");
+      }
+      setInstallPrompt(null);
+    } catch {
+      toast.error("Não foi possível abrir a instalação agora.");
+    }
+  };
+
   const changePassword = async () => {
     if (newPassword.length < 6) { toast.error("Senha deve ter pelo menos 6 caracteres"); return; }
     setChangingPw(true);
@@ -351,6 +397,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     >
                       <KeyRound className="w-3.5 h-3.5 text-gold" /> Alterar Senha
                     </button>
+                    {!isPwaInstalled && installPrompt && (
+                      <button
+                        onClick={() => { installAppFromMenu(); setMenuOpen(false); }}
+                        className="w-full px-4 py-2.5 text-left text-sm font-body flex items-center gap-2.5 hover:bg-secondary/50 transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5 text-primary" /> Instalar App
+                      </button>
+                    )}
                     <button
                       onClick={() => { setMenuOpen(false); onLogout(); }}
                       className="w-full px-4 py-2.5 text-left text-sm font-body flex items-center gap-2.5 hover:bg-destructive/10 text-destructive transition-colors"
