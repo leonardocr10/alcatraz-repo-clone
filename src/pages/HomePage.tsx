@@ -141,6 +141,29 @@ export default function HomePage() {
 
   return (
     <div className="space-y-4">
+      <div className="glass-card p-2.5 flex items-center justify-between">
+        <div className="flex-1" />
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-primary" />
+          <span className="font-display text-lg font-extrabold tabular-nums">{getBrazilTimeStr()}</span>
+          <span className="text-[10px] text-muted-foreground font-body bg-secondary px-1.5 py-0.5 rounded-md">BRT</span>
+          <span className="text-[9px] text-muted-foreground/40 font-body select-none">v{__APP_VERSION__}</span>
+        </div>
+        <div className="flex-1 flex justify-end">
+          <button
+            onClick={() => {
+              fetchPendingUsers();
+              fetchCharsForSale();
+              toast.success("Atualizado!");
+            }}
+            className="p-1.5 rounded-lg hover:bg-secondary/50 transition-colors text-muted-foreground hover:text-primary"
+            title="Atualizar"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
       {canManageApprovals && pendingUsers.length > 0 && (
         <div className="glass-card overflow-hidden">
           <div className="px-4 py-3 border-b border-border/40 flex items-center gap-2">
@@ -200,29 +223,6 @@ export default function HomePage() {
 
       <SocialFeed />
 
-      <div className="glass-card p-2.5 flex items-center justify-between">
-        <div className="flex-1" />
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-primary" />
-          <span className="font-display text-lg font-extrabold tabular-nums">{getBrazilTimeStr()}</span>
-          <span className="text-[10px] text-muted-foreground font-body bg-secondary px-1.5 py-0.5 rounded-md">BRT</span>
-          <span className="text-[9px] text-muted-foreground/40 font-body select-none">v{__APP_VERSION__}</span>
-        </div>
-        <div className="flex-1 flex justify-end">
-          <button
-            onClick={() => {
-              fetchPendingUsers();
-              fetchCharsForSale();
-              toast.success("Atualizado!");
-            }}
-            className="p-1.5 rounded-lg hover:bg-secondary/50 transition-colors text-muted-foreground hover:text-primary"
-            title="Atualizar"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
       <div className="glass-card overflow-hidden">
         <div className="px-4 py-3 border-b border-border/40 flex items-center gap-2">
           <Tag className="w-4 h-4 text-primary" />
@@ -255,4 +255,3 @@ export default function HomePage() {
     </div>
   );
 }
-

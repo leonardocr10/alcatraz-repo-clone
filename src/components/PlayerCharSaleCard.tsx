@@ -297,30 +297,27 @@ export function PlayerCharSaleCard({
           <button
             onClick={handleShare}
             disabled={sharing}
-            className="w-9 h-9 sm:w-auto sm:h-auto sm:px-2.5 sm:py-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-colors text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-40"
+            className="w-9 h-9 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-colors text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-40"
             title="Compartilhar"
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{sharing ? "Gerando..." : "Compartilhar"}</span>
           </button>
           <button
             onClick={onContact}
             disabled={!phone}
-            className="w-9 h-9 sm:w-auto sm:h-auto sm:px-2.5 sm:py-2 rounded-xl bg-green-500/10 text-green-500 hover:bg-green-500/20 border border-green-500/20 transition-colors text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-40"
+            className="w-9 h-9 rounded-xl bg-green-500/10 text-green-500 hover:bg-green-500/20 border border-green-500/20 transition-colors text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-40"
             title="WhatsApp"
           >
             <MessageCircle className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">WhatsApp</span>
           </button>
           {showDownloadFallback && (
             <button
               onClick={handleDownload}
               disabled={sharing}
-              className="w-9 h-9 sm:w-auto sm:h-auto sm:px-2.5 sm:py-2 rounded-xl bg-gold/10 text-gold hover:bg-gold/20 border border-gold/20 transition-colors text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-40"
+              className="w-9 h-9 rounded-xl bg-gold/10 text-gold hover:bg-gold/20 border border-gold/20 transition-colors text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-40"
               title="Baixar"
             >
               <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Baixar</span>
             </button>
           )}
         </div>

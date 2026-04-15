@@ -78,8 +78,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       .maybeSingle()
       .then(({ data }) => {
         if (data?.visible_menus) {
-          const fromDb = data.visible_menus as string[];
-          setVisibleMenus(fromDb.includes("/info") ? fromDb : ["/info", ...fromDb]);
+          setVisibleMenus(data.visible_menus as string[]);
         }
       });
   }, [profile?.class]);

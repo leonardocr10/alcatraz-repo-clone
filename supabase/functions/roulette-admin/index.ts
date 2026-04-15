@@ -37,15 +37,41 @@ serve(async (req) => {
     const { action, session_id } = body;
 
     if (action === "reset_password") {
-      const { auth_id, new_password } = body;
-      if (!auth_id || !new_password) throw new Error("auth_id e new_password são obrigatórios");
+      const { auth_id, user_id, new_password } = body;
+      if (!new_password) throw new Error("new_password é obrigatório");
 
-      const { data: target } = await supabase
+      let targetQuery = supabase
         .from("users")
-        .select("id, role, clan, clan_role")
-        .eq("auth_id", auth_id)
-        .maybeSingle();
+        .select("id, auth_id, role, clan, clan_role, phone");
+
+      if (auth_id) {
+        targetQuery = targetQuery.eq("auth_id", auth_id);
+      } else if (user_id) {
+        targetQuery = targetQuery.eq("id", user_id);
+      } else {
+        throw new Error("auth_id ou user_id é obrigatório");
+      }
+
+      const { data: target } = await targetQuery.maybeSingle();
       if (!target) throw new Error("Jogador não encontrado");
+      if (!target.auth_id) throw new Error("Jogador sem credencial de login vinculada");
+
+      const normalizedPhone = String((target as any).phone || "").replace(/\D/g, "");
+      if (normalizedPhone) {
+        const expectedEmail = `${normalizedPhone}@phone.roleta.app`;
+        const { data: authTargetData, error: authTargetError } = await supabase.auth.admin.getUserById(target.auth_id);
+        if (authTargetError) throw authTargetError;
+        const currentEmail = authTargetData?.user?.email || "";
+        if (currentEmail.toLowerCase() !== expectedEmail.toLowerCase()) {
+          const { error: updateEmailError } = await supabase.auth.admin.updateUserById(target.auth_id, {
+            email: expectedEmail,
+            email_confirm: true,
+          });
+          if (updateEmailError) {
+            throw new Error(`Não foi possível sincronizar login com telefone atual: ${updateEmailError.message}`);
+          }
+        }
+      }
 
       const canReset =
         requesterIsAdmin ||
@@ -58,7 +84,7 @@ serve(async (req) => {
 
       if (!canReset) throw new Error("Sem permissão para resetar senha deste jogador");
 
-      const { error } = await supabase.auth.admin.updateUserById(auth_id, { password: new_password });
+      const { error } = await supabase.auth.admin.updateUserById(target.auth_id, { password: new_password });
       if (error) throw error;
       return new Response(JSON.stringify({ success: true, message: "Senha resetada" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

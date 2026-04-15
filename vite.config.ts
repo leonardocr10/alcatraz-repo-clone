@@ -44,9 +44,9 @@ export default defineConfig(({ mode }) => {
         ],
       },
       manifest: {
-        name: "Alcatraz Clan",
-        short_name: "AZ Clan",
-        description: "Sistema do Clan Alcatraz - Roleta, Bosses e mais",
+        name: "Clan Panel - Gerencie, Domine, Conquiste",
+        short_name: "Clan Panel",
+        description: "Clan Panel - Gerencie, Domine, Conquiste",
         lang: "pt-BR",
         theme_color: "#0a0f1a",
         background_color: "#0a0f1a",

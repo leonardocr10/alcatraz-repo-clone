@@ -369,13 +369,19 @@ export default function PlayersPage() {
   const resetPassword = async () => {
     if (!resetPlayer || !newPassword.trim()) return;
     if (newPassword.length < 6) { toast.error("Senha deve ter pelo menos 6 caracteres"); return; }
+    if (!resetPlayer.auth_id) {
+      toast.error("Este jogador não possui credencial de login vinculada.");
+      return;
+    }
     setResetting(true);
     try {
-      // Use edge function or admin API - for now use supabase auth admin
-      const { error } = await supabase.functions.invoke("roulette-admin", {
-        body: { action: "reset_password", auth_id: resetPlayer.auth_id, new_password: newPassword },
+      const { data, error } = await supabase.functions.invoke("roulette-admin", {
+        body: { action: "reset_password", user_id: resetPlayer.id, auth_id: resetPlayer.auth_id, new_password: newPassword },
       });
       if (error) throw error;
+      if (data?.success === false || data?.error) {
+        throw new Error(data?.error || "Erro ao resetar senha");
+      }
       toast.success(`Senha de ${resetPlayer.nickname} resetada!`);
       setResetPlayer(null);
       setNewPassword("");
