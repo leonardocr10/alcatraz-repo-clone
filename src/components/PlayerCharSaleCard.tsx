@@ -303,7 +303,7 @@ export function PlayerCharSaleCard({
             </p>
           )}
         </div>
-        <div className="flex flex-col sm:flex-row items-center gap-1.5 shrink-0">
+        <div className="shrink-0">
           <button
             onClick={() => setExpanded((v) => !v)}
             className="w-9 h-9 rounded-xl bg-secondary/30 text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-border/30 transition-colors text-xs font-bold flex items-center justify-center"
@@ -311,6 +311,9 @@ export function PlayerCharSaleCard({
           >
             {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
+        </div>
+
+        <div className="col-start-2 col-end-4 sm:col-start-3 sm:col-end-4 flex items-center justify-end gap-1.5 shrink-0 pt-1 sm:pt-0">
           <button
             onClick={handleShare}
             disabled={sharing}

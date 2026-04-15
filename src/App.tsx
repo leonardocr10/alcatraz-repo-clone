@@ -23,9 +23,57 @@ import CharPage from "@/pages/CharPage";
 import EquipmentCatalogPage from "@/pages/EquipmentCatalogPage";
 import EventsPage from "@/pages/EventsPage";
 import NotFound from "@/pages/NotFound";
+import { useEffect, useState } from "react";
 
 
 const queryClient = new QueryClient();
+
+function MobileOrientationGuard() {
+  const [blocked, setBlocked] = useState(false);
+
+  useEffect(() => {
+    const isStandalone = () =>
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as any).standalone === true;
+
+    const isMobileDevice = () =>
+      window.matchMedia("(max-width: 1024px)").matches ||
+      /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    const update = () => {
+      const landscape = window.matchMedia("(orientation: landscape)").matches;
+      setBlocked(isMobileDevice() && !isStandalone() && landscape);
+    };
+
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
+
+    if (screen.orientation?.lock) {
+      screen.orientation.lock("portrait").catch(() => {
+        // Browser mode may reject orientation lock; fallback is the overlay block.
+      });
+    }
+
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
+    };
+  }, []);
+
+  if (!blocked) return null;
+
+  return (
+    <div className="fixed inset-0 z-[999] bg-background/95 backdrop-blur flex items-center justify-center p-6 text-center">
+      <div className="glass-card max-w-sm p-5 space-y-2">
+        <p className="font-display text-lg font-extrabold uppercase tracking-wide text-primary">Modo Retrato</p>
+        <p className="text-sm text-muted-foreground">
+          Para usar no navegador mobile, mantenha o celular na vertical.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 const App = () => {
   function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -68,6 +116,7 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <MobileOrientationGuard />
         <BrowserRouter>
           <AuthProvider>
             <Routes>
