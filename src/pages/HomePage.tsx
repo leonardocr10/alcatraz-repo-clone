@@ -4,12 +4,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useClans } from "@/hooks/useClans";
 import { toast } from "sonner";
-import { Swords, Clock, MapPin, ChevronDown, Send, MessageCircle, BellOff, BellRing, RefreshCw, Users, Shield, UserCheck, UserX, AlertCircle } from "lucide-react";
+import { Swords, Clock, MapPin, ChevronDown, Send, MessageCircle, BellOff, BellRing, RefreshCw, Users, Shield, UserCheck, UserX, AlertCircle, Tag } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useBossNotifications } from "@/hooks/useBossNotifications";
 import { DiscordFloatingButton } from "@/components/DiscordFloatingButton";
+import { PlayerCharSaleCard } from "@/components/PlayerCharSaleCard";
 
 interface Boss {
   id: string;
@@ -38,6 +39,17 @@ interface ClassIcon {
   image_url: string | null;
 }
 
+interface CharSaleItem {
+  id: string;
+  nickname: string;
+  class: string | null;
+  clan: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+  char_sale_price: string | null;
+  char_sale_description: string | null;
+}
+
 const HomePage = () => {
   const { isAdmin, isLeader, profile } = useAuth();
   const navigate = useNavigate();
@@ -64,6 +76,7 @@ const HomePage = () => {
   const [confirmSendAll, setConfirmSendAll] = useState(false);
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
   const [pendingClanMap, setPendingClanMap] = useState<Record<string, string>>({});
+  const [charsForSale, setCharsForSale] = useState<CharSaleItem[]>([]);
   const canManageApprovals = isAdmin || isLeader;
   const leaderClan = profile?.clan || null;
 
@@ -157,11 +170,26 @@ const HomePage = () => {
     setClassIcons((iconsRes.data || []) as ClassIcon[]);
   }, []);
 
+  const fetchCharsForSale = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("users")
+      .select("id, nickname, class, clan, phone, avatar_url, char_sale_price, char_sale_description")
+      .eq("approved", true)
+      .eq("char_visible", true)
+      .eq("char_for_sale", true)
+      .order("created_at", { ascending: false });
+
+    if (!error) {
+      setCharsForSale((data || []) as CharSaleItem[]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchBosses();
     fetchClassCounts();
     fetchPendingUsers();
-  }, [fetchBosses, fetchClassCounts, fetchPendingUsers]);
+    fetchCharsForSale();
+  }, [fetchBosses, fetchClassCounts, fetchPendingUsers, fetchCharsForSale]);
 
   useEffect(() => {
     const ch = supabase
@@ -250,6 +278,36 @@ const HomePage = () => {
   };
 
   const groupedBosses = getGroupedBosses();
+
+  const openSaleWhatsApp = (item: CharSaleItem) => {
+    if (!item.phone) {
+      toast.error("Este jogador não tem telefone cadastrado.");
+      return;
+    }
+    const digits = item.phone.replace(/\D/g, "");
+    const number = digits.startsWith("55") ? digits : `55${digits}`;
+    const formatSalePrice = (value: string | null) => {
+      if (!value) return "A combinar";
+      if (/^R\$\s?[\d.]+,\d{2}$/.test(value.trim())) return value;
+      const digits = value.replace(/\D/g, "");
+      if (!digits) return value;
+      const amount = Number(digits) / 100;
+      return new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        minimumFractionDigits: 2,
+      }).format(amount);
+    };
+
+    const message = [
+      `Olá ${item.nickname}!`,
+      `Vi seu char à venda no Clan Panel.`,
+      `Valor anunciado: ${formatSalePrice(item.char_sale_price)}.`,
+      item.char_sale_description ? `Descrição: ${item.char_sale_description}` : null,
+      "Ainda está disponível?",
+    ].filter(Boolean).join("\n");
+    window.open(`https://wa.me/${number}?text=${encodeURIComponent(message)}`, "_blank");
+  };
   
   // Filter class counts by clan
   const effectiveClassClanFilter = isAdmin ? classClanFilter : (profile?.clan || null);
@@ -645,6 +703,34 @@ const HomePage = () => {
           <p className="text-xs text-muted-foreground/60 mt-1 font-body">Configure os bosses no painel admin</p>
         </div>
       )}
+
+      <div className="glass-card overflow-hidden">
+        <div className="px-4 py-3 border-b border-border/40 flex items-center gap-2">
+          <Tag className="w-4 h-4 text-primary" />
+          <span className="font-display text-sm font-extrabold uppercase tracking-wider">Chars à Venda (Todos os Clãs)</span>
+          <span className="ml-auto text-xs font-display font-bold text-primary bg-primary/15 px-2 py-0.5 rounded-lg">{charsForSale.length}</span>
+        </div>
+        {charsForSale.length === 0 ? (
+          <div className="px-4 py-6 text-center">
+            <p className="text-xs text-muted-foreground font-body">Nenhum char à venda no momento.</p>
+          </div>
+        ) : (
+          <div className="space-y-3 p-3">
+            {charsForSale.map((item) => (
+              <PlayerCharSaleCard
+                key={item.id}
+                playerId={item.id}
+                playerName={item.nickname}
+                clan={item.clan}
+                price={item.char_sale_price}
+                description={item.char_sale_description}
+                phone={item.phone}
+                onContact={() => openSaleWhatsApp(item)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Confirm Send All Dialog */}
       <Dialog open={confirmSendAll} onOpenChange={setConfirmSendAll}>

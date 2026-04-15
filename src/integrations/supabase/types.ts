@@ -753,6 +753,9 @@ export type Database = {
           approved: boolean
           auth_id: string | null
           avatar_url: string | null
+          char_for_sale: boolean
+          char_sale_description: string | null
+          char_sale_price: string | null
           char_visible: boolean
           clan: string | null
           clan_role: string | null
@@ -770,6 +773,9 @@ export type Database = {
           approved?: boolean
           auth_id?: string | null
           avatar_url?: string | null
+          char_for_sale?: boolean
+          char_sale_description?: string | null
+          char_sale_price?: string | null
           char_visible?: boolean
           clan?: string | null
           clan_role?: string | null
@@ -787,6 +793,9 @@ export type Database = {
           approved?: boolean
           auth_id?: string | null
           avatar_url?: string | null
+          char_for_sale?: boolean
+          char_sale_description?: string | null
+          char_sale_price?: string | null
           char_visible?: boolean
           clan?: string | null
           clan_role?: string | null

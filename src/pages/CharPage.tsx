@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Shield, X, Eye, EyeOff, Trash2, Share2, Download, Clock } from "lucide-react";
+import { Shield, X, Eye, EyeOff, Trash2, Share2, Download, Clock, Tag } from "lucide-react";
 import { PlayScheduleSelector } from "@/components/PlayScheduleSelector";
 import { useNavigate } from "react-router-dom";
 import { toPng } from "html-to-image";
@@ -77,7 +77,11 @@ export default function CharPage() {
   const [equipment, setEquipment] = useState<PlayerEquip[]>([]);
   const [loading, setLoading] = useState(true);
   const [charVisible, setCharVisible] = useState(false);
+  const [charForSale, setCharForSale] = useState(false);
+  const [charSalePrice, setCharSalePrice] = useState("");
+  const [charSaleDescription, setCharSaleDescription] = useState("");
   const [togglingVisibility, setTogglingVisibility] = useState(false);
+  const [savingSale, setSavingSale] = useState(false);
   const [avatarExpanded, setAvatarExpanded] = useState(false);
   const [playerRanking, setPlayerRanking] = useState<{ level: number | null; xp: string | null } | null>(null);
   const [sharing, setSharing] = useState(false);
@@ -87,6 +91,23 @@ export default function CharPage() {
   const [classImageUrl, setClassImageUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const shareRef = useRef<HTMLDivElement>(null);
+
+  const formatCurrencyInput = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    if (!digits) return "";
+    const amount = Number(digits) / 100;
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  const normalizeStoredPrice = (value: string | null) => {
+    if (!value) return "";
+    if (/^R\$\s?[\d.]+,\d{2}$/.test(value.trim())) return value;
+    return formatCurrencyInput(value);
+  };
 
   const fetchEquipment = async () => {
     if (!profile?.id) return;
@@ -120,10 +141,15 @@ export default function CharPage() {
     if (!profile?.id) return;
     const { data } = await supabase
       .from("users")
-      .select("char_visible")
+      .select("char_visible, char_for_sale, char_sale_price, char_sale_description")
       .eq("id", profile.id)
       .single();
-    if (data) setCharVisible(!!data.char_visible);
+    if (data) {
+      setCharVisible(!!data.char_visible);
+      setCharForSale(!!(data as any).char_for_sale);
+      setCharSalePrice(normalizeStoredPrice(((data as any).char_sale_price as string) || ""));
+      setCharSaleDescription(((data as any).char_sale_description as string) || "");
+    }
   };
 
   const fetchRanking = async () => {
@@ -232,6 +258,35 @@ export default function CharPage() {
       toast.success(newVal ? "Char visível para todos!" : "Char oculto");
     }
     setTogglingVisibility(false);
+  };
+
+  const saveSaleConfig = async () => {
+    if (!profile?.id) return;
+    if (charForSale && !charVisible) {
+      toast.error("Para anunciar à venda, seu char precisa estar visível.");
+      return;
+    }
+    if (charForSale && !charSalePrice.trim()) {
+      toast.error("Informe o valor para anunciar.");
+      return;
+    }
+
+    setSavingSale(true);
+    const { error } = await supabase
+      .from("users")
+      .update({
+        char_for_sale: charForSale,
+        char_sale_price: charForSale ? charSalePrice.trim() : null,
+        char_sale_description: charForSale ? (charSaleDescription.trim() || null) : null,
+      } as any)
+      .eq("id", profile.id);
+
+    if (error) {
+      toast.error("Erro ao salvar venda do char");
+    } else {
+      toast.success(charForSale ? "Char anunciado à venda!" : "Anúncio de venda removido.");
+    }
+    setSavingSale(false);
   };
 
   const getEquipForSlot = (slot: EquipmentSlot) => equipment.find(e => e.slot === slot);
@@ -616,6 +671,64 @@ export default function CharPage() {
           )}
         </div>
         <PlayScheduleSelector selected={playSchedule} onChange={savePlaySchedule} size="sm" />
+      </div>
+
+      {/* Sale */}
+      <div className="glass-card p-4 rounded-2xl border border-border/40 space-y-3">
+        <div className="flex items-center gap-2">
+          <Tag className="w-4 h-4 text-primary" />
+          <span className="font-display font-bold text-xs uppercase tracking-wider text-foreground">
+            Char à venda
+          </span>
+        </div>
+
+        <button
+          onClick={() => setCharForSale((v) => !v)}
+          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${
+            charForSale
+              ? "border-primary/40 bg-primary/10 text-primary"
+              : "border-border/40 bg-secondary/30 text-muted-foreground"
+          }`}
+        >
+          <span className="font-display font-bold text-xs uppercase tracking-wider">
+            {charForSale ? "Anunciado à venda" : "Não anunciado"}
+          </span>
+          <div className={`w-10 h-5 rounded-full transition-colors relative ${charForSale ? "bg-primary" : "bg-secondary"}`}>
+            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${charForSale ? "translate-x-5" : "translate-x-0.5"}`} />
+          </div>
+        </button>
+
+        <div className="space-y-1.5">
+          <label className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider">Valor</label>
+          <input
+            value={charSalePrice}
+            onChange={(e) => setCharSalePrice(formatCurrencyInput(e.target.value))}
+            placeholder="R$ 0,00"
+            className="input-modern text-sm"
+            disabled={!charForSale}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider">
+            Descrição (opcional)
+          </label>
+          <textarea
+            value={charSaleDescription}
+            onChange={(e) => setCharSaleDescription(e.target.value)}
+            placeholder="Ex: Full set +12, mix raident, pronto para pvp..."
+            className="input-modern min-h-[90px] resize-none text-sm"
+            disabled={!charForSale}
+          />
+        </div>
+
+        <button
+          onClick={saveSaleConfig}
+          disabled={savingSale}
+          className="btn-primary w-full text-sm py-2.5"
+        >
+          {savingSale ? "Salvando..." : "Salvar Venda"}
+        </button>
       </div>
 
     </div>
