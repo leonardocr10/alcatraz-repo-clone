@@ -100,6 +100,7 @@ export function SocialFeed() {
   const [storyCommentText, setStoryCommentText] = useState("");
   const [sendingStoryComment, setSendingStoryComment] = useState(false);
   const [loadingStoryDetails, setLoadingStoryDetails] = useState(false);
+  const [expandedFeedImage, setExpandedFeedImage] = useState<{ url: string; authorName: string } | null>(null);
 
   const quickEmojis = ["😀", "😎", "🔥", "💪", "🎯", "⚔️", "🏆", "🎮", "🚀", "✅", "❤️", "😂", "👏", "🤝", "📢", "🛡️"];
   const storyReactionEmojis = ["👍", "❤️", "🥰", "😆", "😮", "😢", "😡"];
@@ -712,7 +713,18 @@ export function SocialFeed() {
                 )}
 
                 {post.media_url && post.media_type === "image" && (
-                  <img src={post.media_url} alt="post" className="w-full rounded-xl border border-border/40 max-h-[480px] object-contain bg-secondary/20" />
+                  <button
+                    type="button"
+                    onClick={() => setExpandedFeedImage({ url: post.media_url!, authorName: post.author?.nickname || "Jogador" })}
+                    className="block w-full"
+                    title="Abrir imagem"
+                  >
+                    <img
+                      src={post.media_url}
+                      alt="post"
+                      className="w-full rounded-xl border border-border/40 max-h-[480px] object-contain bg-secondary/20 cursor-zoom-in"
+                    />
+                  </button>
                 )}
                 {post.media_url && post.media_type === "video" && (
                   <video src={post.media_url} controls className="w-full rounded-xl border border-border/40 max-h-[480px] bg-black/30" />
@@ -1001,6 +1013,32 @@ export function SocialFeed() {
           )}
         </DialogContent>
       </Dialog>
+
+      {expandedFeedImage && (
+        <div
+          className="fixed inset-0 z-[70] bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setExpandedFeedImage(null)}
+        >
+          <div
+            className="relative w-full max-w-5xl animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={expandedFeedImage.url}
+              alt={expandedFeedImage.authorName}
+              className="w-full max-h-[88vh] object-contain rounded-2xl border border-primary/30 bg-background/60 shadow-2xl"
+            />
+            <button
+              onClick={() => setExpandedFeedImage(null)}
+              className="absolute top-3 right-3 p-2 rounded-full border border-border/50 bg-background/80 text-muted-foreground hover:text-foreground"
+              title="Fechar"
+              aria-label="Fechar"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

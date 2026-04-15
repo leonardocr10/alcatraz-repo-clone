@@ -306,6 +306,32 @@ export default function EventsPage() {
     }
   };
 
+  const handleDeleteAnnouncement = async (announcement: any) => {
+    if (!canManageAnnouncements) return;
+
+    try {
+      let query = (supabase as any)
+        .from("clan_announcements")
+        .update({ is_active: false })
+        .eq("id", announcement.id);
+
+      if (!isAdmin && profile?.clan) {
+        query = query.eq("clan", profile.clan);
+      }
+
+      const { error } = await query;
+      if (error) throw error;
+
+      toast.success("Comunicado removido.");
+      setAnnouncements((prev) => prev.filter((item) => item.id !== announcement.id));
+      if (selectedAnnouncement?.id === announcement.id) {
+        setShowAnnouncementReadsModal(false);
+      }
+    } catch (err: any) {
+      toast.error("Erro ao remover comunicado: " + (err?.message || "tente novamente."));
+    }
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile) return;
@@ -881,17 +907,19 @@ export default function EventsPage() {
             <div className="flex gap-2">
               <button
                   onClick={() => setShowCreateAnnouncementModal(true)}
-                  className="btn-secondary flex items-center gap-2 text-xs py-2 px-3"
+                  title="Novo Comunicado"
+                  aria-label="Novo Comunicado"
+                  className="btn-secondary flex items-center justify-center text-xs p-2.5 min-w-10 h-10"
               >
-                  <Megaphone className="w-3.5 h-3.5" />
-                  Novo Comunicado
+                  <Megaphone className="w-4 h-4" />
               </button>
               <button 
                   onClick={() => setShowCreateModal(true)}
-                  className="btn-primary flex items-center gap-2 text-xs py-2 px-3"
+                  title="Novo Evento"
+                  aria-label="Novo Evento"
+                  className="btn-primary flex items-center justify-center text-xs p-2.5 min-w-10 h-10"
               >
-                  <Plus className="w-3.5 h-3.5" />
-                  Novo Evento
+                  <Plus className="w-4 h-4" />
               </button>
             </div>
         )}
@@ -918,13 +946,23 @@ export default function EventsPage() {
                     </p>
                   </div>
                   {canManageAnnouncements && (
-                    <button
-                      onClick={() => viewAnnouncementReads(item)}
-                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center gap-1.5 shrink-0"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      Ver Ciência
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => viewAnnouncementReads(item)}
+                        className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center gap-1.5"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        Ver Ciência
+                      </button>
+                      <button
+                        onClick={() => handleDeleteAnnouncement(item)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center border border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+                        title="Remover comunicado"
+                        aria-label="Remover comunicado"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   )}
                 </div>
                 <p className="text-xs whitespace-pre-wrap text-foreground/90 line-clamp-3">{item.content}</p>

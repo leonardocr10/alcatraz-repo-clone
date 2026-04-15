@@ -31,6 +31,7 @@ export default defineConfig(({ mode }) => {
         navigateFallbackDenylist: [/^\/~oauth/],
         skipWaiting: true,
         clientsClaim: true,
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/pmofvoekrrskgurydtnp\.supabase\.co\/.*/i,
