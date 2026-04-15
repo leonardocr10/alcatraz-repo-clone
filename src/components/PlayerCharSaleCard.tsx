@@ -78,10 +78,10 @@ export function PlayerCharSaleCard({
   const [xp, setXp] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
-  const [showDownloadFallback, setShowDownloadFallback] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [showCharModal, setShowCharModal] = useState(false);
   const shareRef = useRef<HTMLDivElement>(null);
+  const captureRef = useRef<HTMLDivElement>(null);
 
   const formatCurrencyInput = (value: string) => {
     const digits = value.replace(/\D/g, "");
@@ -143,8 +143,8 @@ export function PlayerCharSaleCard({
   };
 
   const generateImage = async (): Promise<string> => {
-    if (!shareRef.current) throw new Error("No ref");
-    const images = shareRef.current.querySelectorAll("img");
+    if (!captureRef.current) throw new Error("No ref");
+    const images = captureRef.current.querySelectorAll("img");
     const originalSrcs: { img: HTMLImageElement; src: string }[] = [];
 
     for (const img of Array.from(images)) {
@@ -162,7 +162,7 @@ export function PlayerCharSaleCard({
 
     await new Promise((r) => setTimeout(r, 100));
 
-    const dataUrl = await toPng(shareRef.current, {
+    const dataUrl = await toPng(captureRef.current, {
       backgroundColor: "#0b1220",
       pixelRatio: 2,
       cacheBust: true,
@@ -188,9 +188,7 @@ export function PlayerCharSaleCard({
           text: `${playerName} está vendendo char por ${formatSalePrice(price)}.`,
           files: [file],
         });
-        setShowDownloadFallback(false);
       } else {
-        setShowDownloadFallback(true);
         toast.error("Compartilhamento indisponível neste dispositivo. Use o botão Baixar.");
         return;
       }
@@ -198,7 +196,6 @@ export function PlayerCharSaleCard({
     } catch (err: any) {
       if (err?.name !== "AbortError") {
         toast.error("Erro ao compartilhar anúncio");
-        setShowDownloadFallback(true);
       }
     }
     setSharing(false);
@@ -208,10 +205,15 @@ export function PlayerCharSaleCard({
     setSharing(true);
     try {
       const dataUrl = await generateImage();
+      const blob = await (await fetch(dataUrl)).blob();
+      const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = dataUrl;
+      link.href = blobUrl;
       link.download = `anuncio-${playerName}.png`;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
       toast.success("Imagem do anúncio baixada!");
     } catch {
       toast.error("Erro ao baixar anúncio");
@@ -325,16 +327,14 @@ export function PlayerCharSaleCard({
           >
             <MessageCircle className="w-3.5 h-3.5" />
           </button>
-          {showDownloadFallback && (
-            <button
-              onClick={handleDownload}
-              disabled={sharing}
-              className="w-9 h-9 rounded-xl bg-gold/10 text-gold hover:bg-gold/20 border border-gold/20 transition-colors text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-40"
-              title="Baixar"
-            >
-              <Download className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <button
+            onClick={handleDownload}
+            disabled={sharing}
+            className="w-9 h-9 rounded-xl bg-gold/10 text-gold hover:bg-gold/20 border border-gold/20 transition-colors text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-40"
+            title="Baixar"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
@@ -409,6 +409,90 @@ export function PlayerCharSaleCard({
           onClose={() => setShowCharModal(false)}
         />
       )}
+
+      <div className="fixed -left-[10000px] top-0 pointer-events-none z-[-1]">
+        <div ref={captureRef} className="glass-card p-4 space-y-3 w-[760px]">
+          <div className="grid grid-cols-[auto,1fr] items-start gap-3">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={playerName} className="w-24 h-24 rounded-2xl object-cover border-2 border-primary/30" />
+            ) : (
+              <div className="w-24 h-24 rounded-2xl bg-secondary/30 border border-border/40 flex items-center justify-center text-2xl font-bold">
+                {playerName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="font-display font-extrabold text-2xl truncate">{playerName}</p>
+              <p className="text-base text-muted-foreground">{clan || "Sem clã"}</p>
+              <p className="text-2xl font-display font-bold text-gold mt-1">{formatSalePrice(price)}</p>
+              {level != null && (
+                <p className="text-lg text-primary font-bold mt-0.5">
+                  Lv.{level}{xp ? ` • ${xp}` : ""}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {description && (
+            <div className="rounded-xl border border-border/30 bg-secondary/15 px-3 py-2">
+              <p className="text-sm text-foreground/85 whitespace-pre-wrap">{description}</p>
+            </div>
+          )}
+
+          <div className="flex gap-2.5">
+            {SLOT_CONFIG.filter((s) => s.size === "large").map((slotCfg) => {
+              const equip = getEquip(slotCfg.slot);
+              return (
+                <div key={`capture-${slotCfg.slot}`} className="flex flex-col items-center gap-1 flex-1">
+                  <div className={`relative w-full aspect-[3/4] rounded-xl border-2 flex items-center justify-center overflow-hidden ${
+                    equip ? `${RARITY_COLORS[equip.rarity]} ${RARITY_BG[equip.rarity]}` : "border-border/40 bg-secondary/20"
+                  }`}>
+                    {equip?.item ? (
+                      <>
+                        <img src={equip.item.image_url} alt={equip.item.name} className="w-4/5 h-4/5 object-contain" />
+                        {equip.plus_value != null && equip.plus_value > 0 && (
+                          <span className="absolute bottom-1 right-1 text-[11px] font-display font-bold text-foreground bg-background/80 px-1 rounded">
+                            +{equip.plus_value}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <img src={slotCfg.placeholder} alt={slotCfg.label} className="w-3/5 h-3/5 object-contain opacity-20" />
+                    )}
+                  </div>
+                  <span className="text-[10px] font-display font-bold text-muted-foreground uppercase tracking-wider">{slotCfg.label}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="grid grid-cols-6 gap-1.5">
+            {SLOT_CONFIG.filter((s) => s.size === "small").map((slotCfg) => {
+              const equip = getEquip(slotCfg.slot);
+              return (
+                <div key={`capture-small-${slotCfg.slot}`} className="flex flex-col items-center gap-1">
+                  <div className={`relative w-full aspect-square rounded-xl border-2 flex items-center justify-center overflow-hidden ${
+                    equip ? `${RARITY_COLORS[equip.rarity]} ${RARITY_BG[equip.rarity]}` : "border-border/40 bg-secondary/20"
+                  }`}>
+                    {equip?.item ? (
+                      <>
+                        <img src={equip.item.image_url} alt={equip.item.name} className="w-4/5 h-4/5 object-contain" />
+                        {equip.plus_value != null && equip.plus_value > 0 && (
+                          <span className="absolute bottom-0.5 right-0.5 text-[9px] font-display font-bold text-foreground bg-background/80 px-1 rounded">
+                            +{equip.plus_value}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <img src={slotCfg.placeholder} alt={slotCfg.label} className="w-3/5 h-3/5 object-contain opacity-20" />
+                    )}
+                  </div>
+                  <span className="text-[9px] font-display font-bold text-muted-foreground uppercase tracking-wider">{slotCfg.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
