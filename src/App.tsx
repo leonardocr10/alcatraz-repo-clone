@@ -20,7 +20,6 @@ import RulesPage from "@/pages/RulesPage";
 import HistoryPage from "@/pages/HistoryPage";
 import CharPage from "@/pages/CharPage";
 import EquipmentCatalogPage from "@/pages/EquipmentCatalogPage";
-import AdminAlcatrazPage from "@/pages/AdminAlcatrazPage";
 import EventsPage from "@/pages/EventsPage";
 import NotFound from "@/pages/NotFound";
 
@@ -46,6 +45,13 @@ const App = () => {
     const { isAdmin, loading } = useAuth();
     if (loading) return null;
     if (!isAdmin) return <Navigate to="/inicio" replace />;
+    return <>{children}</>;
+  }
+
+  function ConfigRoute({ children }: { children: React.ReactNode }) {
+    const { isAdmin, isLeader, loading } = useAuth();
+    if (loading) return null;
+    if (!isAdmin && !isLeader) return <Navigate to="/inicio" replace />;
     return <>{children}</>;
   }
 
@@ -76,8 +82,7 @@ const App = () => {
             <Route path="/equipment/:slot" element={<ProtectedRoute><AppLayout><EquipmentCatalogPage /></AppLayout></ProtectedRoute>} />
             <Route path="/jogadores" element={<ProtectedRoute><AppLayout><PlayersPage /></AppLayout></ProtectedRoute>} />
             <Route path="/classes" element={<ProtectedRoute><AppLayout><ClassesPage /></AppLayout></ProtectedRoute>} />
-            <Route path="/config" element={<ProtectedRoute><AdminRoute><AppLayout><ConfigPage /></AppLayout></AdminRoute></ProtectedRoute>} />
-            <Route path="/admin/alcatraz" element={<ProtectedRoute><AdminRoute><AppLayout><AdminAlcatrazPage /></AppLayout></AdminRoute></ProtectedRoute>} />
+            <Route path="/config" element={<ProtectedRoute><ConfigRoute><AppLayout><ConfigPage /></AppLayout></ConfigRoute></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <PWAInstallBanner />

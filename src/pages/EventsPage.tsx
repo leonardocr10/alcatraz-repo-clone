@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Calendar, Users, Plus, CheckCircle2, XCircle, Image as ImageIcon, Loader2, Clock, Trash2, MessageCircle, Copy } from "lucide-react";
+import { useClans } from "@/hooks/useClans";
+import { Calendar, Users, Plus, CheckCircle2, XCircle, Image as ImageIcon, Loader2, Clock, Trash2, MessageCircle, Copy, Megaphone, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -26,14 +27,17 @@ type ClassSummaryItem = {
 };
 
 export default function EventsPage() {
-  const { isAdmin, profile } = useAuth();
+  const { isAdmin, isLeader, profile } = useAuth();
+  const { clans } = useClans();
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Custom modals
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreateAnnouncementModal, setShowCreateAnnouncementModal] = useState(false);
   const [showAttendeesModal, setShowAttendeesModal] = useState(false);
   const [showClassSummaryModal, setShowClassSummaryModal] = useState(false);
+  const [showAnnouncementReadsModal, setShowAnnouncementReadsModal] = useState(false);
   
   // Create form
   const [title, setTitle] = useState("");
@@ -42,17 +46,31 @@ export default function EventsPage() {
   const [eventTime, setEventTime] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [announcementTitle, setAnnouncementTitle] = useState("");
+  const [announcementContent, setAnnouncementContent] = useState("");
+  const [announcementClan, setAnnouncementClan] = useState("");
+  const [creatingAnnouncement, setCreatingAnnouncement] = useState(false);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState(false);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<any | null>(null);
+  const [announcementReads, setAnnouncementReads] = useState<any[]>([]);
+  const [announcementPending, setAnnouncementPending] = useState<any[]>([]);
+  const [loadingAnnouncementReads, setLoadingAnnouncementReads] = useState(false);
 
   // Attendees
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const [attendees, setAttendees] = useState<any[]>([]);
   const [attendeesStatusFilter, setAttendeesStatusFilter] = useState<"all" | "confirmed" | "declined">("all");
+  const [attendeesSearch, setAttendeesSearch] = useState("");
   const [loadingAttendees, setLoadingAttendees] = useState(false);
   const [loadingClassSummary, setLoadingClassSummary] = useState(false);
   const [sendingPendingReminder, setSendingPendingReminder] = useState(false);
   const [sendingConfirmedCall, setSendingConfirmedCall] = useState(false);
   const [classSummary, setClassSummary] = useState<ClassSummaryItem[]>([]);
   const [selectedClassSummary, setSelectedClassSummary] = useState<string | null>(null);
+  const attendeesRequestRef = useRef(0);
+  const myPresenceRequestRef = useRef(0);
+  const classSummaryRequestRef = useRef(0);
 
   // My Presence Modal State
   const [showMyPresenceModal, setShowMyPresenceModal] = useState(false);
@@ -61,6 +79,15 @@ export default function EventsPage() {
   const [isChangingToNo, setIsChangingToNo] = useState(false);
   
   const [selectedPlayerForModal, setSelectedPlayerForModal] = useState<{id: string, name: string} | null>(null);
+  const canManageEvents = isAdmin || isLeader;
+  const canManageAnnouncements = isAdmin || isLeader;
+
+  const getLocalDateString = (date = new Date()) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
   const getPresenceTime = (presence: any) => {
     const raw = presence?.updated_at || presence?.created_at;
@@ -121,16 +148,38 @@ export default function EventsPage() {
         .from("events")
         .select(`
           *,
+          creator:created_by (id, clan),
           event_presences(id, status, user_id)
         `)
         .order("created_at", { ascending: false });
       
       if (error) throw error;
+      const today = getLocalDateString();
+      const expiredActiveIds = (data || [])
+        .filter((ev: any) => Boolean(ev.is_active) && Boolean(ev.event_date) && ev.event_date < today)
+        .map((ev: any) => ev.id);
+
+      if (isAdmin && expiredActiveIds.length > 0) {
+        const { error: closeError } = await supabase
+          .from("events")
+          .update({ is_active: false })
+          .in("id", expiredActiveIds);
+
+        if (closeError) {
+          console.warn("Erro ao encerrar eventos expirados automaticamente:", closeError);
+        }
+      }
+
       const normalizedEvents = (data || []).map((ev: any) => ({
         ...ev,
+        // Treat past-date events as closed in UI even if remote flag lags.
+        is_active: Boolean(ev.is_active) && !(Boolean(ev.event_date) && ev.event_date < today),
         event_presences: dedupePresences(ev.event_presences || []),
       }));
-      setEvents(normalizedEvents);
+      const scopedEvents = isAdmin
+        ? normalizedEvents
+        : normalizedEvents.filter((ev: any) => ev?.creator?.clan && ev.creator.clan === profile?.clan);
+      setEvents(scopedEvents);
     } catch (err: any) {
       toast.error("Erro ao buscar eventos: " + err.message);
     } finally {
@@ -141,7 +190,121 @@ export default function EventsPage() {
   useEffect(() => {
     // Both admins and normal users can see the events list, but admins can manage
     fetchEvents();
-  }, []);
+  }, [profile?.clan, isAdmin]);
+
+  useEffect(() => {
+    if (!announcementClan) {
+      if (profile?.clan) setAnnouncementClan(profile.clan);
+      else if (clans[0]?.name) setAnnouncementClan(clans[0].name);
+    }
+  }, [announcementClan, profile?.clan, clans]);
+
+  const fetchAnnouncements = async () => {
+    setLoadingAnnouncements(true);
+    try {
+      let query = (supabase as any)
+        .from("clan_announcements")
+        .select("id, clan, title, content, is_active, require_ack, created_at, created_by, creator:created_by (nickname)")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      if (!isAdmin && profile?.clan) {
+        query = query.eq("clan", profile.clan);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      setAnnouncements(data || []);
+    } catch (err: any) {
+      toast.error("Erro ao buscar comunicados: " + err.message);
+    } finally {
+      setLoadingAnnouncements(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, [profile?.clan, isAdmin]);
+
+  const createAnnouncement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clanTarget = isLeader ? profile?.clan : announcementClan;
+    if (!canManageAnnouncements || !profile?.id) return;
+    if (!clanTarget) {
+      toast.error("Selecione um clã para o comunicado.");
+      return;
+    }
+    if (!announcementTitle.trim() || !announcementContent.trim()) {
+      toast.error("Preencha título e conteúdo.");
+      return;
+    }
+
+    setCreatingAnnouncement(true);
+    try {
+      const { error } = await (supabase as any).from("clan_announcements").insert({
+        clan: clanTarget,
+        title: announcementTitle.trim(),
+        content: announcementContent.trim(),
+        is_active: true,
+        require_ack: true,
+        created_by: profile.id,
+      });
+      if (error) throw error;
+
+      toast.success("Comunicado criado! Será exibido no login até darem ciência.");
+      setShowCreateAnnouncementModal(false);
+      setAnnouncementTitle("");
+      setAnnouncementContent("");
+      await fetchAnnouncements();
+    } catch (err: any) {
+      toast.error("Erro ao criar comunicado: " + err.message);
+    } finally {
+      setCreatingAnnouncement(false);
+    }
+  };
+
+  const viewAnnouncementReads = async (announcement: any) => {
+    setSelectedAnnouncement(announcement);
+    setShowAnnouncementReadsModal(true);
+    setLoadingAnnouncementReads(true);
+    setAnnouncementReads([]);
+    setAnnouncementPending([]);
+
+    try {
+      const [
+        { data: reads, error: readsError },
+        { data: clanUsers, error: clanUsersError },
+      ] = await Promise.all([
+        (supabase as any)
+          .from("clan_announcement_reads")
+          .select("announcement_id, user_id, read_at, users:user_id (id, nickname, class)")
+          .eq("announcement_id", announcement.id)
+          .order("read_at", { ascending: false }),
+        (supabase as any)
+          .from("users")
+          .select("id, nickname, class")
+          .eq("approved", true)
+          .eq("clan", announcement.clan)
+          .order("nickname", { ascending: true }),
+      ]);
+
+      if (readsError) throw readsError;
+      if (clanUsersError) throw clanUsersError;
+
+      const readsList = reads || [];
+      const readSet = new Set(readsList.map((item: any) => item.user_id));
+      const pendingList = (clanUsers || []).filter((u: any) => !readSet.has(u.id));
+
+      setAnnouncementReads(readsList);
+      setAnnouncementPending(pendingList);
+    } catch (err: any) {
+      toast.error("Erro ao buscar ciência do comunicado: " + err.message);
+      setShowAnnouncementReadsModal(false);
+    } finally {
+      setLoadingAnnouncementReads(false);
+    }
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,7 +341,7 @@ export default function EventsPage() {
   };
 
   const handleToggleActive = async (id: string, currentStatus: boolean) => {
-    if (!isAdmin) return;
+    if (!canManageEvents) return;
     try {
       const { error } = await supabase.from("events").update({ is_active: !currentStatus }).eq("id", id);
       if (error) throw error;
@@ -218,10 +381,12 @@ export default function EventsPage() {
   };
 
   const viewAttendees = async (event: any, statusFilter: "all" | "confirmed" | "declined" = "all") => {
-    const eventId = event.id; // Store event ID to check for race conditions
+    const eventId = event.id;
+    const requestId = ++attendeesRequestRef.current;
     setSelectedEvent(event);
     setShowAttendeesModal(true);
     setAttendeesStatusFilter(statusFilter);
+    setAttendeesSearch("");
     setLoadingAttendees(true);
     setAttendees([]); // Clear previous attendees immediately
     try {
@@ -276,20 +441,29 @@ export default function EventsPage() {
         }
       }
       
-      // Only update if this is still the selected event (prevents race conditions)
-      if (eventId === selectedEvent?.id) {
-        setAttendees(atts);
-      }
+      if (requestId !== attendeesRequestRef.current) return;
+      setAttendees(atts);
     } catch (err: any) {
       toast.error("Erro ao buscar participantes: " + err.message);
     } finally {
+      if (requestId !== attendeesRequestRef.current) return;
       setLoadingAttendees(false);
     }
   };
 
-  const filteredAttendees = attendeesStatusFilter === "all"
-    ? attendees
-    : attendees.filter((att) => att.status === attendeesStatusFilter);
+  const filteredAttendees = attendees.filter((att) => {
+    if (attendeesStatusFilter !== "all" && att.status !== attendeesStatusFilter) {
+      return false;
+    }
+
+    const query = attendeesSearch.trim().toLowerCase();
+    if (!query) return true;
+
+    const nickname = (att.users?.nickname || "").toLowerCase();
+    const className = (att.users?.class || "").toLowerCase();
+    const reason = (att.reason || "").toLowerCase();
+    return nickname.includes(query) || className.includes(query) || reason.includes(query);
+  });
 
   const attendeesFilterLabel = attendeesStatusFilter === "confirmed"
     ? "Confirmados"
@@ -298,7 +472,8 @@ export default function EventsPage() {
       : "Lista de Presenças";
 
   const openMyPresence = async (ev: any) => {
-     const eventId = ev.id; // Store event ID to check for race conditions
+     const eventId = ev.id;
+     const requestId = ++myPresenceRequestRef.current;
      setSelectedEvent(ev);
      setShowMyPresenceModal(true);
      setShowAttendeesModal(false); // close attendees list if opened from there
@@ -315,20 +490,20 @@ export default function EventsPage() {
          .order("updated_at", { ascending: false })
          .limit(1)
          .maybeSingle();
-       // Only update if this is still the selected event (prevents race conditions)
-       if (eventId === selectedEvent?.id) {
-         setMyPresence(data || null);
-         setMyReason(data?.reason || "");
-       }
+       if (requestId !== myPresenceRequestRef.current) return;
+       setMyPresence(data || null);
+       setMyReason(data?.reason || "");
      } catch {
        //
      } finally {
+       if (requestId !== myPresenceRequestRef.current) return;
        setLoadingAttendees(false);
      }
   };
 
   const openClassSummary = async (event: any) => {
-    const eventId = event.id; // Store event ID to check for race conditions
+    const eventId = event.id;
+    const requestId = ++classSummaryRequestRef.current;
     setSelectedEvent(event);
     setShowClassSummaryModal(true);
     setLoadingClassSummary(true);
@@ -392,17 +567,16 @@ export default function EventsPage() {
         ...summaryWithoutAll,
       ];
 
-      // Only update if this is still the selected event (prevents race conditions)
-      if (eventId === selectedEvent?.id) {
-        setClassSummary(summary);
-        if (summary.length > 0) {
-          setSelectedClassSummary(summary[0].className);
-        }
+      if (requestId !== classSummaryRequestRef.current) return;
+      setClassSummary(summary);
+      if (summary.length > 0) {
+        setSelectedClassSummary(summary[0].className);
       }
     } catch (err: any) {
       toast.error("Erro ao buscar presenças por classe: " + err.message);
       setShowClassSummaryModal(false);
     } finally {
+      if (requestId !== classSummaryRequestRef.current) return;
       setLoadingClassSummary(false);
     }
   };
@@ -532,6 +706,7 @@ export default function EventsPage() {
   const handleSendPendingReminder = async (event: any) => {
     setSendingPendingReminder(true);
     try {
+      const eventClan = event?.creator?.clan || profile?.clan || null;
       const [
         { data: presences, error: presencesError },
         { data: users, error: usersError },
@@ -544,7 +719,8 @@ export default function EventsPage() {
         supabase
           .from("users")
           .select("id, nickname, phone, whatsapp_optout")
-          .eq("approved", true),
+          .eq("approved", true)
+          .eq("clan", eventClan),
         supabase
           .from("whatsapp_config")
           .select("allow_user_optout")
@@ -580,13 +756,14 @@ export default function EventsPage() {
       const message = [
         `Olá! Você ainda não confirmou sua presença no evento ${event.title}.`,
         "Entre no app e confirme se vai participar.",
-        "https://clanaz.lovable.app/",
+        typeof window !== "undefined" ? window.location.origin : "Clan Panel",
       ].join("\n");
 
       const { data, error } = await supabase.functions.invoke("send-message", {
         body: {
           phones: recipients,
           message,
+          clan: eventClan,
         },
       });
 
@@ -608,9 +785,11 @@ export default function EventsPage() {
   const handleSendConfirmedDiscordCall = async (event: any) => {
     setSendingConfirmedCall(true);
     try {
+      const eventClan = event?.creator?.clan || profile?.clan || null;
       const [
         { data: presences, error: presencesError },
         { data: whatsConfig, error: whatsConfigError },
+        { data: clanDiscord, error: clanDiscordError },
       ] = await Promise.all([
         supabase
           .from("event_presences")
@@ -625,12 +804,17 @@ export default function EventsPage() {
           .select("allow_user_optout")
           .limit(1)
           .maybeSingle(),
+        eventClan
+          ? (supabase as any).from("clan_discord_links").select("discord_link").eq("clan", eventClan).limit(1).maybeSingle()
+          : Promise.resolve({ data: null, error: null } as any),
       ]);
 
       if (presencesError) throw presencesError;
       if (whatsConfigError) throw whatsConfigError;
+      if (clanDiscordError) throw clanDiscordError;
 
       const allowOptout = Boolean(whatsConfig?.allow_user_optout);
+      const discordInvite = clanDiscord?.discord_link || "https://discord.gg/YRhAa4mG";
       const confirmedPresences = dedupePresences(presences || []).filter((item: any) => item.status === "confirmed");
 
       const recipients = confirmedPresences
@@ -653,14 +837,15 @@ export default function EventsPage() {
       const message = [
         `BC confirmado: ${event.title}`,
         "Quem confirmou precisa logar no Discord:",
-        "https://discord.gg/YRhAa4mG",
-        "e logar no PT e ficar em richatem no mestre dos clan.",
+        discordInvite,
+        "e logar no PT e ficar em richatem no mestre do clã.",
       ].join("\n");
 
       const { data, error } = await supabase.functions.invoke("send-message", {
         body: {
           phones: recipients,
           message,
+          clan: eventClan,
         },
       });
 
@@ -692,14 +877,60 @@ export default function EventsPage() {
           </p>
         </div>
         
-        {isAdmin && (
-            <button 
-                onClick={() => setShowCreateModal(true)}
-                className="btn-primary flex items-center gap-2 text-xs py-2 px-3"
-            >
-                <Plus className="w-3.5 h-3.5" />
-                Novo Evento
-            </button>
+        {canManageEvents && (
+            <div className="flex gap-2">
+              <button
+                  onClick={() => setShowCreateAnnouncementModal(true)}
+                  className="btn-secondary flex items-center gap-2 text-xs py-2 px-3"
+              >
+                  <Megaphone className="w-3.5 h-3.5" />
+                  Novo Comunicado
+              </button>
+              <button 
+                  onClick={() => setShowCreateModal(true)}
+                  className="btn-primary flex items-center gap-2 text-xs py-2 px-3"
+              >
+                  <Plus className="w-3.5 h-3.5" />
+                  Novo Evento
+              </button>
+            </div>
+        )}
+      </div>
+
+      <div className="glass-card p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Megaphone className="w-4 h-4 text-primary" />
+          <p className="font-display text-sm font-extrabold uppercase tracking-wider">Comunicados</p>
+        </div>
+        {loadingAnnouncements ? (
+          <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 text-primary animate-spin" /></div>
+        ) : announcements.length === 0 ? (
+          <p className="text-xs text-muted-foreground font-body">Nenhum comunicado ativo.</p>
+        ) : (
+          <div className="space-y-2">
+            {announcements.map((item: any) => (
+              <div key={item.id} className="rounded-xl border border-border/30 bg-secondary/20 p-3 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-display font-bold text-sm truncate">{item.title}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {item.clan} • {new Date(item.created_at).toLocaleString("pt-BR")}
+                    </p>
+                  </div>
+                  {canManageAnnouncements && (
+                    <button
+                      onClick={() => viewAnnouncementReads(item)}
+                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center gap-1.5 shrink-0"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      Ver Ciência
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs whitespace-pre-wrap text-foreground/90 line-clamp-3">{item.content}</p>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
@@ -715,7 +946,10 @@ export default function EventsPage() {
             <p className="text-sm text-muted-foreground font-body">Nenhum evento registrado.</p>
           </div>
         ) : (
-          events.map(ev => (
+          events.map(ev => {
+            const today = getLocalDateString();
+            const isPastEvent = Boolean(ev.event_date) && ev.event_date < today;
+            return (
             <div key={ev.id} className="glass-card overflow-hidden hover:border-primary/30 transition-colors">
               {ev.photo_url && (
                 <div className="w-full h-32 relative">
@@ -773,12 +1007,13 @@ export default function EventsPage() {
                 </div>
 
                 <div className="flex items-center gap-2 mt-2">
-                    {isAdmin && (
+                    {canManageEvents && (
                         <button 
                           onClick={() => handleToggleActive(ev.id, ev.is_active)}
-                          className={`text-xs px-3 py-1.5 rounded-xl font-bold border transition-colors ${ev.is_active ? 'border-primary/50 text-primary hover:bg-primary/10' : 'border-border text-muted-foreground hover:bg-white/5'}`}
+                          disabled={isPastEvent}
+                          className={`text-xs px-3 py-1.5 rounded-xl font-bold border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${ev.is_active ? 'border-primary/50 text-primary hover:bg-primary/10' : 'border-border text-muted-foreground hover:bg-white/5'}`}
                         >
-                            {ev.is_active ? 'Ativo' : 'Ativar'}
+                            {isPastEvent ? 'Encerrado' : ev.is_active ? 'Ativo' : 'Ativar'}
                         </button>
                     )}
                       <button
@@ -856,7 +1091,7 @@ export default function EventsPage() {
                 </div>
               </div>
             </div>
-          ))
+          )})
         )}
       </div>
 
@@ -900,6 +1135,112 @@ export default function EventsPage() {
                 </button>
              </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCreateAnnouncementModal} onOpenChange={setShowCreateAnnouncementModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display">Novo Comunicado</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={createAnnouncement} className="space-y-3">
+            {isAdmin && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Clã</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {clans.map((clan) => (
+                    <button
+                      key={clan.id}
+                      type="button"
+                      onClick={() => setAnnouncementClan(clan.name)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${
+                        announcementClan === clan.name
+                          ? "border-primary bg-primary/15 text-primary"
+                          : "border-border/40 text-muted-foreground hover:bg-secondary/40"
+                      }`}
+                    >
+                      {clan.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {!isAdmin && (
+              <p className="text-xs text-muted-foreground">
+                Clã do comunicado: <span className="text-primary font-bold">{profile?.clan || "—"}</span>
+              </p>
+            )}
+            <label className="block space-y-1.5">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Título</span>
+              <input
+                value={announcementTitle}
+                onChange={(e) => setAnnouncementTitle(e.target.value)}
+                className="input-modern"
+                placeholder="Ex: Convocação de Guerra"
+              />
+            </label>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Comunicado</span>
+              <textarea
+                value={announcementContent}
+                onChange={(e) => setAnnouncementContent(e.target.value)}
+                className="input-modern min-h-[130px] resize-none"
+                placeholder="Mensagem para todo o clã..."
+              />
+            </label>
+            <div className="flex gap-2 pt-1">
+              <button type="button" onClick={() => setShowCreateAnnouncementModal(false)} className="btn-secondary flex-1 text-sm py-2.5">
+                Cancelar
+              </button>
+              <button type="submit" disabled={creatingAnnouncement} className="btn-primary flex-1 text-sm py-2.5">
+                {creatingAnnouncement ? "Salvando..." : "Publicar"}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showAnnouncementReadsModal} onOpenChange={setShowAnnouncementReadsModal}>
+        <DialogContent className="max-w-md sm:max-w-xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="font-display">Ciência do Comunicado</DialogTitle>
+          </DialogHeader>
+          {selectedAnnouncement && (
+            <div className="rounded-xl border border-border/30 bg-secondary/20 p-3 mb-3">
+              <p className="font-display font-bold text-sm">{selectedAnnouncement.title}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{selectedAnnouncement.clan}</p>
+            </div>
+          )}
+          {loadingAnnouncementReads ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 text-primary animate-spin" /></div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 overflow-y-auto pr-1">
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-primary">Leram ({announcementReads.length})</p>
+                {announcementReads.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Ninguém confirmou leitura ainda.</p>
+                ) : announcementReads.map((item: any) => (
+                  <div key={item.user_id} className="rounded-xl border border-border/30 bg-secondary/20 px-3 py-2">
+                    <p className="text-sm font-bold">{item.users?.nickname || "Usuário"}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {item.users?.class || "Sem classe"} • {new Date(item.read_at).toLocaleString("pt-BR")}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-gold">Pendentes ({announcementPending.length})</p>
+                {announcementPending.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Todos deram ciência.</p>
+                ) : announcementPending.map((item: any) => (
+                  <div key={item.id} className="rounded-xl border border-border/30 bg-secondary/20 px-3 py-2">
+                    <p className="text-sm font-bold">{item.nickname}</p>
+                    <p className="text-[11px] text-muted-foreground">{item.class || "Sem classe"}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -1064,63 +1405,109 @@ export default function EventsPage() {
                <p className="text-xs text-muted-foreground font-body mt-1">{attendeesFilterLabel}</p>
              </div>
              {selectedEvent && (
-               <div className="flex gap-2">
+               <div className="flex flex-wrap gap-2 justify-end">
                  <button
                   onClick={handleCopyConfirmedChars}
-                  className="p-2 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg transition-colors border border-primary/20"
+                  className="px-2.5 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg transition-colors border border-primary/20 text-[11px] font-bold flex items-center gap-1.5"
                   title="Copiar chars confirmados"
                  >
-                  <Copy className="w-4 h-4" />
+                  <Copy className="w-3.5 h-3.5" />
+                  Copiar
                  </button>
                  <button
                   onClick={() => handleShareWhatsApp(selectedEvent)}
-                  className="p-2 bg-green-500/10 text-green-500 hover:bg-green-500/20 rounded-lg transition-colors border border-green-500/20"
+                  className="px-2.5 py-1.5 bg-green-500/10 text-green-500 hover:bg-green-500/20 rounded-lg transition-colors border border-green-500/20 text-[11px] font-bold flex items-center gap-1.5"
                   title="Compartilhar no WhatsApp"
                  >
-                  <MessageCircle className="w-4 h-4" />
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  WhatsApp
                  </button>
-                 {isAdmin && (
+                 {canManageEvents && (
                    <button
                     onClick={() => handleSendConfirmedDiscordCall(selectedEvent)}
                     disabled={sendingConfirmedCall}
-                    className="p-2 bg-sky-500/10 text-sky-500 hover:bg-sky-500/20 rounded-lg transition-colors border border-sky-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-2.5 py-1.5 bg-sky-500/10 text-sky-500 hover:bg-sky-500/20 rounded-lg transition-colors border border-sky-500/20 disabled:opacity-50 disabled:cursor-not-allowed text-[11px] font-bold flex items-center gap-1.5"
                     title="Enviar aviso aos confirmados"
                    >
-                    {sendingConfirmedCall ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
+                    {sendingConfirmedCall ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageCircle className="w-3.5 h-3.5" />}
+                    Avisar Confirmados
                    </button>
                  )}
-                 {isAdmin && (
+                 {canManageEvents && (
                    <button
                     onClick={() => handleSendPendingReminder(selectedEvent)}
                     disabled={sendingPendingReminder}
-                    className="p-2 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 rounded-lg transition-colors border border-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-2.5 py-1.5 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 rounded-lg transition-colors border border-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed text-[11px] font-bold flex items-center gap-1.5"
                     title="Enviar lembrete aos pendentes"
                    >
-                    {sendingPendingReminder ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
+                    {sendingPendingReminder ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageCircle className="w-3.5 h-3.5" />}
+                    Lembrar Pendentes
                    </button>
                  )}
-                 {isAdmin && (
-                   <>
-                     <button
-                        onClick={() => handleDeleteEvent(selectedEvent.id)}
-                        className="p-2 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-lg transition-colors border border-destructive/20"
-                        title="Excluir Evento"
-                     >
-                        <Trash2 className="w-4 h-4" />
-                     </button>
-                     <button
-                        onClick={() => handleClearPresences(selectedEvent.id)}
-                        className="p-2 bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 rounded-lg transition-colors border border-orange-500/20"
-                        title="Limpar Presenças"
-                     >
-                        <Trash2 className="w-4 h-4" />
-                     </button>
-                        </>
-                      )}
-                    </div>
+                 {canManageEvents && (
+                   <button
+                      onClick={() => handleClearPresences(selectedEvent.id)}
+                      className="px-2.5 py-1.5 bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 rounded-lg transition-colors border border-orange-500/20 text-[11px] font-bold flex items-center gap-1.5"
+                      title="Limpar lista de presenças"
+                   >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Limpar Lista
+                   </button>
+                 )}
+                 {canManageEvents && (
+                   <button
+                      onClick={() => handleDeleteEvent(selectedEvent.id)}
+                      className="px-2.5 py-1.5 bg-destructive/10 text-destructive hover:bg-destructive/20 rounded-lg transition-colors border border-destructive/20 text-[11px] font-bold flex items-center gap-1.5"
+                      title="Excluir evento"
+                   >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Excluir Evento
+                   </button>
+                 )}
+               </div>
              )}
           </div>
-          
+          <div className="px-4 py-3 border-b border-border/20 space-y-2">
+            <input
+              value={attendeesSearch}
+              onChange={(e) => setAttendeesSearch(e.target.value)}
+              placeholder="Buscar por nome, classe ou justificativa..."
+              className="input-modern h-9 text-sm"
+            />
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setAttendeesStatusFilter("all")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${
+                  attendeesStatusFilter === "all"
+                    ? "border-primary bg-primary/15 text-primary"
+                    : "border-border/40 text-muted-foreground hover:bg-secondary/40"
+                }`}
+              >
+                Todos ({attendees.length})
+              </button>
+              <button
+                onClick={() => setAttendeesStatusFilter("confirmed")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${
+                  attendeesStatusFilter === "confirmed"
+                    ? "border-green-500/40 bg-green-500/15 text-green-500"
+                    : "border-border/40 text-muted-foreground hover:bg-secondary/40"
+                }`}
+              >
+                Vai ({attendees.filter((a) => a.status === "confirmed").length})
+              </button>
+              <button
+                onClick={() => setAttendeesStatusFilter("declined")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${
+                  attendeesStatusFilter === "declined"
+                    ? "border-red-500/40 bg-red-500/15 text-red-500"
+                    : "border-border/40 text-muted-foreground hover:bg-secondary/40"
+                }`}
+              >
+                Não Vai ({attendees.filter((a) => a.status === "declined").length})
+              </button>
+            </div>
+          </div>
+
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
              {loadingAttendees ? (
                 <div className="flex justify-center py-10">
@@ -1181,7 +1568,7 @@ export default function EventsPage() {
                                 "{att.reason}"
                             </div>
                         )}
-                        {(att.users?.id === profile?.id || isAdmin) && (
+                        {(att.users?.id === profile?.id || canManageEvents) && (
                             <div className="mt-1 pt-2 border-t border-border/20 flex justify-end">
                                 <button
                                     onClick={() => openMyPresence(selectedEvent)}

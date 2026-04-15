@@ -4,10 +4,11 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Sword, Shield, Eye, EyeOff, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import logoAz from "@/assets/logo-az.jpeg";
+import logoClanPanel from "@/assets/logo-clan-panel.png";
 import bgBoss from "@/assets/bg-boss.jpg";
 import { PlayScheduleSelector } from "@/components/PlayScheduleSelector";
 import type { Database } from "@/integrations/supabase/types";
+import { useClans } from "@/hooks/useClans";
 
 type CharacterClass = Database["public"]["Enums"]["character_class"];
 
@@ -26,9 +27,11 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedClass, setSelectedClass] = useState<CharacterClass | "">("");
+  const [selectedClan, setSelectedClan] = useState("");
   const [classIcons, setClassIcons] = useState<{ name: CharacterClass; image_url: string | null }[]>([]);
   const [playSchedule, setPlaySchedule] = useState<string[]>([]);
   const { signIn, signUp, authUser, isApproved, signOut } = useAuth();
+  const { clans } = useClans();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isPending = searchParams.get("pending") === "1";
@@ -38,6 +41,12 @@ const LoginPage = () => {
       if (data) setClassIcons(data as any);
     });
   }, []);
+
+  useEffect(() => {
+    if (!selectedClan && clans.length > 0) {
+      setSelectedClan(clans[0].name);
+    }
+  }, [clans, selectedClan]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,8 +59,9 @@ const LoginPage = () => {
       if (isSignUp) {
         if (!nickname.trim()) throw new Error("Informe um nickname");
         if (!selectedClass) throw new Error("Selecione uma classe");
-        await signUp(nickname.trim(), password, phone, selectedClass, playSchedule);
-        toast.success("Conta criada! Aguardando aprovação do admin.");
+        if (!selectedClan) throw new Error("Selecione um clã");
+        await signUp(nickname.trim(), password, phone, selectedClass, playSchedule, selectedClan);
+        toast.success("Conta criada! Aguardando aprovação da liderança/admin.");
         navigate("/login?pending=1");
         return;
       } else {
@@ -78,17 +88,17 @@ const LoginPage = () => {
         <div className="text-center mb-8">
           <div className="relative inline-block mb-4">
             <img
-              src={logoAz}
-              alt="AZ Logo"
+              src={logoClanPanel}
+              alt="Clan Panel Logo"
               className="w-20 h-20 rounded-2xl border-2 border-primary/40 shadow-lg"
               style={{ boxShadow: '0 0 30px hsl(var(--primary) / 0.3)' }}
             />
             <div className="absolute -inset-1 rounded-2xl bg-primary/10 blur-xl -z-10" />
           </div>
           <h1 className="font-display text-3xl font-bold tracking-wider text-foreground">
-            PAINEL <span className="text-primary text-shadow-glow">AZ</span>
+            CLAN <span className="text-primary text-shadow-glow">PANEL</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-1 font-body">Sistema de Gestão</p>
+          <p className="text-sm text-muted-foreground mt-1 font-body">Gerencie, Domine, Conquiste</p>
         </div>
 
         {isPending && authUser && !isApproved ? (
@@ -106,7 +116,7 @@ const LoginPage = () => {
         <div className="glass-card glow-primary p-6 bg-background/70 backdrop-blur-xl">
           <p className="text-center text-muted-foreground font-body text-sm mb-6 flex items-center justify-center gap-2">
             <Sword className="w-4 h-4 text-primary" />
-            {isSignUp ? "Criar conta de guerreiro" : "Entrar na arena"}
+            {isSignUp ? "Criar conta de guerreiro" : "Gerencie todo seu clan com estratégia."}
             <Shield className="w-4 h-4 text-primary" />
           </p>
 
@@ -130,6 +140,27 @@ const LoginPage = () => {
                 </button>
               </div>
             </div>
+            {isSignUp && (
+              <div>
+                <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">Clã</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {clans.map((clan) => (
+                    <button
+                      key={clan.id}
+                      type="button"
+                      onClick={() => setSelectedClan(clan.name)}
+                      className={`px-2 py-2 rounded-xl border text-xs font-display font-bold transition-all ${
+                        selectedClan === clan.name
+                          ? "border-primary bg-primary/15 text-primary"
+                          : "border-border/40 text-muted-foreground hover:border-muted-foreground/30"
+                      }`}
+                    >
+                      {clan.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {isSignUp && (
               <div>
                 <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-body">Classe</label>

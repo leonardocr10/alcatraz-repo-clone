@@ -28,10 +28,29 @@ Deno.serve(async (req) => {
     if (!hasRole) throw new Error("Not authorized");
 
     const body = await req.json();
-    const { phones, message } = body as { phones: { phone: string; nickname: string }[]; message: string };
+    const { phones, message, panel_name, clan } = body as {
+      phones: { phone: string; nickname: string }[];
+      message: string;
+      panel_name?: string;
+      clan?: string;
+    };
 
     if (!phones || phones.length === 0) throw new Error("No phones provided");
     if (!message || !message.trim()) throw new Error("No message provided");
+
+    let panelName = panel_name?.trim() || "";
+    if (!panelName && clan) {
+      const { data: identity } = await (supabase as any)
+        .from("clan_identity")
+        .select("display_name")
+        .eq("clan", clan)
+        .limit(1)
+        .maybeSingle();
+      panelName = identity?.display_name || clan;
+    }
+
+    if (!panelName) panelName = "Clan Panel";
+    const finalMessage = `📣 ${panelName}\n\n${message.trim()}`;
 
     // Get WhatsApp config
     const { data: config } = await supabase
@@ -113,7 +132,7 @@ Deno.serve(async (req) => {
       const digits = phone.replace(/\D/g, "");
       const number = digits.startsWith("55") ? digits : `55${digits}`;
       try {
-        const resp = await sendText(number, message);
+        const resp = await sendText(number, finalMessage);
         if (resp.ok) {
           sentCount++;
           console.log(`✓ Sent to ${nickname} (${number})`);

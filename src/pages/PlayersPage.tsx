@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useClans } from "@/hooks/useClans";
 import { toast } from "sonner";
-import { Users, Search, Pencil, MessageCircle, Trash2, X, Save, KeyRound, MoreVertical, RefreshCw, Trophy, Send, CheckSquare, Square, Shield } from "lucide-react";
+import { Users, Search, Pencil, MessageCircle, Trash2, X, Save, KeyRound, MoreVertical, RefreshCw, Trophy, Send, CheckSquare, Square, Shield, AlertCircle, UserCheck, UserX } from "lucide-react";
 import { getClanRoleEmoji, getClanRoleLabel, CLAN_ROLES } from "@/data/staffMembers";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PlayerCharModal } from "@/components/PlayerCharModal";
@@ -24,6 +24,7 @@ type Player = {
   clan_role: string | null;
   clan: string | null;
   char_visible: boolean;
+  approved: boolean;
 };
 
 type ClassIcon = { name: string; image_url: string | null; description: string | null };
@@ -35,7 +36,7 @@ const ALL_CLASSES: CharacterClass[] = [
 ];
 
 export default function PlayersPage() {
-  const { isAdmin, profile } = useAuth();
+  const { isAdmin, isLeader, profile } = useAuth();
   const { clans } = useClans();
   const [searchParams, setSearchParams] = useSearchParams();
   const [players, setPlayers] = useState<Player[]>([]);
@@ -51,10 +52,14 @@ export default function PlayersPage() {
   const [classFilter, setClassFilter] = useState<string | null>(searchParams.get("class"));
   
   // Auto-filter by user's clan; admins can switch freely
-  const userClan = profile?.clan || "AZ";
+  const userClan = profile?.clan || null;
+  const canManageApprovals = isAdmin || isLeader;
+  const leaderClan = profile?.clan || null;
   const [clanFilter, setClanFilter] = useState<string | null>(null);
   const effectiveClanFilter = isAdmin ? clanFilter : userClan;
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [pendingUsers, setPendingUsers] = useState<Player[]>([]);
+  const [pendingClanMap, setPendingClanMap] = useState<Record<string, string>>({});
 
   // Edit modal state
   const [editPlayer, setEditPlayer] = useState<Player | null>(null);
@@ -63,13 +68,15 @@ export default function PlayersPage() {
   const [editRole, setEditRole] = useState<AppRole>("user");
   const [editPhone, setEditPhone] = useState("");
   const [editClanRole, setEditClanRole] = useState("membro");
-  const [editClan, setEditClan] = useState("AZ");
+  const [editClan, setEditClan] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Reset password modal
   const [resetPlayer, setResetPlayer] = useState<Player | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [resetting, setResetting] = useState(false);
+  const [deletePlayerTarget, setDeletePlayerTarget] = useState<Player | null>(null);
+  const [deletingPlayer, setDeletingPlayer] = useState(false);
 
   // Message modal state
   const [msgOpen, setMsgOpen] = useState(false);
@@ -85,7 +92,7 @@ export default function PlayersPage() {
   const fetchData = async () => {
     setLoading(true);
     const [playersRes, iconsRes, rankingsRes] = await Promise.all([
-      supabase.from("users").select("id, nickname, class, phone, role, auth_id, created_at, clan_role, clan, char_visible").order("created_at", { ascending: false }),
+      supabase.from("users").select("id, nickname, class, phone, role, auth_id, created_at, clan_role, clan, char_visible, approved").order("created_at", { ascending: false }),
       supabase.from("character_classes").select("name, image_url, description"),
       supabase.from("player_rankings").select("user_id, level, xp, rank_position"),
     ]);
@@ -93,6 +100,67 @@ export default function PlayersPage() {
     setIcons((iconsRes.data ?? []) as ClassIcon[]);
     setRankings((rankingsRes.data ?? []) as Ranking[]);
     setLoading(false);
+  };
+
+  const fetchPendingUsers = useCallback(async () => {
+    if (!canManageApprovals) return;
+    if (!isAdmin && !leaderClan) {
+      setPendingUsers([]);
+      setPendingClanMap({});
+      return;
+    }
+
+    let query = supabase
+      .from("users")
+      .select("id, nickname, class, phone, role, auth_id, created_at, clan_role, clan, char_visible, approved")
+      .eq("approved", false)
+      .order("created_at", { ascending: false });
+
+    if (!isAdmin && leaderClan) {
+      query = query.eq("clan", leaderClan);
+    }
+
+    const { data } = await query;
+    const list = (data || []) as Player[];
+    setPendingUsers(list);
+
+    const map: Record<string, string> = {};
+    list.forEach((u) => {
+      map[u.id] = u.clan || clans[0]?.name || "";
+    });
+    setPendingClanMap(map);
+  }, [canManageApprovals, isAdmin, leaderClan, clans]);
+
+  const approveUser = async (userId: string) => {
+    if (!canManageApprovals) return;
+    const clan = isAdmin ? (pendingClanMap[userId] || clans[0]?.name || null) : (leaderClan || null);
+    if (!clan) {
+      toast.error("Defina um clã válido para aprovar.");
+      return;
+    }
+
+    const { error } = await supabase.from("users").update({ approved: true, clan }).eq("id", userId);
+    if (error) {
+      toast.error(error.message || "Erro ao aprovar usuário");
+      return;
+    }
+
+    toast.success(`Usuário aprovado no ${clan}!`);
+    await Promise.all([fetchData(), fetchPendingUsers()]);
+  };
+
+  const rejectUser = async (userId: string) => {
+    if (!canManageApprovals) return;
+    if (!confirm("Rejeitar este usuário?")) return;
+
+    const { error } = await supabase.from("users").delete().eq("id", userId);
+    if (error) {
+      toast.error(error.message || "Erro ao rejeitar usuário");
+      return;
+    }
+
+    toast.success("Usuário rejeitado!");
+    await Promise.all([fetchData(), fetchPendingUsers()]);
   };
 
   const updateLastSync = useCallback(() => {
@@ -149,7 +217,10 @@ export default function PlayersPage() {
     setSyncingPlayer(null);
   }, []);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+    fetchPendingUsers();
+  }, [fetchPendingUsers]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -164,9 +235,10 @@ export default function PlayersPage() {
   const rankingMap = useMemo(() => new Map(rankings.map((r) => [r.user_id, r])), [rankings]);
 
   const filtered = useMemo(() => {
-    let list = players;
+    if (!isAdmin && !userClan) return [];
+    let list = players.filter((p) => p.approved);
     if (effectiveClanFilter) {
-      list = list.filter((p) => (p.clan || "AZ") === effectiveClanFilter);
+      list = list.filter((p) => (p.clan || "") === effectiveClanFilter);
     }
     if (classFilter) {
       list = list.filter((p) => p.class === classFilter);
@@ -188,7 +260,7 @@ export default function PlayersPage() {
       const xpB = parseFloat((rb?.xp ?? "0").replace(",", ".")) || 0;
       return xpB - xpA;
     });
-  }, [players, search, classFilter, effectiveClanFilter, rankingMap]);
+  }, [players, search, classFilter, effectiveClanFilter, rankingMap, isAdmin, userClan]);
 
   const clearClassFilter = () => {
     setClassFilter(null);
@@ -210,7 +282,7 @@ export default function PlayersPage() {
     setEditRole(player.role);
     setEditPhone(player.phone || "");
     setEditClanRole(player.clan_role || "membro");
-    setEditClan(player.clan || "AZ");
+    setEditClan(player.clan || clans[0]?.name || "");
     setMenuOpen(null);
   };
 
@@ -220,14 +292,23 @@ export default function PlayersPage() {
     const payload: Record<string, unknown> = {
       nickname: editNickname.trim(),
       class: editClass || null,
-      role: editRole,
       phone: editPhone.replace(/\D/g, "") || null,
       clan_role: editClanRole,
-      clan: editClan,
+      clan: editClan || null,
     };
+    if (isAdmin) {
+      payload.role = editRole;
+    }
     const { error } = await supabase.from("users").update(payload).eq("id", editPlayer.id);
     if (error) {
-      toast.error("Erro ao salvar: " + (error.message || "Erro desconhecido"));
+      const msg = (error.message || "").toLowerCase();
+      if (msg.includes("já possui um líder") || msg.includes("ja possui um lider")) {
+        toast.error("Este clã já possui um líder. Escolha outro cargo.");
+      } else if (msg.includes("já possui um vice-líder") || msg.includes("ja possui um vice-lider")) {
+        toast.error("Este clã já possui um vice-líder. Escolha outro cargo.");
+      } else {
+        toast.error("Erro ao salvar: " + (error.message || "Erro desconhecido"));
+      }
     } else {
       toast.success("Jogador atualizado!");
       await fetchData();
@@ -237,15 +318,30 @@ export default function PlayersPage() {
   };
 
   const deletePlayer = async (player: Player) => {
-    if (!confirm(`Tem certeza que deseja remover ${player.nickname}?`)) return;
-    setMenuOpen(null);
-    const { error } = await supabase.from("users").delete().eq("id", player.id);
-    if (error) {
-      toast.error("Erro ao remover jogador");
-    } else {
-      toast.success("Jogador removido");
-      setPlayers((prev) => prev.filter((p) => p.id !== player.id));
+    setDeletingPlayer(true);
+    const { data, error } = await supabase.functions.invoke("roulette-admin", {
+      body: { action: "hard_delete_user", user_id: player.id },
+    });
+    if (error || data?.error) {
+      const raw = data?.error || error?.message || "Erro ao remover jogador";
+      const normalized = String(raw || "").toLowerCase();
+      if (normalized.includes("not authorized") || normalized.includes("acesso negado") || normalized.includes("sem permissão")) {
+        toast.error("Você não tem permissão para remover este jogador.");
+      } else if (normalized.includes("foreign key") || normalized.includes("violates")) {
+        toast.error("Não foi possível remover por dependências vinculadas. Tente novamente.");
+      } else {
+        toast.error(`Erro ao remover: ${raw}`);
+      }
+      setDeletingPlayer(false);
+      return;
     }
+    toast.success("Jogador removido por completo!");
+    if (data?.warning) {
+      toast.warning(`Removido com aviso: ${data.warning}`);
+    }
+    setDeletePlayerTarget(null);
+    setDeletingPlayer(false);
+    await Promise.all([fetchData(), fetchPendingUsers()]);
   };
 
   const openWhatsApp = (player: Player) => {
@@ -288,7 +384,7 @@ export default function PlayersPage() {
     Magician: "bg-cyan-500/20 text-cyan-400",
   };
 
-  const playersWithPhone = useMemo(() => players.filter(p => p.phone && p.phone.replace(/\D/g, "").length >= 10), [players]);
+  const playersWithPhone = useMemo(() => filtered.filter(p => p.phone && p.phone.replace(/\D/g, "").length >= 10), [filtered]);
 
   const openMsgModal = () => {
     setMsgOpen(true);
@@ -320,7 +416,7 @@ export default function PlayersPage() {
         .filter(p => msgSelected.has(p.id))
         .map(p => ({ phone: p.phone!, nickname: p.nickname }));
       const { data, error } = await supabase.functions.invoke("send-message", {
-        body: { phones, message: msgText.trim() },
+        body: { phones, message: msgText.trim(), clan: clanFilter || null, panel_name: "Clan Panel" },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -346,7 +442,7 @@ export default function PlayersPage() {
           <div>
             <h2 className="font-display text-xl font-bold uppercase tracking-wider">Jogadores</h2>
             <p className="text-xs text-muted-foreground font-body">
-              {players.length} registrados{lastSync ? ` • última sync ${lastSync}` : ""}
+              {filtered.length} membros{lastSync ? ` • última sync ${lastSync}` : ""}
             </p>
           </div>
         </div>
@@ -372,6 +468,68 @@ export default function PlayersPage() {
       </div>
       {lastSync && (
         <p className="text-[10px] text-muted-foreground font-body text-right -mt-2">Última sync: {lastSync}</p>
+      )}
+
+      {/* Pending Approvals */}
+      {canManageApprovals && pendingUsers.length > 0 && (
+        <div className="glass-card overflow-hidden">
+          <div className="px-4 py-3 border-b border-border/40 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-gold" />
+            <span className="font-display text-sm font-extrabold uppercase tracking-wider">Novas solicitações</span>
+            <span className="ml-auto text-xs font-display font-bold text-gold bg-gold/15 px-2 py-0.5 rounded-lg">{pendingUsers.length}</span>
+          </div>
+          <div className="divide-y divide-border/20">
+            {pendingUsers.map((user) => (
+              <div key={user.id} className="px-4 py-3 space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-gold/15 flex items-center justify-center shrink-0">
+                    <AlertCircle className="w-4 h-4 text-gold" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-display font-bold truncate">{user.nickname}</p>
+                    <p className="text-[11px] text-muted-foreground font-body">{user.class || "Sem classe"} · {formatPhone(user.phone)}</p>
+                  </div>
+                  <div className="flex gap-1.5 shrink-0">
+                    <button onClick={() => approveUser(user.id)} className="p-2 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+                      <UserCheck className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => rejectUser(user.id)} className="p-2 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors">
+                      <UserX className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pl-12">
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase">Clã:</span>
+                  {isAdmin ? clans.map((clan) => (
+                    <button
+                      key={clan.name}
+                      onClick={() => setPendingClanMap((prev) => ({ ...prev, [user.id]: clan.name }))}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-display font-bold transition-all border ${
+                        (pendingClanMap[user.id] || clans[0]?.name || "") === clan.name
+                          ? "border-primary bg-primary/15 text-primary"
+                          : "border-border/40 text-muted-foreground hover:border-muted-foreground/30"
+                      }`}
+                    >
+                      {clan.name}
+                    </button>
+                  )) : (
+                    <span className="px-2.5 py-1 rounded-lg text-[11px] font-display font-bold border border-primary bg-primary/15 text-primary">
+                      {leaderClan || "Sem clã"}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(canManageApprovals && pendingUsers.length > 0) && (
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-border/40" />
+          <span className="text-[10px] font-display font-bold uppercase tracking-wider text-muted-foreground">Membros</span>
+          <div className="h-px flex-1 bg-border/40" />
+        </div>
       )}
 
       {/* Clan Filter - only for admins */}
@@ -478,7 +636,7 @@ export default function PlayersPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="font-display font-bold text-sm truncate">{player.nickname}</span>
-                    <span className="text-[9px] font-display font-bold px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{player.clan || "AZ"}</span>
+                    <span className="text-[9px] font-display font-bold px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{player.clan || "—"}</span>
                     {(() => {
                       const label = getClanRoleLabel(player.clan_role);
                       const emoji = getClanRoleEmoji(player.clan_role);
@@ -521,7 +679,7 @@ export default function PlayersPage() {
                 )}
 
                 {/* Admin Actions */}
-                {isAdmin && (
+                {(isAdmin || isLeader) && (
                   <div className="relative shrink-0">
                     <button
                       onClick={() => setMenuOpen(menuOpen === player.id ? null : player.id)}
@@ -548,12 +706,14 @@ export default function PlayersPage() {
                           >
                             <Pencil className="w-3.5 h-3.5 text-primary" /> Editar
                           </button>
-                          <button
-                            onClick={() => { setResetPlayer(player); setMenuOpen(null); }}
-                            className="w-full px-4 py-2.5 text-left text-sm font-body flex items-center gap-2.5 hover:bg-secondary/50 transition-colors"
-                          >
-                            <KeyRound className="w-3.5 h-3.5 text-gold" /> Resetar Senha
-                          </button>
+                          {(isAdmin || isLeader) && (
+                            <button
+                              onClick={() => { setResetPlayer(player); setMenuOpen(null); }}
+                              className="w-full px-4 py-2.5 text-left text-sm font-body flex items-center gap-2.5 hover:bg-secondary/50 transition-colors"
+                            >
+                              <KeyRound className="w-3.5 h-3.5 text-gold" /> Resetar Senha
+                            </button>
+                          )}
                           <button
                             onClick={() => openWhatsApp(player)}
                             className="w-full px-4 py-2.5 text-left text-sm font-body flex items-center gap-2.5 hover:bg-secondary/50 transition-colors"
@@ -567,12 +727,14 @@ export default function PlayersPage() {
                           >
                             <RefreshCw className={`w-3.5 h-3.5 text-primary ${syncingPlayer === player.id ? "animate-spin" : ""}`} /> Sincronizar
                           </button>
-                          <button
-                            onClick={() => deletePlayer(player)}
-                            className="w-full px-4 py-2.5 text-left text-sm font-body flex items-center gap-2.5 hover:bg-destructive/10 text-destructive transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" /> Remover
-                          </button>
+                          {(isAdmin || isLeader) && (
+                            <button
+                              onClick={() => { setDeletePlayerTarget(player); setMenuOpen(null); }}
+                              className="w-full px-4 py-2.5 text-left text-sm font-body flex items-center gap-2.5 hover:bg-destructive/10 text-destructive transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Remover
+                            </button>
+                          )}
                         </div>
                       </>
                     )}
@@ -586,11 +748,11 @@ export default function PlayersPage() {
 
       {/* Edit Modal */}
       <Dialog open={!!editPlayer} onOpenChange={() => setEditPlayer(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-lg max-h-[88vh] overflow-hidden p-0 flex flex-col">
+          <DialogHeader className="px-4 pt-4 pb-2 border-b border-border/30">
             <DialogTitle className="font-display">Editar Jogador</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 px-4 py-3 overflow-y-auto flex-1 min-h-0">
             <label className="block space-y-1.5">
               <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Nickname</span>
               <input value={editNickname} onChange={(e) => setEditNickname(e.target.value)} className="input-modern" />
@@ -613,70 +775,78 @@ export default function PlayersPage() {
                     <button
                       key={c}
                       onClick={() => setEditClass(c)}
-                      className={`px-3 py-2 rounded-xl text-xs font-body transition-all border flex items-center gap-1.5 ${
+                      className={`px-3 py-2 rounded-xl text-xs font-body transition-all border flex items-center gap-1.5 justify-start min-w-0 ${
                         editClass === c ? "border-primary bg-primary/15 text-primary font-bold" : "border-border/40 hover:border-muted-foreground/30"
                       }`}
                     >
                       {cIcon && <img src={cIcon} alt="" className="w-4 h-4 rounded object-cover" />}
-                      {c}
+                      <span className="truncate">{c}</span>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Role</span>
-              <div className="flex gap-2">
-                {(["user", "admin"] as AppRole[]).map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setEditRole(r)}
-                    className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-display font-bold uppercase tracking-wider transition-all border ${
-                      editRole === r
-                        ? r === "admin" ? "border-gold bg-gold/15 text-gold" : "border-primary bg-primary/15 text-primary"
-                        : "border-border/40 text-muted-foreground hover:border-muted-foreground/30"
-                    }`}
-                  >
-                    {r === "admin" ? "👑 Admin" : "🎮 User"}
-                  </button>
-                ))}
+            {isAdmin && (
+              <div className="space-y-1.5">
+                <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Role</span>
+                <div className="flex gap-2">
+                  {(["user", "admin"] as AppRole[]).map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setEditRole(r)}
+                      className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-display font-bold uppercase tracking-wider transition-all border ${
+                        editRole === r
+                          ? r === "admin" ? "border-gold bg-gold/15 text-gold" : "border-primary bg-primary/15 text-primary"
+                          : "border-border/40 text-muted-foreground hover:border-muted-foreground/30"
+                      }`}
+                    >
+                      {r === "admin" ? "👑 Admin" : "🎮 User"}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="space-y-1.5">
-              <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Clã</span>
-              <div className="flex gap-2">
-                {clans.map((c) => (
-                  <button
-                    key={c.name}
-                    onClick={() => setEditClan(c.name)}
-                    className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-display font-bold uppercase tracking-wider transition-all border ${
-                      editClan === c.name
-                        ? "border-primary bg-primary/15 text-primary"
-                        : "border-border/40 text-muted-foreground hover:border-muted-foreground/30"
-                    }`}
-                  >
-                    {c.name}
-                  </button>
-                ))}
+            {isAdmin && (
+              <div className="space-y-1.5">
+                <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Clã</span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {clans.map((c) => (
+                    <button
+                      key={c.name}
+                      onClick={() => setEditClan(c.name)}
+                      className={`w-full px-3 py-2.5 rounded-xl text-xs sm:text-sm font-display font-bold tracking-wider transition-all border min-w-0 ${
+                        editClan === c.name
+                          ? "border-primary bg-primary/15 text-primary"
+                          : "border-border/40 text-muted-foreground hover:border-muted-foreground/30"
+                      }`}
+                    >
+                      <span className="block truncate">{c.name}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="space-y-1.5">
               <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Cargo no Clã</span>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {CLAN_ROLES.map((r) => (
                   <button
                     key={r.value}
-                    onClick={() => setEditClanRole(r.value)}
-                    className={`px-3 py-2 rounded-xl text-xs font-display font-bold transition-all border ${
+                    onClick={() => {
+                      if (!isAdmin && r.value === "lider") return;
+                      setEditClanRole(r.value);
+                    }}
+                    disabled={!isAdmin && r.value === "lider"}
+                    className={`px-3 py-2 rounded-xl text-xs font-display font-bold transition-all border min-w-0 ${
                       editClanRole === r.value
                         ? "border-primary bg-primary/15 text-primary"
                         : "border-border/40 text-muted-foreground hover:border-muted-foreground/30"
-                    }`}
+                    } ${!isAdmin && r.value === "lider" ? "opacity-40 cursor-not-allowed hover:border-border/40" : ""}`}
                   >
-                    {r.emoji ? `${r.emoji} ` : ""}{r.label}
+                    <span className="block truncate">{r.emoji ? `${r.emoji} ` : ""}{r.label}</span>
                   </button>
                 ))}
               </div>
@@ -687,11 +857,43 @@ export default function PlayersPage() {
               <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="input-modern" placeholder="34999999999" />
             </label>
 
-            <div className="flex gap-2 pt-2">
+            <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm py-2 border-t border-border/20 flex gap-2">
               <button onClick={() => setEditPlayer(null)} className="btn-secondary flex-1 text-sm py-2.5">Cancelar</button>
               <button onClick={saveEdit} disabled={saving || !editNickname.trim()} className="btn-primary flex-1 text-sm py-2.5 flex items-center justify-center gap-2">
                 <Save className="w-4 h-4" />
                 {saving ? "Salvando..." : "Salvar"}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deletePlayerTarget} onOpenChange={(open) => { if (!open) setDeletePlayerTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display">Remover Jogador</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground font-body">
+              Confirmar remoção completa de <span className="text-foreground font-bold">{deletePlayerTarget?.nickname}</span>?
+            </p>
+            <p className="text-xs text-muted-foreground font-body">
+              Isso remove perfil, presenças em eventos, equipamentos, ranking e credenciais de acesso.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeletePlayerTarget(null)}
+                className="btn-secondary flex-1 text-sm py-2.5"
+                disabled={deletingPlayer}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => deletePlayer(deletePlayerTarget!)}
+                className="btn-primary !bg-destructive hover:!bg-destructive/90 flex-1 text-sm py-2.5"
+                disabled={deletingPlayer}
+              >
+                {deletingPlayer ? "Removendo..." : "Confirmar Remoção"}
               </button>
             </div>
           </div>

@@ -20,11 +20,13 @@ Deno.serve(async (req) => {
     let force = false;
     let forceBossId: string | null = null;
     let forceAll = false;
+    let targetClan: string | null = null;
     try {
       const body = await req.json();
       force = body.force === true;
       forceBossId = body.boss_id || null;
       forceAll = body.all === true;
+      targetClan = typeof body.clan === "string" ? body.clan : null;
     } catch { /* no body = cron call */ }
 
     // Get WhatsApp config
@@ -163,16 +165,49 @@ Deno.serve(async (req) => {
       // keep fallback detection based on template string
     }
 
+    const targetClanTag = targetClan;
+    let panelName = targetClanTag || "Clan Panel";
+
+    if (targetClanTag) {
+      const [{ data: clanGroup }, { data: clanIdentity }] = await Promise.all([
+        (supabase as any)
+          .from("clan_whatsapp_groups")
+          .select("group_number")
+          .eq("clan", targetClanTag)
+          .limit(1)
+          .maybeSingle(),
+        (supabase as any)
+          .from("clan_identity")
+          .select("display_name")
+          .eq("clan", targetClanTag)
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+      if (clanGroup?.group_number) {
+        configuredDestination = clanGroup.group_number;
+      }
+
+      if (clanIdentity?.display_name) {
+        panelName = clanIdentity.display_name;
+      }
+    }
     const isGroupMode = !!configuredDestination || !templateHasNumberPlaceholder;
 
     // Get users only when sending per-user
     let eligibleUsers: any[] = [];
     if (!isGroupMode) {
-      const { data: users } = await supabase
+      let usersQuery = supabase
         .from("users")
         .select("id, nickname, phone, whatsapp_optout")
         .not("phone", "is", null)
         .neq("phone", "");
+
+      if (targetClanTag) {
+        usersQuery = usersQuery.eq("clan", targetClanTag);
+      }
+
+      const { data: users } = await usersQuery;
 
       eligibleUsers = (users || []).filter((u: any) => !u.whatsapp_optout && u.phone);
 
@@ -306,7 +341,7 @@ Deno.serve(async (req) => {
       const spawnTime = schedule.spawn_time.substring(0, 5);
       const minutesBefore = schedule.notify_minutes_before;
 
-      let messageText = `⚔️ *Boss Alert - Painel AZ!*\n\n🐉 Boss: *${bossName}*`;
+      let messageText = `⚔️ *Boss Alert - ${panelName}*\n\n🐉 Boss: *${bossName}*`;
       if (mapLevel) messageText += `\n📍 Local: *${mapLevel}*`;
       messageText += `\n⏰ Spawn às *${spawnTime}*`;
       messageText += `\n⏳ Faltam: *${minutesBefore}min*`;
@@ -335,7 +370,7 @@ Deno.serve(async (req) => {
       const mapImageUrl = boss?.map_image_url || "";
       const spawnTime = schedule.spawn_time.substring(0, 5);
 
-      let messageText = `🔥 *BOSS NASCEU! - Painel AZ!*\n\n🐉 Boss: *${bossName}*`;
+      let messageText = `🔥 *BOSS NASCEU! - ${panelName}*\n\n🐉 Boss: *${bossName}*`;
       if (mapLevel) messageText += `\n📍 Local: *${mapLevel}*`;
       messageText += `\n⏰ Horário: *${spawnTime}*`;
       messageText += `\n\n🔥 CORRE GUERREIRO! O boss está vivo!`;

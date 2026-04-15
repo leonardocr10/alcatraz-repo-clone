@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Dices, Shield, Users, Swords, Settings, LogOut, Home, ScrollText, KeyRound, User, X, Save, Eye, EyeOff, History, UsersRound, UserCircle, Camera, Loader2, Calendar } from "lucide-react";
 import { StaffModal } from "@/components/StaffModal";
@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import logoAz from "@/assets/logo-az.jpeg";
+import logoClanPanel from "@/assets/logo-clan-panel.png";
 import bgClasses from "@/assets/bg-classes.jpg";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -25,12 +25,11 @@ const items: NavItem[] = [
   { label: "Eventos", path: "/eventos", icon: Calendar },
   { label: "Classes", path: "/classes", icon: Swords },
   { label: "Jogadores", path: "/jogadores", icon: Users },
-  { label: "AlcatraZ", path: "/admin/alcatraz", icon: Users, adminOnly: true },
   { label: "Config", path: "/config", icon: Settings, adminOnly: true },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const { profile, isAdmin, signOut } = useAuth();
+  const { profile, isAdmin, isLeader, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -45,6 +44,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [changingPw, setChangingPw] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [visibleMenus, setVisibleMenus] = useState<string[]>(["/inicio", "/char", "/historico", "/eventos", "/roleta", "/classes", "/jogadores"]);
+  const [brandName, setBrandName] = useState("Clan Panel");
+  const [brandLogo, setBrandLogo] = useState<string>(logoClanPanel);
+  const [brandPrimaryColor, setBrandPrimaryColor] = useState<string | null>(null);
+  const [pendingApprovals, setPendingApprovals] = useState(0);
+  const [loginAnnouncement, setLoginAnnouncement] = useState<any | null>(null);
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
+  const [acknowledgingAnnouncement, setAcknowledgingAnnouncement] = useState(false);
   const profileAvatarInputRef = useRef<HTMLInputElement>(null);
 
   // Class icon
@@ -90,7 +96,130 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [profile?.id]);
 
+  useEffect(() => {
+    if (!profile?.clan) return;
+    (supabase as any).from("clan_identity").select("display_name, logo_url, primary_color").eq("clan", profile.clan).limit(1).maybeSingle().then(({ data }: any) => {
+      if (data?.display_name) setBrandName(data.display_name);
+      else setBrandName(profile.clan || "Clan Panel");
+      if (data?.logo_url) setBrandLogo(data.logo_url);
+      else setBrandLogo(logoClanPanel);
+      setBrandPrimaryColor(data?.primary_color || "190 85% 48%");
+    });
+  }, [profile?.clan]);
+
+  useEffect(() => {
+    if (!isAdmin && !isLeader) {
+      setPendingApprovals(0);
+      return;
+    }
+
+    const loadPendingApprovals = async () => {
+      let query = supabase
+        .from("users")
+        .select("id", { count: "exact", head: true })
+        .eq("approved", false);
+
+      if (!isAdmin && profile?.clan) {
+        query = query.eq("clan", profile.clan);
+      }
+
+      const { count, error } = await query;
+      if (!error) {
+        setPendingApprovals(count || 0);
+      }
+    };
+
+    loadPendingApprovals();
+
+    const channel = supabase
+      .channel("layout-pending-approvals")
+      .on("postgres_changes", { event: "*", schema: "public", table: "users" }, () => {
+        loadPendingApprovals();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isAdmin, isLeader, profile?.clan, location.pathname]);
+
+  const loadUnreadAnnouncement = useCallback(async () => {
+    if (!profile?.id || !profile?.clan) {
+      setLoginAnnouncement(null);
+      setShowAnnouncementModal(false);
+      return;
+    }
+
+    const { data: announcements, error: announcementsError } = await (supabase as any)
+      .from("clan_announcements")
+      .select("id, title, content, clan, is_active, require_ack, created_at")
+      .eq("is_active", true)
+      .eq("clan", profile.clan)
+      .order("created_at", { ascending: false });
+
+    if (announcementsError || !announcements?.length) {
+      setLoginAnnouncement(null);
+      setShowAnnouncementModal(false);
+      return;
+    }
+
+    const ackRequired = announcements.filter((item: any) => item.require_ack !== false);
+    if (ackRequired.length === 0) {
+      setLoginAnnouncement(null);
+      setShowAnnouncementModal(false);
+      return;
+    }
+
+    const ids = ackRequired.map((item: any) => item.id);
+    const { data: reads } = await (supabase as any)
+      .from("clan_announcement_reads")
+      .select("announcement_id")
+      .eq("user_id", profile.id)
+      .in("announcement_id", ids);
+
+    const readSet = new Set((reads || []).map((item: any) => item.announcement_id));
+    const firstUnread = ackRequired.find((item: any) => !readSet.has(item.id)) || null;
+
+    setLoginAnnouncement(firstUnread);
+    setShowAnnouncementModal(Boolean(firstUnread));
+  }, [profile?.id, profile?.clan]);
+
+  useEffect(() => {
+    loadUnreadAnnouncement();
+  }, [loadUnreadAnnouncement, location.pathname]);
+
+  const acknowledgeAnnouncement = async () => {
+    if (!loginAnnouncement?.id || !profile?.id) return;
+    setAcknowledgingAnnouncement(true);
+    const { error } = await (supabase as any).from("clan_announcement_reads").upsert(
+      {
+        announcement_id: loginAnnouncement.id,
+        user_id: profile.id,
+        read_at: new Date().toISOString(),
+      },
+      { onConflict: "announcement_id,user_id" }
+    );
+    if (error) {
+      toast.error(error.message || "Erro ao registrar ciência");
+      setAcknowledgingAnnouncement(false);
+      return;
+    }
+    toast.success("Ciência registrada!");
+    setAcknowledgingAnnouncement(false);
+    await loadUnreadAnnouncement();
+  };
+
+  useEffect(() => {
+    if (!brandPrimaryColor) return;
+    const root = document.documentElement;
+    root.style.setProperty("--primary", brandPrimaryColor);
+    root.style.setProperty("--ring", brandPrimaryColor);
+    root.style.setProperty("--sidebar-primary", brandPrimaryColor);
+    root.style.setProperty("--sidebar-ring", brandPrimaryColor);
+  }, [brandPrimaryColor]);
+
   const navItems = items.filter((item) => {
+    if (item.path === "/config") return isAdmin || isLeader;
     if (item.adminOnly && !isAdmin) return false; // Not admin, hide config
     if (item.adminOnly && isAdmin) return true;   // Admin sees config
     return visibleMenus.includes(item.path);      // Regular items depend on config
@@ -159,12 +288,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-border/40 bg-background/60 backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-lg items-center justify-between px-4 py-2.5">
           <div className="flex items-center gap-2.5">
-            <img src={logoAz} alt="AZ" className="w-9 h-9 rounded-xl border border-primary/30 shadow-md" />
+            <img src={brandLogo} alt={brandName} className="w-9 h-9 rounded-xl border border-primary/30 shadow-md object-cover" />
             <div>
               <h1 className="font-display text-sm font-extrabold tracking-wide leading-none">
-                PAINEL <span className="text-primary">AZ</span>
+                <span className="text-primary">{brandName}</span>
               </h1>
-              <p className="text-[10px] text-muted-foreground font-body">Sistema de Gestão</p>
+              <p className="text-[10px] text-muted-foreground font-body">Gerencie, Domine, Conquiste</p>
             </div>
             
           </div>
@@ -262,10 +391,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 )}
               >
                 <div className={cn(
-                  "rounded-xl p-1.5 transition-all",
+                  "relative rounded-xl p-1.5 transition-all",
                   active && "bg-primary/15"
                 )}>
                   <item.icon className="h-5 w-5" />
+                  {item.path === "/jogadores" && pendingApprovals > 0 && (isAdmin || isLeader) && (
+                    <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-destructive border border-background" />
+                  )}
                 </div>
                 <span className="font-display">{item.label}</span>
               </button>
@@ -437,6 +569,32 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Staff Modal */}
       <StaffModal open={showStaffModal} onOpenChange={setShowStaffModal} />
+
+      <Dialog open={showAnnouncementModal} onOpenChange={(open) => { if (open) setShowAnnouncementModal(true); }}>
+        <DialogContent className="max-w-sm [&>button]:hidden">
+          <DialogHeader>
+            <DialogTitle className="font-display">Novo Comunicado</DialogTitle>
+          </DialogHeader>
+          {loginAnnouncement && (
+            <div className="space-y-3">
+              <div className="rounded-xl border border-border/40 bg-secondary/20 p-3">
+                <p className="font-display font-bold text-sm">{loginAnnouncement.title}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {new Date(loginAnnouncement.created_at).toLocaleString("pt-BR")}
+                </p>
+              </div>
+              <p className="text-sm whitespace-pre-wrap leading-relaxed">{loginAnnouncement.content}</p>
+              <button
+                onClick={acknowledgeAnnouncement}
+                disabled={acknowledgingAnnouncement}
+                className="btn-primary w-full text-sm py-2.5"
+              >
+                {acknowledgingAnnouncement ? "Registrando..." : "Li e estou ciente"}
+              </button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

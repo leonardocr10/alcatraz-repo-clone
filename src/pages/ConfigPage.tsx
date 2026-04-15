@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Settings, MessageCircle, Palette, Trash2, Plus, X, Save, RotateCcw, Send, CheckCircle, AlertCircle, Zap, ScrollText, Crown, Link, Shield, Package, Download } from "lucide-react";
+import { Settings, MessageCircle, Palette, Trash2, Plus, X, Save, RotateCcw, Send, CheckCircle, AlertCircle, Zap, ScrollText, Crown, Link, Shield, Package, Download, Upload, Loader2 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { useClans } from "@/hooks/useClans";
 import AdminPage from "@/pages/AdminPage";
@@ -18,10 +18,10 @@ type WhatsConfig = {
 };
 
 export default function ConfigPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isLeader, profile } = useAuth();
   const { currentTheme, setTheme, resetTheme, presets } = useTheme();
 
-  const [tab, setTab] = useState<"manage" | "clans" | "whatsapp" | "theme" | "rules" | "discord" | "clear" | "equip" | "menus">("manage");
+  const [tab, setTab] = useState<"manage" | "clans" | "whatsapp" | "theme" | "identity" | "rules" | "discord" | "clear" | "equip" | "menus">("manage");
   const [seeding, setSeeding] = useState(false);
   const { clans, loading: clansLoading, refetch: refetchClans } = useClans();
   const [newClanName, setNewClanName] = useState("");
@@ -30,10 +30,11 @@ export default function ConfigPage() {
   // WhatsApp state
   const [config, setConfig] = useState<WhatsConfig | null>(null);
   const [apiUrl, setApiUrl] = useState("");
-  const [bodyTemplate, setBodyTemplate] = useState('{"text":"{{text}}","number":"{{number}}"}');
+  const [bodyTemplate, setBodyTemplate] = useState('{"text":"{{text}}","number":"{{number}}","options":{"delay":100,"createChat":true},"session":"testeleo"}');
   const [headers, setHeaders] = useState<{ key: string; value: string }[]>([]);
   const [enabled, setEnabled] = useState(false);
   const [allowOptout, setAllowOptout] = useState(false);
+  const [clanWhatsappGroups, setClanWhatsappGroups] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
@@ -49,6 +50,20 @@ export default function ConfigPage() {
   // Discord state
   const [discordLink, setDiscordLink] = useState("");
   const [savingDiscord, setSavingDiscord] = useState(false);
+  const [identityName, setIdentityName] = useState("");
+  const [identityLogo, setIdentityLogo] = useState("");
+  const [identityPrimaryColor, setIdentityPrimaryColor] = useState("190 85% 48%");
+  const [savingIdentity, setSavingIdentity] = useState(false);
+  const [uploadingIdentityLogo, setUploadingIdentityLogo] = useState(false);
+  const identityLogoInputRef = useRef<HTMLInputElement>(null);
+  const identityColorOptions = [
+    { label: "Ciano", value: "190 85% 48%" },
+    { label: "Vermelho", value: "0 70% 50%" },
+    { label: "Verde", value: "140 70% 40%" },
+    { label: "Dourado", value: "35 90% 55%" },
+    { label: "Azul", value: "200 70% 50%" },
+    { label: "Roxo", value: "270 70% 55%" },
+  ];
 
   // Aging config state
   const [maxAging, setMaxAging] = useState(12);
@@ -57,6 +72,8 @@ export default function ConfigPage() {
   // Menus visibility state
   const [visibleMenus, setVisibleMenus] = useState<string[]>(["/inicio", "/char", "/historico", "/roleta", "/classes", "/jogadores"]);
   const [savingMenus, setSavingMenus] = useState(false);
+  const [selectedConfigClan, setSelectedConfigClan] = useState("");
+  const canManageConfig = isAdmin || isLeader;
 
   const fetchConfig = useCallback(async () => {
     const { data } = await supabase.from("whatsapp_config").select("*").limit(1).maybeSingle();
@@ -64,7 +81,7 @@ export default function ConfigPage() {
       const c = data as WhatsConfig;
       setConfig(c);
       setApiUrl(c.api_url ?? "");
-      setBodyTemplate(c.body_template ?? '{"text":"{{text}}","number":"{{number}}"}');
+      setBodyTemplate(c.body_template ?? '{"text":"{{text}}","number":"{{number}}","options":{"delay":100,"createChat":true},"session":"testeleo"}');
       setHeaders(
         Array.isArray(c.headers)
           ? (c.headers as any[]).map((h: any) => ({ key: h.key || "", value: h.value || "" }))
@@ -75,19 +92,56 @@ export default function ConfigPage() {
     }
   }, []);
 
+  const fetchClanWhatsappGroups = useCallback(async () => {
+    if (!isAdmin) return;
+    const { data } = await (supabase as any).from("clan_whatsapp_groups").select("clan, group_number");
+    const next: Record<string, string> = {};
+    (data || []).forEach((item: any) => {
+      if (item?.clan) next[item.clan] = item.group_number || "";
+    });
+    setClanWhatsappGroups(next);
+  }, [isAdmin]);
+
   useEffect(() => {
-    if (isAdmin) {
+    if (canManageConfig) {
+      const effectiveClan = isAdmin ? (selectedConfigClan || profile?.clan || clans[0]?.name || "") : (profile?.clan || "");
       fetchConfig();
-      supabase.from("clan_rules").select("id, content").limit(1).maybeSingle().then(({ data }) => {
-        if (data) { setRulesContent(data.content); setRulesId(data.id); }
-      });
-      supabase.from("app_config").select("discord_link, max_aging, visible_menus").eq("id", "main").maybeSingle().then(({ data }) => {
-        if (data?.discord_link) setDiscordLink(data.discord_link);
-        if (data?.max_aging != null) setMaxAging(data.max_aging);
-        if (data?.visible_menus) setVisibleMenus(data.visible_menus as string[]);
-      });
+      fetchClanWhatsappGroups();
+      if (effectiveClan) {
+        (supabase as any).from("clan_rules").select("id, content").eq("clan", effectiveClan).limit(1).maybeSingle().then(({ data }: any) => {
+          if (data) { setRulesContent(data.content); setRulesId(data.id); }
+          else { setRulesContent(""); setRulesId(null); }
+        });
+        (supabase as any).from("clan_discord_links").select("discord_link").eq("clan", effectiveClan).limit(1).maybeSingle().then(({ data }: any) => {
+          setDiscordLink(data?.discord_link || "");
+        });
+        (supabase as any).from("clan_identity").select("display_name, logo_url, primary_color").eq("clan", effectiveClan).limit(1).maybeSingle().then(({ data }: any) => {
+          setIdentityName(data?.display_name || effectiveClan);
+          setIdentityLogo(data?.logo_url || "");
+          setIdentityPrimaryColor(data?.primary_color || "190 85% 48%");
+        });
+      }
+      if (isAdmin) {
+        supabase.from("app_config").select("max_aging, visible_menus").eq("id", "main").maybeSingle().then(({ data }) => {
+          if (data?.max_aging != null) setMaxAging(data.max_aging);
+          if (data?.visible_menus) setVisibleMenus(data.visible_menus as string[]);
+        });
+      }
     }
-  }, [isAdmin, fetchConfig]);
+  }, [canManageConfig, isAdmin, fetchConfig, fetchClanWhatsappGroups, selectedConfigClan, profile?.clan, clans]);
+
+  useEffect(() => {
+    if (!selectedConfigClan) {
+      if (isLeader && profile?.clan) setSelectedConfigClan(profile.clan);
+      else if (isAdmin && clans.length > 0) setSelectedConfigClan(clans[0].name);
+    }
+  }, [selectedConfigClan, isLeader, isAdmin, profile?.clan, clans]);
+
+  useEffect(() => {
+    if (!isAdmin && tab !== "identity" && tab !== "rules" && tab !== "discord") {
+      setTab("identity");
+    }
+  }, [isAdmin, tab]);
 
   const onSaveWhatsApp = async () => {
     setSaving(true);
@@ -105,8 +159,31 @@ export default function ConfigPage() {
       : supabase.from("whatsapp_config").insert(payload as any);
 
     const { error } = await query;
-    if (error) toast.error(error.message ?? "Erro ao salvar");
-    else { toast.success("Configuração salva!"); await fetchConfig(); }
+    if (error) {
+      toast.error(error.message ?? "Erro ao salvar");
+      setSaving(false);
+      return;
+    }
+
+    if (isAdmin && clans.length > 0) {
+      const payloadGroups = clans.map((clan) => ({
+        clan: clan.name,
+        group_number: (clanWhatsappGroups[clan.name] || "").trim() || null,
+        updated_at: new Date().toISOString(),
+      }));
+      const { error: groupError } = await (supabase as any)
+        .from("clan_whatsapp_groups")
+        .upsert(payloadGroups, { onConflict: "clan" });
+      if (groupError) {
+        toast.error(groupError.message ?? "Erro ao salvar grupos por clã");
+        setSaving(false);
+        return;
+      }
+    }
+
+    toast.success("Configuração salva!");
+    await fetchConfig();
+    await fetchClanWhatsappGroups();
     setSaving(false);
   };
 
@@ -119,7 +196,7 @@ export default function ConfigPage() {
       
       // Then invoke boss-notify in force mode
       const { data, error } = await supabase.functions.invoke("boss-notify", {
-        body: { force: true, all: true },
+        body: { force: true, all: true, clan: selectedConfigClan || profile?.clan || null },
       });
       if (error) throw error;
       
@@ -159,31 +236,45 @@ export default function ConfigPage() {
     setClearing(false);
   };
 
-  if (!isAdmin) {
+  if (!canManageConfig) {
     return <p className="glass-card p-4 text-sm text-muted-foreground">Acesso restrito ao admin.</p>;
   }
 
   const saveRules = async () => {
-    setSavingRules(true);
-    if (rulesId) {
-      const { error } = await supabase.from("clan_rules").update({ content: rulesContent, updated_at: new Date().toISOString() }).eq("id", rulesId);
-      if (error) toast.error("Erro ao salvar regras");
-      else toast.success("Regras atualizadas!");
-    } else {
-      const { data, error } = await supabase.from("clan_rules").insert({ content: rulesContent }).select("id").single();
-      if (error) toast.error("Erro ao salvar regras");
-      else { toast.success("Regras salvas!"); if (data) setRulesId(data.id); }
+    const effectiveClan = isLeader ? profile?.clan : selectedConfigClan;
+    if (!effectiveClan) {
+      toast.error("Selecione um clã para salvar as regras.");
+      return;
     }
+    setSavingRules(true);
+    const { data, error } = await (supabase as any)
+      .from("clan_rules")
+      .upsert(
+        { content: rulesContent, clan: effectiveClan, updated_at: new Date().toISOString() },
+        { onConflict: "clan" }
+      )
+      .select("id")
+      .single();
+    if (error) toast.error("Erro ao salvar regras");
+    else { toast.success("Regras atualizadas!"); if (data) setRulesId(data.id); }
     setSavingRules(false);
   };
 
   const saveDiscordLink = async () => {
+    const effectiveClan = isLeader ? profile?.clan : selectedConfigClan;
+    if (!effectiveClan) {
+      toast.error("Selecione um clã para salvar o Discord.");
+      return;
+    }
     setSavingDiscord(true);
-    const { error } = await supabase.from("app_config").upsert({
-      id: "main",
-      discord_link: discordLink,
-      updated_at: new Date().toISOString()
-    });
+    const { error } = await (supabase as any).from("clan_discord_links").upsert(
+      {
+        clan: effectiveClan,
+        discord_link: discordLink,
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: "clan" }
+    );
     if (error) toast.error("Erro ao salvar link do Discord");
     else toast.success("Link do Discord atualizado!");
     setSavingDiscord(false);
@@ -211,17 +302,81 @@ export default function ConfigPage() {
     );
   };
 
-  const tabs = [
-    { key: "manage" as const, label: "Gerenciar", icon: Crown },
-    { key: "clans" as const, label: "Clãs", icon: Shield },
-    { key: "whatsapp" as const, label: "WhatsApp", icon: MessageCircle },
-    { key: "theme" as const, label: "Tema", icon: Palette },
-    { key: "rules" as const, label: "Regras", icon: ScrollText },
-    { key: "discord" as const, label: "Discord", icon: Link },
-    { key: "equip" as const, label: "Equip", icon: Package },
-    { key: "menus" as const, label: "Telas", icon: Settings },
-    { key: "clear" as const, label: "Limpar", icon: Trash2 },
-  ];
+  const tabs = isAdmin
+    ? [
+        { key: "manage" as const, label: "Gerenciar", icon: Crown },
+        { key: "clans" as const, label: "Clãs", icon: Shield },
+        { key: "whatsapp" as const, label: "WhatsApp", icon: MessageCircle },
+        { key: "theme" as const, label: "Tema", icon: Palette },
+        { key: "identity" as const, label: "Identidade", icon: Crown },
+        { key: "rules" as const, label: "Regras", icon: ScrollText },
+        { key: "discord" as const, label: "Discord", icon: Link },
+        { key: "equip" as const, label: "Equip", icon: Package },
+        { key: "menus" as const, label: "Telas", icon: Settings },
+        { key: "clear" as const, label: "Limpar", icon: Trash2 },
+      ]
+    : [
+        { key: "identity" as const, label: "Identidade", icon: Crown },
+        { key: "rules" as const, label: "Regras", icon: ScrollText },
+        { key: "discord" as const, label: "Discord", icon: Link },
+      ];
+
+  const saveClanIdentity = async () => {
+    const effectiveClan = isLeader ? profile?.clan : selectedConfigClan;
+    if (!effectiveClan) {
+      toast.error("Selecione um clã para salvar a identidade.");
+      return;
+    }
+    if (!identityName.trim()) {
+      toast.error("Informe o nome de exibição do clã.");
+      return;
+    }
+    setSavingIdentity(true);
+    const { error } = await (supabase as any).from("clan_identity").upsert(
+      {
+        clan: effectiveClan,
+        display_name: identityName.trim(),
+        logo_url: identityLogo.trim() || null,
+        primary_color: identityPrimaryColor,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "clan" }
+    );
+    if (error) toast.error(`Erro ao salvar identidade do clã: ${error.message || "erro desconhecido"}`);
+    else toast.success("Identidade do clã atualizada!");
+    setSavingIdentity(false);
+  };
+
+  const uploadClanLogo = async (file?: File | null) => {
+    const effectiveClan = isLeader ? profile?.clan : selectedConfigClan;
+    if (!effectiveClan) {
+      toast.error("Selecione um clã para enviar a logo.");
+      return;
+    }
+    if (!file) return;
+
+    setUploadingIdentityLogo(true);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+      const safeClan = effectiveClan.toLowerCase().replace(/[^a-z0-9_-]/g, "-");
+      const path = `clan-logos/${safeClan}/logo.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("event_images")
+        .upload(path, file, { upsert: true, contentType: file.type || undefined });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from("event_images").getPublicUrl(path);
+      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+      setIdentityLogo(publicUrl);
+      toast.success("Logo enviada com sucesso!");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao enviar logo");
+    } finally {
+      setUploadingIdentityLogo(false);
+      if (identityLogoInputRef.current) identityLogoInputRef.current.value = "";
+    }
+  };
 
   const seedEquipment = async () => {
     setSeeding(true);
@@ -289,6 +444,111 @@ export default function ConfigPage() {
           </button>
         ))}
       </div>
+
+      {(tab === "identity" || tab === "rules" || tab === "discord" || tab === "whatsapp") && (
+        <div className="glass-card p-3">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-2">Clã em edição</p>
+          {isAdmin ? (
+            <div className="flex flex-wrap gap-2">
+              {clans.map((clan) => (
+                <button
+                  key={clan.id}
+                  onClick={() => setSelectedConfigClan(clan.name)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-display font-bold border transition-colors ${
+                    selectedConfigClan === clan.name
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border/40 text-muted-foreground hover:border-muted-foreground/30"
+                  }`}
+                >
+                  {clan.name}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <span className="inline-flex px-3 py-1.5 rounded-xl text-xs font-display font-bold border border-primary bg-primary/15 text-primary">
+              {profile?.clan || "Sem clã"}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Identity Tab */}
+      {tab === "identity" && (
+        <div className="glass-card p-5 space-y-4">
+          <input
+            ref={identityLogoInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            disabled={uploadingIdentityLogo}
+            onChange={(e) => uploadClanLogo(e.target.files?.[0])}
+          />
+          <p className="text-[11px] text-muted-foreground font-body">
+            Esta identidade é aplicada apenas no painel interno após login.
+          </p>
+          <label className="block space-y-2">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Nome do Clã</span>
+            <input
+              value={identityName}
+              onChange={(e) => setIdentityName(e.target.value)}
+              className="input-modern text-sm"
+              placeholder="Ex: ALCATRAZ"
+            />
+          </label>
+          <label className="block space-y-2">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Logo URL</span>
+            <input
+              value={identityLogo}
+              onChange={(e) => setIdentityLogo(e.target.value)}
+              className="input-modern text-sm"
+              placeholder="https://..."
+            />
+          </label>
+          <div className="space-y-2">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Ou enviar do computador</span>
+            <button
+              type="button"
+              onClick={() => identityLogoInputRef.current?.click()}
+              disabled={uploadingIdentityLogo}
+              className="w-full btn-secondary text-sm flex items-center justify-center gap-2 py-2.5 disabled:opacity-50"
+            >
+              {uploadingIdentityLogo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {uploadingIdentityLogo ? "Enviando..." : "Enviar Logo"}
+            </button>
+          </div>
+          <div className="space-y-2">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Cor do Painel</span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {identityColorOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setIdentityPrimaryColor(opt.value)}
+                  className={`px-3 py-2 rounded-xl border text-xs font-display font-bold transition-colors ${
+                    identityPrimaryColor === opt.value
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border/40 text-muted-foreground hover:border-muted-foreground/30"
+                  }`}
+                >
+                  <span
+                    className="inline-block w-2.5 h-2.5 rounded-full mr-1.5 align-middle"
+                    style={{ backgroundColor: `hsl(${opt.value})` }}
+                  />
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button
+            onClick={saveClanIdentity}
+            disabled={savingIdentity}
+            className="w-full btn-primary text-sm flex items-center justify-center gap-2 py-3"
+          >
+            <Save className="w-4 h-4" />
+            {savingIdentity ? "Salvando..." : "Salvar Identidade"}
+          </button>
+        </div>
+      )}
 
       {/* Manage Tab */}
       {tab === "manage" && <AdminPage />}
@@ -434,17 +694,39 @@ export default function ConfigPage() {
             <label className="block space-y-2">
               <span className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Body Template</span>
               <p className="text-[10px] text-muted-foreground/60 font-body">
-                Use <code className="text-primary/80">{"{{text}}"}</code> para a mensagem e <code className="text-primary/80">{"{{number}}"}</code> para o telefone
+                Use <code className="text-primary/80">{"{{text}}"}</code> para a mensagem e <code className="text-primary/80">{"{{number}}"}</code> para o destino (grupo do clã por tag ou telefone no envio direto)
               </p>
               <textarea
                 value={bodyTemplate}
                 onChange={(e) => setBodyTemplate(e.target.value)}
                 rows={8}
                 className="input-modern font-mono text-xs leading-relaxed resize-y min-h-[120px]"
-                placeholder='{"text":"{{text}}","number":"{{number}}"}'
+                placeholder='{"text":"{{text}}","number":"{{number}}","options":{"delay":100,"createChat":true},"session":"testeleo"}'
               />
             </label>
           </div>
+
+          {isAdmin && (
+            <div className="glass-card p-4 space-y-3">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Grupo de Comunicados por Clã</p>
+              <p className="text-[11px] text-muted-foreground font-body">
+                Formato esperado: <code className="text-primary/80">120363426587639763@g.us</code>
+              </p>
+              <div className="space-y-2">
+                {clans.map((clan) => (
+                  <div key={clan.id} className="grid grid-cols-[80px,1fr] gap-2 items-center">
+                    <span className="text-xs font-display font-bold text-foreground">{clan.name}</span>
+                    <input
+                      value={clanWhatsappGroups[clan.name] || ""}
+                      onChange={(e) => setClanWhatsappGroups((prev) => ({ ...prev, [clan.name]: e.target.value }))}
+                      className="input-modern text-xs"
+                      placeholder="120363426587639763@g.us"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-2">
@@ -516,8 +798,7 @@ export default function ConfigPage() {
               { path: "/eventos", label: "Eventos" },
               { path: "/roleta", label: "Roleta" },
               { path: "/classes", label: "Classes" },
-              { path: "/jogadores", label: "Jogadores" },
-              { path: "/admin/alcatraz", label: "AlcatraZ" }
+              { path: "/jogadores", label: "Jogadores" }
             ].map(menu => (
               <label key={menu.path} className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-secondary/20 hover:bg-secondary/40 transition-colors cursor-pointer">
                 <span className="font-body text-sm font-bold text-foreground">{menu.label}</span>

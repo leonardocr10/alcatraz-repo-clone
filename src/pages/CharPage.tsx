@@ -466,7 +466,7 @@ export default function CharPage() {
           />
 
           {profile?.avatar_url || classImageUrl ? (
-            <div className="flex flex-col md:flex-row items-center gap-3">
+            <div>
               <button
                 type="button"
                 onClick={() => setAvatarExpanded(true)}
@@ -478,14 +478,6 @@ export default function CharPage() {
                   alt={profile?.nickname || 'Avatar'}
                   className={`w-40 h-40 rounded-2xl object-cover border-2 border-primary/30 shadow-lg cursor-pointer transition-transform hover:scale-105 ${isUploading ? 'opacity-50' : ''}`}
                 />
-              </button>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="px-3 py-2.5 rounded-xl bg-primary/20 border border-primary/40 text-primary font-display font-bold text-xs uppercase tracking-wider hover:bg-primary/30 transition-colors disabled:opacity-50"
-              >
-                {isUploading ? 'Enviando...' : 'Mudar Foto'}
               </button>
             </div>
           ) : (
@@ -500,7 +492,7 @@ export default function CharPage() {
                 ) : (
                   <>
                     <Shield className="w-8 h-8 text-muted-foreground/30 mx-auto" />
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-extrabold px-4">Adicionar Foto</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-extrabold px-4">Mudar Foto</p>
                   </>
                 )}
               </div>

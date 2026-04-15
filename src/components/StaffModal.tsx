@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { supabase } from "@/integrations/supabase/client";
 import { Crown, Swords, ShieldCheck, Megaphone, Star, User, FileText, X } from "lucide-react";
 import { CLAN_ROLES } from "@/data/staffMembers";
+import { useAuth } from "@/hooks/useAuth";
 
 interface StaffMember {
   nickname: string;
@@ -133,15 +134,21 @@ function RoleDetailModal({ roleKey, open, onClose }: { roleKey: string | null; o
 }
 
 export function StaffModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { profile } = useAuth();
   const [staffByRole, setStaffByRole] = useState<Record<string, StaffMember[]>>({});
   const [detailRole, setDetailRole] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
+    if (!profile?.clan) {
+      setStaffByRole({});
+      return;
+    }
 
     supabase
       .from("users")
-      .select("nickname, class, clan_role")
+      .select("nickname, class, clan_role, clan")
+      .eq("clan", profile.clan)
       .neq("clan_role", "membro")
       .then(async ({ data: users }) => {
         if (!users) return;
@@ -168,7 +175,7 @@ export function StaffModal({ open, onOpenChange }: { open: boolean; onOpenChange
         });
         setStaffByRole(grouped);
       });
-  }, [open]);
+  }, [open, profile?.clan]);
 
   const orderedRoles = CLAN_ROLES.filter(r => r.value !== "membro");
 

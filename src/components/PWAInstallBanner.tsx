@@ -51,7 +51,7 @@ export function PWAInstallBanner() {
           <Download className="w-6 h-6 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-display font-bold text-sm">Instalar AZ Clan</p>
+          <p className="font-display font-bold text-sm">Instalar Clan Panel</p>
           <p className="text-xs text-muted-foreground font-body">
             Adicione ao seu celular para acesso rápido
           </p>

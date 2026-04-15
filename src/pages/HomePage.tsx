@@ -39,7 +39,7 @@ interface ClassIcon {
 }
 
 const HomePage = () => {
-  const { isAdmin, profile } = useAuth();
+  const { isAdmin, isLeader, profile } = useAuth();
   const navigate = useNavigate();
   const { clans } = useClans();
   const [bosses, setBosses] = useState<Boss[]>([]);
@@ -64,19 +64,35 @@ const HomePage = () => {
   const [confirmSendAll, setConfirmSendAll] = useState(false);
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
   const [pendingClanMap, setPendingClanMap] = useState<Record<string, string>>({});
+  const canManageApprovals = isAdmin || isLeader;
+  const leaderClan = profile?.clan || null;
 
   const fetchPendingUsers = useCallback(async () => {
-    if (!isAdmin) return;
-    const { data } = await supabase.from("users").select("*").eq("approved", false).order("created_at", { ascending: false });
+    if (!canManageApprovals) return;
+    if (!isAdmin && !leaderClan) {
+      setPendingUsers([]);
+      setPendingClanMap({});
+      return;
+    }
+    let query = supabase.from("users").select("*").eq("approved", false).order("created_at", { ascending: false });
+    if (!isAdmin && leaderClan) {
+      query = query.eq("clan", leaderClan);
+    }
+    const { data } = await query;
     setPendingUsers(data || []);
     // Initialize clan map for pending users
     const map: Record<string, string> = {};
-    (data || []).forEach((u: any) => { map[u.id] = u.clan || "AZ"; });
+    (data || []).forEach((u: any) => { map[u.id] = u.clan || clans[0]?.name || ""; });
     setPendingClanMap(map);
-  }, [isAdmin]);
+  }, [canManageApprovals, isAdmin, leaderClan, clans]);
 
   const approveUser = async (userId: string) => {
-    const clan = pendingClanMap[userId] || "AZ";
+    if (!canManageApprovals) return;
+    const clan = isAdmin ? (pendingClanMap[userId] || clans[0]?.name || null) : (leaderClan || null);
+    if (!clan) {
+      toast.error("Defina um clã válido para aprovar.");
+      return;
+    }
     const { error } = await supabase.from("users").update({ approved: true, clan }).eq("id", userId);
     if (error) { toast.error(error.message); return; }
     toast.success(`Usuário aprovado no ${clan}!`);
@@ -84,6 +100,7 @@ const HomePage = () => {
   };
 
   const rejectUser = async (userId: string) => {
+    if (!canManageApprovals) return;
     if (!confirm("Rejeitar este usuário?")) return;
     const { error } = await supabase.from("users").delete().eq("id", userId);
     if (error) { toast.error(error.message); return; }
@@ -125,7 +142,7 @@ const HomePage = () => {
       const counts: Record<string, { count: number; clan: string }> = {};
       usersRes.data.forEach((u: any) => {
         if (u.class) {
-          const clan = u.clan || "AZ";
+          const clan = u.clan || "Sem clã";
           const key = `${u.class}|${clan}`;
           if (!counts[key]) counts[key] = { count: 0, clan };
           counts[key].count++;
@@ -208,7 +225,7 @@ const HomePage = () => {
     setSendingBoss(bossId);
     try {
       const { data, error } = await supabase.functions.invoke("boss-notify", {
-        body: { force: true, boss_id: bossId },
+        body: { force: true, boss_id: bossId, clan: profile?.clan || null },
       });
       if (error) throw error;
       toast.success(data?.message || "Notificação enviada!");
@@ -222,7 +239,7 @@ const HomePage = () => {
     setSendingAll(true);
     try {
       const { data, error } = await supabase.functions.invoke("boss-notify", {
-        body: { force: true, all: true },
+        body: { force: true, all: true, clan: profile?.clan || null },
       });
       if (error) throw error;
       toast.success(data?.message || "Notificações enviadas!");
@@ -235,7 +252,7 @@ const HomePage = () => {
   const groupedBosses = getGroupedBosses();
   
   // Filter class counts by clan
-  const effectiveClassClanFilter = isAdmin ? classClanFilter : (profile?.clan || "AZ");
+  const effectiveClassClanFilter = isAdmin ? classClanFilter : (profile?.clan || null);
   const filteredClassCounts = useMemo(() => {
     if (!effectiveClassClanFilter) return classCounts;
     return classCounts.filter(c => c.clan === effectiveClassClanFilter);
@@ -276,8 +293,8 @@ const HomePage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Pending Approvals - Admin Only */}
-      {isAdmin && pendingUsers.length > 0 && (
+      {/* Pending Approvals - Admin / Clan Leader */}
+      {canManageApprovals && pendingUsers.length > 0 && (
         <div className="glass-card overflow-hidden">
           <div className="px-4 py-3 border-b border-border/40 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-gold" />
@@ -307,7 +324,7 @@ const HomePage = () => {
                 {/* Clan selector */}
                 <div className="flex items-center gap-2 pl-12">
                   <span className="text-[10px] text-muted-foreground font-bold uppercase">Clã:</span>
-                  {clans.map((clan) => (
+                  {isAdmin ? clans.map((clan) => (
                     <button
                       key={clan.name}
                       onClick={() => setPendingClanMap(prev => ({ ...prev, [user.id]: clan.name }))}
@@ -319,7 +336,11 @@ const HomePage = () => {
                     >
                       {clan.name}
                     </button>
-                  ))}
+                  )) : (
+                    <span className="px-2.5 py-1 rounded-lg text-[11px] font-display font-bold border border-primary bg-primary/15 text-primary">
+                      {leaderClan || "Sem clã"}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}

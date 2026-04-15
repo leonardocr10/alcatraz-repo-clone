@@ -163,7 +163,7 @@ export function useBossNotifications() {
     if (typeof Notification === "undefined" || Notification.permission !== "granted") {
       return false;
     }
-    await showNotification("⚔️ Teste de Alerta - Painel AZ", {
+    await showNotification("⚔️ Teste de Alerta - Clan Panel", {
       body: "🐉 Se você viu essa notificação, os alertas estão funcionando!",
       icon: "/pwa-icon-192.png",
       badge: "/pwa-icon-192.png",

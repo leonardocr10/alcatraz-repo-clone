@@ -1,22 +1,33 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollText } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function RulesPage() {
+  const { profile } = useAuth();
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase
+    const userClan = profile?.clan;
+    if (!userClan) {
+      setContent("");
+      setLoading(false);
+      return;
+    }
+
+    (supabase as any)
       .from("clan_rules")
       .select("content")
+      .eq("clan", userClan)
       .limit(1)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data }: any) => {
         if (data) setContent(data.content);
+        else setContent("");
         setLoading(false);
       });
-  }, []);
+  }, [profile?.clan]);
 
   return (
     <div className="space-y-4">
