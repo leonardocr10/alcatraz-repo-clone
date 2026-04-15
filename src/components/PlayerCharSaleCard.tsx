@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, Loader2, MessageCircle, Share2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Download, Loader2, MessageCircle, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { toPng } from "html-to-image";
+import { PlayerCharModal } from "@/components/PlayerCharModal";
 import slotSword from "@/assets/slot-sword.png";
 import slotShield from "@/assets/slot-shield.png";
 import slotArmor from "@/assets/slot-armor.png";
@@ -78,6 +79,8 @@ export function PlayerCharSaleCard({
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
   const [showDownloadFallback, setShowDownloadFallback] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [showCharModal, setShowCharModal] = useState(false);
   const shareRef = useRef<HTMLDivElement>(null);
 
   const formatCurrencyInput = (value: string) => {
@@ -277,11 +280,16 @@ export function PlayerCharSaleCard({
     <div ref={shareRef} className="glass-card p-4 space-y-3">
       <div className="grid grid-cols-[auto,1fr,auto] items-start gap-3">
         {avatarUrl ? (
-          <img src={avatarUrl} alt={playerName} className="w-20 h-20 rounded-2xl object-cover border-2 border-primary/30" />
+          <button onClick={() => setShowCharModal(true)} className="block">
+            <img src={avatarUrl} alt={playerName} className="w-20 h-20 rounded-2xl object-cover border-2 border-primary/30" />
+          </button>
         ) : (
-          <div className="w-20 h-20 rounded-2xl bg-secondary/30 border border-border/40 flex items-center justify-center text-xl font-bold">
+          <button
+            onClick={() => setShowCharModal(true)}
+            className="w-20 h-20 rounded-2xl bg-secondary/30 border border-border/40 flex items-center justify-center text-xl font-bold"
+          >
             {playerName.charAt(0).toUpperCase()}
-          </div>
+          </button>
         )}
         <div className="flex-1 min-w-0">
           <p className="font-display font-extrabold text-base truncate">{playerName}</p>
@@ -294,6 +302,13 @@ export function PlayerCharSaleCard({
           )}
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-1.5 shrink-0">
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="w-9 h-9 rounded-xl bg-secondary/30 text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-border/30 transition-colors text-xs font-bold flex items-center justify-center"
+            title={expanded ? "Recolher" : "Expandir"}
+          >
+            {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
           <button
             onClick={handleShare}
             disabled={sharing}
@@ -323,65 +338,77 @@ export function PlayerCharSaleCard({
         </div>
       </div>
 
-      {description && (
-        <div className="rounded-xl border border-border/30 bg-secondary/15 px-3 py-2">
-          <p className="text-[11px] text-foreground/85 whitespace-pre-wrap">{description}</p>
-        </div>
+      {expanded && (
+        <>
+          {description && (
+            <div className="rounded-xl border border-border/30 bg-secondary/15 px-3 py-2">
+              <p className="text-[11px] text-foreground/85 whitespace-pre-wrap">{description}</p>
+            </div>
+          )}
+
+          <div className="flex gap-2.5">
+            {SLOT_CONFIG.filter((s) => s.size === "large").map((slotCfg) => {
+              const equip = getEquip(slotCfg.slot);
+              return (
+                <div key={slotCfg.slot} className="flex flex-col items-center gap-1 flex-1">
+                  <div className={`relative w-full aspect-[3/4] rounded-xl border-2 flex items-center justify-center overflow-hidden ${
+                    equip ? `${RARITY_COLORS[equip.rarity]} ${RARITY_BG[equip.rarity]}` : "border-border/40 bg-secondary/20"
+                  }`}>
+                    {equip?.item ? (
+                      <>
+                        <img src={equip.item.image_url} alt={equip.item.name} className="w-4/5 h-4/5 object-contain" />
+                        {equip.plus_value != null && equip.plus_value > 0 && (
+                          <span className="absolute bottom-1 right-1 text-[10px] font-display font-bold text-foreground bg-background/80 px-1 rounded">
+                            +{equip.plus_value}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <img src={slotCfg.placeholder} alt={slotCfg.label} className="w-3/5 h-3/5 object-contain opacity-20" />
+                    )}
+                  </div>
+                  <span className="text-[9px] font-display font-bold text-muted-foreground uppercase tracking-wider">{slotCfg.label}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="grid grid-cols-6 gap-1.5">
+            {SLOT_CONFIG.filter((s) => s.size === "small").map((slotCfg) => {
+              const equip = getEquip(slotCfg.slot);
+              return (
+                <div key={slotCfg.slot} className="flex flex-col items-center gap-1">
+                  <div className={`relative w-full aspect-square rounded-xl border-2 flex items-center justify-center overflow-hidden ${
+                    equip ? `${RARITY_COLORS[equip.rarity]} ${RARITY_BG[equip.rarity]}` : "border-border/40 bg-secondary/20"
+                  }`}>
+                    {equip?.item ? (
+                      <>
+                        <img src={equip.item.image_url} alt={equip.item.name} className="w-4/5 h-4/5 object-contain" />
+                        {equip.plus_value != null && equip.plus_value > 0 && (
+                          <span className="absolute bottom-0.5 right-0.5 text-[8px] font-display font-bold text-foreground bg-background/80 px-1 rounded">
+                            +{equip.plus_value}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <img src={slotCfg.placeholder} alt={slotCfg.label} className="w-3/5 h-3/5 object-contain opacity-20" />
+                    )}
+                  </div>
+                  <span className="text-[8px] font-display font-bold text-muted-foreground uppercase tracking-wider">{slotCfg.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
-      <div className="flex gap-2.5">
-        {SLOT_CONFIG.filter((s) => s.size === "large").map((slotCfg) => {
-          const equip = getEquip(slotCfg.slot);
-          return (
-            <div key={slotCfg.slot} className="flex flex-col items-center gap-1 flex-1">
-              <div className={`relative w-full aspect-[3/4] rounded-xl border-2 flex items-center justify-center overflow-hidden ${
-                equip ? `${RARITY_COLORS[equip.rarity]} ${RARITY_BG[equip.rarity]}` : "border-border/40 bg-secondary/20"
-              }`}>
-                {equip?.item ? (
-                  <>
-                    <img src={equip.item.image_url} alt={equip.item.name} className="w-4/5 h-4/5 object-contain" />
-                    {equip.plus_value != null && equip.plus_value > 0 && (
-                      <span className="absolute bottom-1 right-1 text-[10px] font-display font-bold text-foreground bg-background/80 px-1 rounded">
-                        +{equip.plus_value}
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  <img src={slotCfg.placeholder} alt={slotCfg.label} className="w-3/5 h-3/5 object-contain opacity-20" />
-                )}
-              </div>
-              <span className="text-[9px] font-display font-bold text-muted-foreground uppercase tracking-wider">{slotCfg.label}</span>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="grid grid-cols-6 gap-1.5">
-        {SLOT_CONFIG.filter((s) => s.size === "small").map((slotCfg) => {
-          const equip = getEquip(slotCfg.slot);
-          return (
-            <div key={slotCfg.slot} className="flex flex-col items-center gap-1">
-              <div className={`relative w-full aspect-square rounded-xl border-2 flex items-center justify-center overflow-hidden ${
-                equip ? `${RARITY_COLORS[equip.rarity]} ${RARITY_BG[equip.rarity]}` : "border-border/40 bg-secondary/20"
-              }`}>
-                {equip?.item ? (
-                  <>
-                    <img src={equip.item.image_url} alt={equip.item.name} className="w-4/5 h-4/5 object-contain" />
-                    {equip.plus_value != null && equip.plus_value > 0 && (
-                      <span className="absolute bottom-0.5 right-0.5 text-[8px] font-display font-bold text-foreground bg-background/80 px-1 rounded">
-                        +{equip.plus_value}
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  <img src={slotCfg.placeholder} alt={slotCfg.label} className="w-3/5 h-3/5 object-contain opacity-20" />
-                )}
-              </div>
-              <span className="text-[8px] font-display font-bold text-muted-foreground uppercase tracking-wider">{slotCfg.label}</span>
-            </div>
-          );
-        })}
-      </div>
+      {showCharModal && (
+        <PlayerCharModal
+          playerId={playerId}
+          playerName={playerName}
+          onClose={() => setShowCharModal(false)}
+        />
+      )}
     </div>
   );
 }

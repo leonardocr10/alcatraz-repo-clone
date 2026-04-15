@@ -61,6 +61,15 @@ type StoryComment = {
   author: FeedUser | null;
 };
 
+type PostComment = {
+  id: string;
+  post_id: string;
+  user_id: string;
+  comment: string;
+  created_at: string;
+  author: FeedUser | null;
+};
+
 export function SocialFeed() {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -85,6 +94,9 @@ export function SocialFeed() {
   const [showEditEmoji, setShowEditEmoji] = useState(false);
   const [storyReactions, setStoryReactions] = useState<StoryReaction[]>([]);
   const [storyComments, setStoryComments] = useState<StoryComment[]>([]);
+  const [postComments, setPostComments] = useState<Record<string, PostComment[]>>({});
+  const [postCommentInput, setPostCommentInput] = useState<Record<string, string>>({});
+  const [sendingPostCommentId, setSendingPostCommentId] = useState<string | null>(null);
   const [storyCommentText, setStoryCommentText] = useState("");
   const [sendingStoryComment, setSendingStoryComment] = useState(false);
   const [loadingStoryDetails, setLoadingStoryDetails] = useState(false);
@@ -125,15 +137,29 @@ export function SocialFeed() {
     const postIds = rawPosts.map((p) => p.id);
     const userIds = Array.from(new Set([...rawPosts.map((p) => p.user_id), ...rawStories.map((s) => s.user_id)]));
 
-    const [usersRes, likesRes, sharesRes] = await Promise.all([
-      userIds.length ? sb.from("users").select("id, nickname, avatar_url, clan").in("id", userIds) : Promise.resolve({ data: [] }),
+    const [likesRes, sharesRes, postCommentsRes] = await Promise.all([
       postIds.length ? sb.from("social_post_likes").select("post_id, user_id").in("post_id", postIds) : Promise.resolve({ data: [] }),
       postIds.length ? sb.from("social_post_shares").select("post_id, user_id").in("post_id", postIds) : Promise.resolve({ data: [] }),
+      postIds.length
+        ? sb
+            .from("social_post_comments")
+            .select("id, post_id, user_id, comment, created_at")
+            .in("post_id", postIds)
+            .eq("is_active", true)
+            .order("created_at", { ascending: true })
+        : Promise.resolve({ data: [] }),
     ]);
+
+    const commenterIds = Array.from(new Set((postCommentsRes.data || []).map((c: any) => c.user_id)));
+    const allUserIds = Array.from(new Set([...userIds, ...commenterIds]));
+    const usersRes = allUserIds.length
+      ? await sb.from("users").select("id, nickname, avatar_url, clan").in("id", allUserIds)
+      : { data: [] };
 
     const usersMap = new Map<string, FeedUser>((usersRes.data || []).map((u: FeedUser) => [u.id, u]));
     const likes = likesRes.data || [];
     const shares = sharesRes.data || [];
+    const commentsRaw = postCommentsRes.data || [];
 
     const likeCountMap = new Map<string, number>();
     const shareCountMap = new Map<string, number>();
@@ -157,6 +183,21 @@ export function SocialFeed() {
         liked_by_me: likedByMeSet.has(p.id),
       }))
     );
+
+    const commentsByPost: Record<string, PostComment[]> = {};
+    commentsRaw.forEach((c: any) => {
+      const row: PostComment = {
+        id: c.id,
+        post_id: c.post_id,
+        user_id: c.user_id,
+        comment: c.comment,
+        created_at: c.created_at,
+        author: usersMap.get(c.user_id) || null,
+      };
+      if (!commentsByPost[row.post_id]) commentsByPost[row.post_id] = [];
+      commentsByPost[row.post_id].push(row);
+    });
+    setPostComments(commentsByPost);
 
     const mappedStories = rawStories.map((s) => ({
       ...s,
@@ -425,6 +466,26 @@ export function SocialFeed() {
     setSendingStoryComment(false);
   };
 
+  const sendPostComment = async (postId: string) => {
+    if (!profile?.id) return;
+    const text = (postCommentInput[postId] || "").trim();
+    if (!text) return;
+    setSendingPostCommentId(postId);
+    const { error } = await sb.from("social_post_comments").insert({
+      post_id: postId,
+      user_id: profile.id,
+      comment: text,
+    });
+    if (error) {
+      toast.error("Erro ao comentar no post.");
+      setSendingPostCommentId(null);
+      return;
+    }
+    setPostCommentInput((prev) => ({ ...prev, [postId]: "" }));
+    await fetchFeed();
+    setSendingPostCommentId(null);
+  };
+
   const formatDate = (iso: string) =>
     new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
@@ -677,6 +738,59 @@ export function SocialFeed() {
                     Compartilhar ({post.share_count})
                   </button>
                 </div>
+
+                <div className="space-y-2 border-t border-border/30 pt-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={postCommentInput[post.id] || ""}
+                      onChange={(e) => setPostCommentInput((prev) => ({ ...prev, [post.id]: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") sendPostComment(post.id);
+                      }}
+                      placeholder="Comentar no post..."
+                      className="input-modern h-9 text-sm"
+                    />
+                    <button
+                      onClick={() => sendPostComment(post.id)}
+                      disabled={sendingPostCommentId === post.id || !(postCommentInput[post.id] || "").trim()}
+                      className="px-3 py-2 rounded-xl border border-primary/30 bg-primary/15 text-primary text-xs font-bold disabled:opacity-50"
+                    >
+                      Enviar
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {(postComments[post.id] || []).length === 0 ? (
+                      <p className="text-xs text-muted-foreground">Sem comentários ainda.</p>
+                    ) : (
+                      (postComments[post.id] || []).map((c) => (
+                        <div key={c.id} className="px-2.5 py-1.5 rounded-lg bg-secondary/20 border border-border/30">
+                          <div className="flex items-center gap-2">
+                            {c.author?.avatar_url ? (
+                              <img src={c.author.avatar_url} alt={c.author.nickname || "Jogador"} className="w-6 h-6 rounded-full object-cover border border-primary/30" />
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-secondary/60 border border-border/40 flex items-center justify-center text-[10px] font-bold">
+                                {(c.author?.nickname || "J").charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-[11px] text-primary font-bold leading-none">{c.author?.nickname || "Jogador"}</p>
+                              <p className="text-[10px] text-muted-foreground leading-none mt-1">
+                                {new Date(c.created_at).toLocaleString("pt-BR", {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                          <p className="text-xs text-foreground/90 whitespace-pre-wrap mt-1.5">{c.comment}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
               </div>
             );
           })
@@ -857,8 +971,27 @@ export function SocialFeed() {
                   ) : (
                     storyComments.map((c) => (
                       <div key={c.id} className="px-2.5 py-1.5 rounded-lg bg-secondary/20 border border-border/30">
-                        <p className="text-[11px] text-primary font-bold">{c.author?.nickname || "Jogador"}</p>
-                        <p className="text-xs text-foreground/90 whitespace-pre-wrap">{c.comment}</p>
+                        <div className="flex items-center gap-2">
+                          {c.author?.avatar_url ? (
+                            <img src={c.author.avatar_url} alt={c.author.nickname || "Jogador"} className="w-6 h-6 rounded-full object-cover border border-primary/30" />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-secondary/60 border border-border/40 flex items-center justify-center text-[10px] font-bold">
+                              {(c.author?.nickname || "J").charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-[11px] text-primary font-bold leading-none">{c.author?.nickname || "Jogador"}</p>
+                            <p className="text-[10px] text-muted-foreground leading-none mt-1">
+                              {new Date(c.created_at).toLocaleString("pt-BR", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-foreground/90 whitespace-pre-wrap mt-1.5">{c.comment}</p>
                       </div>
                     ))
                   )}
